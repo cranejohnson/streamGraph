@@ -65,9 +65,9 @@
 <script type="text/javascript">
 
 function addStats(chart,USGSsite,ext){
-  console.log(ext);
-  console.log(ext.max);
+
   $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsite+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
+    console.log(data);
     var lines = data.split('\n');
     var statsSeries = [
       {
@@ -134,15 +134,18 @@ function addStats(chart,USGSsite,ext){
         var data = this.split('\t');
         var month = data[5];
         var day = data[6];
-        var year = '2016';
-        var date = Date.UTC(year,month,day);
-        statsSeries[0].data.push([date,parseInt(data[13]),parseInt(data[11])]);
-        statsSeries[1].data.push([date,parseInt(data[14]),parseInt(data[18])]);
-        statsSeries[2].data.push([date,parseInt(data[15]),parseInt(data[17])]);
-        statsSeries[3].data.push([date,parseInt(data[16])]);
-        statsSeries[4].data.push([date,parseInt(data[9])]);
-        statsSeries[5].data.push([date,parseInt(data[12])]);
-        statsSeries[6].data.push([date,parseInt(data[10])]);
+        //Need to skip leap years Feb 29th fo Stats
+        if(month != 2 && day != 29){
+            var year = '2016';
+            var date = Date.UTC(year,month,day);
+            statsSeries[0].data.push([date,parseInt(data[13]),parseInt(data[11])]);
+            statsSeries[1].data.push([date,parseInt(data[14]),parseInt(data[18])]);
+            statsSeries[2].data.push([date,parseInt(data[15]),parseInt(data[17])]);
+            statsSeries[3].data.push([date,parseInt(data[16])]);
+            statsSeries[4].data.push([date,parseInt(data[9])]);
+            statsSeries[5].data.push([date,parseInt(data[12])]);
+            statsSeries[6].data.push([date,parseInt(data[10])]);
+        }
       }
 
     });
@@ -150,7 +153,7 @@ function addStats(chart,USGSsite,ext){
     $.each(statsSeries,function(){
       this.marker = { enabled:false}
       chart.addSeries(this);
-      console.log(this);
+
     });
   });
 }
@@ -220,19 +223,6 @@ function initializeNWS() {
 }
 
 
-
-// var jqxhr = $.getJSON( "crossWalk.json", function() {
-//   console.log( "success" );
-// })
-//   .done(function() {
-//     console.log( "second success" );
-//   })
-//   .fail(function() {
-//     console.log( "error" );
-//   })
-//   .always(function() {
-//     console.log( "complete" );
-//   });
 
 $.ajax({
     type: 'GET',
