@@ -31,6 +31,7 @@
 
       <p>
             <input type="button" name="query" id="query" value="Get Latest Streamflow" />
+
       </p>
   </form>
 
@@ -43,6 +44,9 @@
         </td>
         <td>
           <input type="checkbox" id="dischargeAxis" style="padding-left:20px" checked>Log Scale<br>
+           Start Date:<input type="text" id="dischargeStart" length=10>
+           End Date:<input type="text" id="dischargeStart" length=10>
+           <input type="button" id="loadQ" value="Load Data"></br>
           <div id="dischargegraph" style="width: 500px; height: 500px; padding-left:20px"></div>
     </td>
   </tr>
@@ -67,7 +71,8 @@
 function addStats(chart,USGSsite,ext){
 
   $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsite+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
-    console.log(data);
+    //console.log(ext);
+
     var lines = data.split('\n');
     var statsSeries = [
       {
@@ -275,6 +280,7 @@ function GetObjectKeyIndex(obj, keyToFind) {
     }
     return null;
 }
+
 
 function ratingJSON2HC(json){
     var indepIndex = GetObjectKeyIndex(json.columns,"INDEP");
