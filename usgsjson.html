@@ -938,6 +938,7 @@ $('#query').click(function() {
                     var d = new Date($(this).find("valid").text()).getTime();
                     var stage = $(this).find("primary").text()
                     var discharge = $(this).find("secondary").text()
+                    if($(XML).find('secondary').attr('units') == 'kcfs') mult = 1000
                     stageArray.unshift([parseInt(d),parseFloat(stage)])
                     dischargeArray.unshift([parseInt(d),parseFloat(discharge)*mult])
                 })
