@@ -401,7 +401,7 @@ function qMeasJSON2HC(json){
         if(age < 10) index =2 ;
         if(age < 5) index = 1;
         if(age < 1 ) index = 0;
-        if(isFinite(String(json.records[i][depIndex]))){
+        if(isFinite(String(json.records[i][depIndex])) && (json.records[i][indepIndex] > 0)){
             allSeries[index].data.push( {'x' : json.records[i][indepIndex],
                 'y': json.records[i][depIndex],
                 'name': date.toDateString()
@@ -828,12 +828,11 @@ function plotHeatQ(){
 
 
 $('#query').click(function() {
-   initializeNWS();
-   plotHeatQ();
-   plotRating();
-   if($('#site').val().length<=5){
+    initializeNWS();
+    plotHeatQ();
+    plotRating();
+    if($('#site').val().length<=5){
         nwsLid = $('#site').val().toLowerCase();
-
         usgsSite = crossWalkTable[nwsLid];
     }
     else{
@@ -841,133 +840,126 @@ $('#query').click(function() {
     }
 
     USGS = {
-      data : [],
-      title : ''
+        data : [],
+        title : ''
     }
     //Load USGS Observed Data
     $.ajax({
-      url: "http://waterservices.usgs.gov/nwis/iv/?format=json&sites=" + usgsSite + "&parameterCd=00060,00065&period=P7D",
-      dataType: 'json',
-      data: '',
-      success: function(json){
-         if(json.value.timeSeries.length>0){
-             NWS.sources.push('USGS');
-             NWS.stageSeries.push({
-                data : USGStoHC(json,"00065"),
-                name : 'USGS Observed Data',
-                zIndex: 2,
-                nwsType: 'observed'
-             });
-             NWS.dischargeSeries.push({
-                data: USGStoHC(json,"00060"),
-                name:'USGS Observed Data',
-                zIndex:2,
-                nwsType: 'observed'
-            });
-            NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName
+        url: "http://waterservices.usgs.gov/nwis/iv/?format=json&sites=" + usgsSite + "&parameterCd=00060,00065&period=P7D",
+        dataType: 'json',
+        data: '',
+        success: function(json){
+            if(json.value.timeSeries.length>0){
+                NWS.sources.push('USGS');
+                NWS.stageSeries.push({
+                    data : USGStoHC(json,"00065"),
+                    name : 'USGS Observed Data',
+                    zIndex: 2,
+                    nwsType: 'observed'
+                });
+                NWS.dischargeSeries.push({
+                    data: USGStoHC(json,"00060"),
+                    name:'USGS Observed Data',
+                    zIndex:2,
+                    nwsType: 'observed'
+                });
+                NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName
+            }
+        },
+        async: false,
+        error : function(XMLHttpRequest, textStatus, errorThrown) {
+            $('#discharge').val('')
+            $('#date').val('')
         }
-    },
-    async: false,
-    error : function(XMLHttpRequest, textStatus, errorThrown) {
-        $('#discharge').val('')
-        $('#date').val('')
-    }
     })
 
     //Load USGS Site Information
     $.ajax({
-      url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+usgsSite+"&siteOutput=expanded",
-      dataType: 'text',
-      data: '',
-      async: false,
-      success: function(data){
-      var siteInfo = getRDBSiteInfo(data,['drain_area_va'])
-        $('#watershedArea').val(siteInfo.drain_area_va)
-
-      }
+        url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+usgsSite+"&siteOutput=expanded",
+        dataType: 'text',
+        data: '',
+        async: false,
+        success: function(data){
+            var siteInfo = getRDBSiteInfo(data,['drain_area_va'])
+            $('#watershedArea').val(siteInfo.drain_area_va)
+        }
     })
 
     //Load AHPS XML Data
     $.ajax({
-      url: "get_ahps_data.php?site="+nwsLid,
-      dataType: 'XML',
-      data: '',
-      async: false,
-      success: function(XML){
+        url: "get_ahps_data.php?site="+nwsLid,
+        dataType: 'XML',
+        data: '',
+        async: false,
+        success: function(XML){
             var tmpData = Array()
-    NWS.sources.push('NWS');
-        NWS.forecastIssued =  '(Issued: '+Highcharts.dateFormat('%l %P %b %e',new Date($(XML).find('forecast').attr('issued')).getTime())+')';
-        NWS.nwsTitle = $(XML).find("site").attr("name");
-        $(XML).find("sigstages").each(function(){
-          $(this).children().each(function(){
-            if($(this).text()){
-               NWS.stage[this.nodeName].value = parseFloat($(this).text())
-               NWS.maxY = Math.round(parseFloat($(this).text()) + 4)
-            }
-          })
-        })
+            NWS.sources.push('NWS');
+            NWS.forecastIssued =  '(Issued: '+Highcharts.dateFormat('%l %P %b %e',new Date($(XML).find('forecast').attr('issued')).getTime())+')';
+            NWS.nwsTitle = $(XML).find("site").attr("name");
+            $(XML).find("sigstages").each(function(){
+                $(this).children().each(function(){
+                    if($(this).text()){
+                        NWS.stage[this.nodeName].value = parseFloat($(this).text())
+                        NWS.maxY = Math.round(parseFloat($(this).text()) + 4)
+                    }
+                })
+            })
 
+            var mult = 1;
+            var stageArray = [];
+            var dischargeArray = [];
+            $(XML).find("forecast").each(function(){
+                $(this).children().each(function(){
+                    var d = new Date($(this).find("valid").text()).getTime();
+                    var stage = $(this).find("primary").text()
+                    var discharge = $(this).find("secondary").text()
+                    if($(XML).find('secondary').attr('units') == 'kcfs') mult = 1000
+                    stageArray.push([parseInt(d),parseFloat(stage)])
+                    dischargeArray.push([parseInt(d),Math.round(parseFloat(discharge)*mult)])
+                })
+            })
+            NWS.stageSeries.push({
+                data : stageArray,
+                name : 'NWS Forecast Data'+NWS.forecastIssued,
+                color: 'purple',
+                nwsType: 'forecast'
+            });
+            NWS.dischargeSeries.push({
+                data : dischargeArray,
+                name : 'NWS Forecast Data'+NWS.forecastIssued,
+                color: 'purple',
+                nwsType: 'forecast'
+            });
 
-      var stageArray = [];
-      var dischargeArray = [];
-      $(XML).find("forecast").each(function(){
-          $(this).children().each(function(){
-             var d = new Date($(this).find("valid").text()).getTime();
-             var stage = $(this).find("primary").text()
-             var discharge = $(this).find("secondary").text()
-             var mult = 1;
-             if($(XML).find('secondary').attr('units') == 'kcfs') mult = 1000
-             stageArray.push([parseInt(d),parseFloat(stage)])
-             dischargeArray.push([parseInt(d),Math.round(parseFloat(discharge)*mult)])
+            stageArray = [];
+            dischargeArray = [];
+            $(XML).find("observed").each(function(){
+                $(this).children().each(function(){
+                    var d = new Date($(this).find("valid").text()).getTime();
+                    var stage = $(this).find("primary").text()
+                    var discharge = $(this).find("secondary").text()
+                    stageArray.unshift([parseInt(d),parseFloat(stage)])
+                    dischargeArray.unshift([parseInt(d),parseFloat(discharge)*mult])
+                })
+            })
+            NWS.stageSeries.push({
+                data : stageArray,
+                name : 'NWS Observed Data',
+                color: 'blue',
+                nwsType: 'observed'
+            });
+            NWS.dischargeSeries.push({
+                data :  dischargeArray,
+                name : 'NWS Observed Data',
+                color: 'blue',
+                nwsType: 'observed'
+            });
 
-          })
-        })
-      NWS.stageSeries.push({
-      data : stageArray,
-      name : 'NWS Forecast Data'+NWS.forecastIssued,
-      color: 'purple',
-      nwsType: 'forecast'
-     });
-        NWS.dischargeSeries.push({
-      data : dischargeArray,
-      name : 'NWS Forecast Data'+NWS.forecastIssued,
-      color: 'purple',
-      nwsType: 'forecast'
-     });
-
-    stageArray = [];
-        dischargeArray = [];
-        $(XML).find("observed").each(function(){
-            $(this).children().each(function(){
-        var d = new Date($(this).find("valid").text()).getTime();
-        var stage = $(this).find("primary").text()
-        var discharge = $(this).find("secondary").text()
-        stageArray.unshift([parseInt(d),parseFloat(stage)])
-        dischargeArray.unshift([parseInt(d),parseFloat(discharge)*1000])
-      })
-        })
-    NWS.stageSeries.push({
-      data : stageArray,
-      name : 'NWS Observed Data',
-      color: 'blue',
-      nwsType: 'observed'
-     });
-
-
-    NWS.dischargeSeries.push({
-      data :  dischargeArray,
-      name : 'NWS Observed Data',
-      color: 'blue',
-      nwsType: 'observed'
-     });
-
-
-
-      graphStage(NWS);
-      graphDischarge(NWS);
+            graphStage(NWS);
+            graphDischarge(NWS);
 
         },
-      timeout: 10000 // sets timeout to 3 seconds
+        timeout: 10000 // sets timeout to 3 seconds
 
     })
   })
