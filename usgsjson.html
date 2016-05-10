@@ -8,6 +8,7 @@
   <script src="https://code.highcharts.com/highcharts-more.js"></script>
   <script src="http://code.highcharts.com/modules/exporting.js"></script>
   <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
+  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
 
   <title>NWS JS Graphing Example</title>
 </head>
@@ -43,7 +44,7 @@
           <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
         </td>
         <td>
-          <input type="checkbox" id="dischargeAxis" style="padding-left:20px" checked>Log Scale<br>
+          <input type="checkbox" id="dischargeAxis" style="padding-left:20px" checked >Log Scale<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
            End Date:<input type="text" id="dischargeStart" length=10>
            <input type="button" id="loadQ" value="Load Data"></br>
@@ -137,9 +138,12 @@ function addStats(chart,USGSsite,ext){
     $.each(lines, function(){
       if (this.substring(0, 4) == "USGS") {
         var data = this.split('\t');
+        for(i=0;i<data.length;i++){
+            if(parseInt(data[i]) == 0 ) data[i]= 1;
+        }
         var month = data[5];
         var day = data[6];
-        //Need to skip leap years Feb 29th fo Stats
+        //Need to skip leap years Feb 29th for Stats
         if(month != 2 && day != 29){
             var year = '2016';
             var date = Date.UTC(year,month,day);
@@ -154,7 +158,7 @@ function addStats(chart,USGSsite,ext){
       }
 
     });
-
+    console.log(statsSeries);
     $.each(statsSeries,function(){
       this.marker = { enabled:false}
       chart.addSeries(this);
@@ -460,7 +464,7 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
       val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value
       //val = Math.log(parseFloat(val));
       val = parseFloat(val);
-      if(val < -999) val  = null;
+      if(val < 1) val  = 1;
       data.push([parseInt(day),parseInt(year),val])
     }
     return data
@@ -899,8 +903,8 @@ $('#query').click(function() {
             $(XML).find("sigstages").each(function(){
                 $(this).children().each(function(){
                     if($(this).text()){
-                        NWS.stage[this.nodeName].value = parseFloat($(this).text())
-                        NWS.maxY = Math.round(parseFloat($(this).text()) + 4)
+                        NWS.stage[this.nodeName].value = parseFloat($(this).text());
+                        NWS.maxY = Math.round(parseFloat($(this).text()) + 4);
                     }
                 })
             })
@@ -911,11 +915,12 @@ $('#query').click(function() {
             $(XML).find("forecast").each(function(){
                 $(this).children().each(function(){
                     var d = new Date($(this).find("valid").text()).getTime();
-                    var stage = $(this).find("primary").text()
-                    var discharge = $(this).find("secondary").text()
-                    if($(XML).find('secondary').attr('units') == 'kcfs') mult = 1000
-                    stageArray.push([parseInt(d),parseFloat(stage)])
-                    dischargeArray.push([parseInt(d),Math.round(parseFloat(discharge)*mult)])
+                    var stage = $(this).find("primary").text();
+                    var discharge = $(this).find("secondary").text();
+
+                    if($(XML).find('secondary').attr('units') == 'kcfs') mult = 1000;
+                    stageArray.push([parseInt(d),parseFloat(stage)]);
+                    dischargeArray.push([parseInt(d),Math.round(parseFloat(discharge)*mult)]);
                 })
             })
             NWS.stageSeries.push({
@@ -924,13 +929,15 @@ $('#query').click(function() {
                 color: 'purple',
                 nwsType: 'forecast'
             });
-            NWS.dischargeSeries.push({
-                data : dischargeArray,
-                name : 'NWS Forecast Data'+NWS.forecastIssued,
-                color: 'purple',
-                nwsType: 'forecast'
-            });
-
+            if(dischargeArray.length>0){
+                NWS.dischargeSeries.push({
+                    data : dischargeArray,
+                    name : 'NWS Forecast Data'+NWS.forecastIssued,
+                    color: 'purple',
+                    nwsType: 'forecast'
+                });
+            }
+            console.log(NWS.dischargeSeries);
             stageArray = [];
             dischargeArray = [];
             $(XML).find("observed").each(function(){
@@ -1083,8 +1090,17 @@ function graphDischarge(NWS){
             marginLeft:80,
             events: {
                 load: function (event) {
-
                     addStats(this,usgsSite,this.xAxis[0].getExtremes);
+
+                    },
+                redraw:function(event){
+                    extremes = this.yAxis[0].getExtremes();
+
+                    if(extremes.min<0){
+
+                    }
+                       //(extremes.min<0) ? ymin = .01 : ymin =  extremes.min;
+                       //this.yAxis[0].setExtremes(ymin,extremes.max);
                 }
             }
         },
@@ -1127,6 +1143,7 @@ function graphDischarge(NWS){
                 x: -5
             },
             type: 'logarithmic',
+
         }],
         tooltip: {
             valueSuffix: ' cfs',
@@ -1366,7 +1383,8 @@ function graphHeatQ(NWS){
                 x: 5,
                 y: 14,
                 formatter: function (){
-                    return Highcharts.dateFormat(' %b ',dateFromDay('2015',this.value));
+
+                    return $.datepicker.formatDate(' M ',dateFromDay('2015',this.value));
                  }
             },
             showLastLabel: true,
@@ -1394,8 +1412,8 @@ function graphHeatQ(NWS){
         },
         tooltip: {
             headerFormat: 'Daily Discharge<br>',
-            formatter: function () {
-                return '<b>' + Highcharts.dateFormat('%b %e %Y',dateFromDay(this.point.y,this.point.x))+' - '+numberWithCommas(this.point.value) + ' cfs </b>';
+            formatter: function (){
+                return '<b>' + $.datepicker.formatDate('M d yy',dateFromDay(this.point.y,this.point.x))+' - '+numberWithCommas(this.point.value) + ' cfs </b>';
             },
             //pointFormat: dateFromDay(this.point.y,this.point.x),
             positioner: function () {
