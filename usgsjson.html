@@ -60,6 +60,11 @@
           <div id="ratinggraph" style="width: 500px; height: 550px; margin: 0 auto"></div>
         </td>
     </tr>
+    <tr>
+        <td colspan = "2">
+          <div id="annualDischarge" style="width: 1000px; height: 750px; margin: 0 auto"></div>
+        </td>
+    <tr>
 
 </table>
 <div id='stats'></div>
@@ -69,9 +74,9 @@
 
 <script type="text/javascript">
 
-function addStats(chart,USGSsite,ext){
+function addStats(chart,USGSsiteID){
 
-  $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsite+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
+  $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsiteID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
     //console.log(ext);
 
     var lines = data.split('\n');
@@ -349,6 +354,7 @@ function qMeasJSON2HC(json){
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
     var dtIndex = GetObjectKeyIndex(json.columns,"measurement_dt");
     var tzIndex = GetObjectKeyIndex(json.columns,"tz_cd");
+
 
 
     var base = {
@@ -818,6 +824,7 @@ function plotHeatQ(){
                 });
                 NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName;
                 graphHeatQ(NWS);
+                graphAnnual(NWS);
             }
         },
         error : function(XMLHttpRequest, textStatus, errorThrown) {
@@ -937,7 +944,7 @@ $('#query').click(function() {
                     nwsType: 'forecast'
                 });
             }
-            console.log(NWS.dischargeSeries);
+            //console.log(NWS.dischargeSeries);
             stageArray = [];
             dischargeArray = [];
             $(XML).find("observed").each(function(){
@@ -965,6 +972,7 @@ $('#query').click(function() {
 
             graphStage(NWS);
             graphDischarge(NWS);
+            graphAnnual(NWS);
 
         },
         timeout: 10000 // sets timeout to 3 seconds
@@ -1090,7 +1098,7 @@ function graphDischarge(NWS){
             marginLeft:80,
             events: {
                 load: function (event) {
-                    addStats(this,usgsSite,this.xAxis[0].getExtremes);
+                    addStats(this,usgsSite);
 
                     },
                 redraw:function(event){
@@ -1160,6 +1168,94 @@ function graphDischarge(NWS){
     }
     dischargechart = new Highcharts.Chart(dischargechartobj);
   }
+
+function graphAnnual(NWS){
+    ////////////////////////////////////Discharge Graph////////////////////////////////
+    dischargechartobj= {
+        credits: {
+            enabled: false
+        },
+        chart: {
+            renderTo: 'annualDischarge',
+            zoomType: 'xy',
+            marginTop: 50,
+            marginBottom:100,
+            marginLeft:80,
+            events: {
+                load: function (event) {
+
+                    addStats(this,usgsSite);
+
+                    },
+                redraw:function(event){
+                    extremes = this.yAxis[0].getExtremes();
+
+                    if(extremes.min<0){
+
+                    }
+                       //(extremes.min<0) ? ymin = .01 : ymin =  extremes.min;
+                       //this.yAxis[0].setExtremes(ymin,extremes.max);
+                }
+            }
+        },
+        title: {
+            text: null,
+            x: -20 //center
+        },
+        xAxis: {
+            max : new Date('2000/12/31').getTime(),
+            min : new Date('2000/1/1').getTime(),
+            type: 'datetime',
+            //tickPixelInterval: 25,
+            gridLineColor: "#E8E8E8",
+            gridLineWidth: 1,
+            labels: {
+                step: 2,
+                staggerLines: 1,
+                formatter: function () {
+                    return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
+                }
+            },
+            plotLines: [{
+                color: 'black', // Color value
+                dashStyle: 'dot', // Style of the plot line. Default to solid
+                value: new Date().getTime(), // Value of where the line will appear
+                width: '2', // Width of the line
+                zIndex:2
+            }],
+        },
+        yAxis: [{
+            title: {
+                text: 'River Discharge (cfs)',
+                style: {
+                    color: 'Black',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                }
+            },
+            labels:{
+                x: -5
+            },
+            type: 'linear',
+
+        }],
+        tooltip: {
+            valueSuffix: ' cfs',
+            //shared: true,
+            crosshairs: true,
+        },
+        legend: {
+          align: 'center',
+          verticalAlign: 'bottom',
+          borderWidth: 0,
+          x:10
+        },
+        series: null//NWS.dischargeSeries
+    }
+    annualchart = new Highcharts.Chart(dischargechartobj);
+}
+
+
 
 function graphRating(NWS){
     ////////////////////////////////////Rating Graph////////////////////////////////

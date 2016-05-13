@@ -71,9 +71,29 @@ try {
 //              'unitCd' => 'in',
 //              'value' =>-2              ),
         'alwaysReturnDailyFeb29' => false
-        );
+    );
 
     $result = $client->__soapCall('getData', array($args));
+
+} catch (SoapFault $e) {
+    echo "Error: {$e}";
+}
+
+
+
+try {
+    $args = array(
+        'stationTriplets'=> $site,
+        'elementCd'=> $code,
+        'ordinal'=> '1',
+        'beginDate'=> date('Y-m-d',strtotime("-7 day")),
+        'endDate'=> date('Y-m-d',strtotime("+7 day")),
+//        'heightDepth'=> array(
+//              'unitCd' => 'in',
+//              'value' =>-2              ),
+    );
+
+    $hourlyResult = $client->__soapCall('getHourlyData', array($args));
 
 } catch (SoapFault $e) {
     echo "Error: {$e}";
@@ -98,6 +118,20 @@ foreach($result->return->values as $val){
     $series['data'][] = array($sameYear*1000,intval($val));
     $start = $start+3600*24;
 }
+
+$allSeries[] = $series;
+
+$start = strtotime($hourlyResult->return->beginDate)+12*3600;
+$series['name'] = 'Latest Hourly';
+$series['data'] = array();
+$base = $start;
+foreach($hourlyResult->return->values as $val){
+    $sameYear = strtotime('2015-8-1')+($start-$base);
+    $date = strtotime($val->dateTime);
+    $series['data'][] = array($date*1000,intval($val->value));
+
+}
+
 $allSeries[] = $series;
 
 
@@ -136,6 +170,7 @@ $allSeries[] = $series;
 </form>
 
 <div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+<button id="button">Show all series</button>
 
 <script>
 $(function () {
@@ -177,5 +212,29 @@ $(function () {
 
         series: <? echo json_encode($allSeries);?>
     });
+
+    var chart = $('#container').highcharts(),
+        $button = $('#button');
+    $button.click(function() {
+        if ($button.html() == 'Hide all series') {
+            $(chart.series).each(function(){
+                this.setVisible(false, false);
+            });
+            chart.redraw();
+            $button.html('Show all series');
+        } else {
+            $(chart.series).each(function(){
+
+                this.setVisible(true, false);
+            });
+            chart.redraw();
+            $button.html('Hide all series');
+        }
+    });
+    $(chart.series).each(function(){
+
+        this.setVisible(false, false);
+    });
+    chart.redraw();
 });
 </script>
