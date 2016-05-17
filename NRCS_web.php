@@ -194,7 +194,7 @@ $(function () {
         },
         yAxis: {
             title: {
-                text: 'Snow depth (m)'
+                text: 'Snow depth (cm)'
             }
         },
         tooltip: {
