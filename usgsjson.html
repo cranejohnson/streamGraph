@@ -74,6 +74,16 @@
 
 <script type="text/javascript">
 
+//Global Vars
+var usgsSite = '';
+var nwsLid = '';
+var USGS;
+var chart;
+var hasNWSBands = true;
+var crossWalkTable;
+var NWS;
+
+
 function getParameterByName(name, url) {
         if (!url) url = window.location.href;
         name = name.replace(/[\[\]]/g, "\\$&");
@@ -84,7 +94,7 @@ function getParameterByName(name, url) {
         return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
 
-    
+
 function addStats(chart,USGSsiteID){
 
   $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsiteID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
@@ -154,13 +164,13 @@ function addStats(chart,USGSsiteID){
     $.each(lines, function(){
       if (this.substring(0, 4) == "USGS") {
         var data = this.split('\t');
-              
+
         for(i=0;i<data.length;i++){
             if(parseInt(data[i]) == 0 ) data[i]= 1;
             if(parseInt(data[i]) > 0 ) data[i]= parseInt(data[i]);
             if(data[i].length == 0) data[i] = null;
         }
-                
+
         var month = data[5];
         var day = data[6];
         //Need to skip leap years Feb 29th for Stats
@@ -183,19 +193,11 @@ function addStats(chart,USGSsiteID){
         this.marker = { enabled:false};
         if(1){
             chart.addSeries(this);
-        }    
+        }
     });
   });
 }
 
-//Global Vars
-var usgsSite = '';
-var nwsLid = '';
-var USGS;
-var chart;
-var hasNWSBands = true;
-var crossWalkTable;
-var NWS;
 
 function initializeNWS() {
   NWS = {
@@ -404,9 +406,9 @@ function qMeasJSON2HC(json){
     len = json.records.length;
 
     if(len == 0) return data = null;
-    
+
     var data = new Array();
-    
+
     var mostRecentDate = 0;
     for (var i = 0; i < len; i++) {
         date = new Date(json.records[i][dtIndex]);
@@ -416,12 +418,12 @@ function qMeasJSON2HC(json){
                 'name': date.toDateString()
             });
             mostRecentDate = date;
-        }    
+        }
         age = _calculateAge(date);
         var index = 4;
         if(age < 10) index =3 ;
         if(age < 5) index = 2;
-        if(age < 1 ) index = 1; 
+        if(age < 1 ) index = 1;
         if(isFinite(String(json.records[i][depIndex])) && (json.records[i][indepIndex] > 0)){
             allSeries[index].data.push( {'x' : json.records[i][indepIndex],
                 'y': json.records[i][depIndex],
@@ -510,7 +512,6 @@ function addNWSBands(chart,NWSobj){
   }
 
     $.each( colors, function( key, value ){
-        console.log(NWSobj.stage[key].value);
         if(NWSobj.stage[key].value < 9999){
             chart.yAxis[0].addPlotBand({
                 from: NWSobj.stage[key].value,
@@ -575,7 +576,6 @@ function addNWSBands(chart,NWSobj){
             legendy = legendy+2*legTextHeight+5*cellPadding
         }
     });
-    console.log(NWSobj.stage.record.value);
     if(NWSobj.stage.record.value < 9999){
         chart.yAxis[0].addPlotLine({
             color: '#99FFFF',
@@ -598,7 +598,6 @@ function addNWSBands(chart,NWSobj){
 
 
 function addNWSRender(chart){
-
     nowP = chart.xAxis[0].toPixels(new Date().getTime())
     extX = chart.xAxis[0].getExtremes();
     extY = chart.yAxis[0].getExtremes();
@@ -718,9 +717,7 @@ $('#showFloodStages').change(function() {
                     max = NWS.maxY+2;
                 }else{
                     max = extremes.dataMax+2;
-                }    
-                console.log(max);
-                
+                }
                 increment = 1;
                 if((max-tick)>20) increment = 2;
                 for (tick; tick - increment <= max; tick += increment) {
@@ -763,16 +760,14 @@ $('#showFloodStages').change(function() {
 
 
 
-function addMeasureQ(site){
-
-    var chart = $('#ratinggraph').highcharts();
+function addMeasureQ(graphId,site){
+    var chart = $('#'+graphId).highcharts();
     $.ajax({
         url: "rdbajax.php?site="+site+"&type=qmeas",
         dataType: 'json',
         data: '',
         success: function(json){
             var newSeries = qMeasJSON2HC(json);
-
             for(j = 0;j < newSeries.length;j++){
                 if(json.error_info.error == 0){
                     chart.addSeries(newSeries[j]);
@@ -799,8 +794,8 @@ function plotRating(site){
         success: function(json){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
-                graphRating(NWS);
-                addMeasureQ(usgsSite);
+                graphRating('ratinggraph',NWS);
+                addMeasureQ('ratinggraph',usgsSite);
             }
 
         },
@@ -808,6 +803,33 @@ function plotRating(site){
     });
 }
 
+
+function swapAxis(allSeries){
+        var tempX;
+        $.each(allSeries, function(){
+            var swappedData = [];
+            var object = false;
+            $.each(this.data, function(){
+                if($.isArray(this)){
+                    swappedData.push([this[1],this[0]]);
+                }else{
+                    object = true;
+                    tempX = this.x;
+                    this.x = this.y;
+                    this.y = tempX;
+                    swappedData.push(this);
+                }
+            });
+
+            if(object){
+                swappedData.sort(function(a, b) {
+                    return parseFloat(a.x) - parseFloat(b.x);
+                });
+            }
+            this.data = swappedData;
+        });
+        return allSeries;
+}
 
 function plotHeatQ(site){
     if(site.length<= 5){
@@ -984,7 +1006,7 @@ function loadPage(site){
                 nwsType: 'observed'
             });
 
-            graphStage(NWS);
+            graphStage('stagegraph',NWS);
             graphDischarge(NWS);
             //graphAnnual(NWS);
 
@@ -994,7 +1016,7 @@ function loadPage(site){
     })
   }
 
-function graphStage(NWS){
+function graphStage(container,NWS){
     var title;
     if(NWS.usgsTitle.length>0){
         title = NWS.usgsTitle;
@@ -1007,7 +1029,7 @@ function graphStage(NWS){
             enabled: false
         },
         chart: {
-            renderTo: 'stagegraph',
+            renderTo: container,
             zoomType: 'xy',
             marginTop: 80,
             marginBottom:175,
@@ -1073,16 +1095,16 @@ function graphStage(NWS){
                 tick = Math.floor(this.dataMin)-2
                 if(NWS.maxY>-9999){
                     max = NWS.maxY
-                }else{  
+                }else{
                     max = this.dataMax+2
-                }    
+                }
                 increment = 1
                 if((max-tick)>20) increment = 2
                 for (tick; tick - increment <= max; tick += increment) {
                     positions.push(tick);
                 }
                 return positions
-            } 
+            }
 
         }],
         tooltip: {
@@ -1274,18 +1296,20 @@ function graphAnnual(NWS){
 
 
 
-function graphRating(NWS){
+
+function graphRating(container,NWS){
     ////////////////////////////////////Rating Graph////////////////////////////////
     ratingchartobj= {
       credits: {
           enabled: false
         },
         chart: {
-          renderTo: 'ratinggraph',
+          renderTo: container,
           zoomType: 'xy',
           marginTop: 50,
           marginBottom:100,
           marginLeft:80,
+          custom:'regular'
       },
         title: {
         text: null,
@@ -1311,7 +1335,6 @@ function graphRating(NWS){
         yAxis: [{
             crosshair: {
                 width: 1,
-
                 color: 'red'
             },
             title: {
@@ -1325,7 +1348,7 @@ function graphRating(NWS){
             labels:{
                 x: -5
             },
-            type: 'linear',
+            type: 'linear'
         }],
         tooltip: {
             headerFormat: 'Rating Curve<br>',
@@ -1453,7 +1476,7 @@ $(function () {
 
             }
     });
-   
+
     site = getParameterByName('site');
     if(site != null){
         loadPage(site);
@@ -1558,11 +1581,6 @@ function graphHeatQ(NWS){
             data: NWS.dailyUSGS[0].data,
             borderWidth: 0,
             nullColor: '#EFEFEF',
-            //colsize: 24 * 36e5, // one day
-//            tooltip: {
-//               headerFormat: 'Daily Discharge Values<br/>',
-//                pointFormat: 'Year:{point.y} Day:{point.x}  <b>{point.value} cfs </b>'
-//            },
             turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
         }]
 
