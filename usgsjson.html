@@ -48,7 +48,7 @@
            Start Date:<input type="text" id="dischargeStart" length=10>
            End Date:<input type="text" id="dischargeStart" length=10>
            <input type="button" id="loadQ" value="Load Data"></br>
-          <div id="dischargegraph" style="width: 500px; height: 500px; padding-left:20px"></div>
+          <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
     </td>
   </tr>
     <tr>
@@ -57,7 +57,7 @@
         </td>
         <td>
           <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale<br>
-          <div id="ratinggraph" style="width: 500px; height: 550px; margin: 0 auto"></div>
+          <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
         </td>
     </tr>
     <tr>
@@ -74,6 +74,17 @@
 
 <script type="text/javascript">
 
+function getParameterByName(name, url) {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+    
 function addStats(chart,USGSsiteID){
 
   $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsiteID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
@@ -81,93 +92,98 @@ function addStats(chart,USGSsiteID){
 
     var lines = data.split('\n');
     var statsSeries = [
-      {
-        name: 'Min-Max Flows',
-        data: [],
-        visible : false,
-        type: 'arearange',
-        lineWidth: 0,
-        color: '#00ffff',
-        fillOpacity: 0.1,
-        zIndex: 0,
-        showInLegend:true
-      },
-      {
-        name: 'P 5% -  95%',
-        data: [],
-        visible : false,
-        type: 'arearange',
-        lineWidth: 0,
-        linkedTo: ':previous',
-        color: '#00bfff',
-        fillOpacity: 0.2,
-        zIndex: 1
-      },
-      {
-        name: 'P 25% - 75%',
-        data: [],
-        visible : false,
-        type: 'arearange',
-        lineWidth: 0,
-        linkedTo: ':previous',
-        color: '#0040ff',
-        fillOpacity: 0.3,
-        zIndex: 2
-      },
-      {
-        name: 'P 50% (median)',
-        linkedTo: ':previous',
-        showInLegend:false,
-        color: 'grey',
-        data: []
-      },
-      {
-        name: 'Count',
-        data: [],
-        showInLegend:false,
-        visible : false
-      },
-      {
-        name: 'Min Year',
-        data: [],
-        showInLegend:false,
-        visible : false
-      },
-      {
-        name: 'Max year',
-        data: [],
-        showInLegend:false,
-        visible : false
-      }];
+        {
+            name: 'Min-Max Flows',
+            data: [],
+            visible : true,
+            type: 'arearange',
+            lineWidth: 1,
+            color: 'red',
+            fillOpacity: 0.0,
+            zIndex: 0,
+            showInLegend:true
+        },
+        {
+            name: 'P 5% -  95%',
+            data: [],
+            visible : true,
+            type: 'arearange',
+            lineWidth: 0,
+            linkedTo: ':previous',
+            color: '#00bfff',
+            fillOpacity: 0.2,
+            zIndex: 1
+        },
+        {
+            name: 'P 25% - 75%',
+            data: [],
+            visible : true,
+            type: 'arearange',
+            lineWidth: 0,
+            linkedTo: ':previous',
+            color: '#0040ff',
+            fillOpacity: 0.3,
+            zIndex: 2
+        },
+        {
+            name: 'P 50% (median)',
+            linkedTo: ':previous',
+            color: 'green',
+            data: []
+        },
+        {
+            name: 'Count',
+            data: [],
+            showInLegend:false,
+            visible : false
+        },
+        {
+            name: 'Min Year',
+            data: [],
+            showInLegend:false,
+            visible : false
+        },
+        {
+            name: 'Max year',
+            data: [],
+            showInLegend:false,
+            visible : false
+        }
+    ];
 
     $.each(lines, function(){
       if (this.substring(0, 4) == "USGS") {
         var data = this.split('\t');
+              
         for(i=0;i<data.length;i++){
             if(parseInt(data[i]) == 0 ) data[i]= 1;
+            if(parseInt(data[i]) > 0 ) data[i]= parseInt(data[i]);
+            if(data[i].length == 0) data[i] = null;
         }
+                
         var month = data[5];
         var day = data[6];
         //Need to skip leap years Feb 29th for Stats
         if(month != 2 && day != 29){
             var year = '2016';
-            var date = Date.UTC(year,month,day);
-            statsSeries[0].data.push([date,parseInt(data[13]),parseInt(data[11])]);
-            statsSeries[1].data.push([date,parseInt(data[14]),parseInt(data[18])]);
-            statsSeries[2].data.push([date,parseInt(data[15]),parseInt(data[17])]);
-            statsSeries[3].data.push([date,parseInt(data[16])]);
-            statsSeries[4].data.push([date,parseInt(data[9])]);
-            statsSeries[5].data.push([date,parseInt(data[12])]);
-            statsSeries[6].data.push([date,parseInt(data[10])]);
+            var date = Date.UTC(year,month-1,day);
+            statsSeries[0].data.push([date,data[13],data[11]]);
+            statsSeries[1].data.push([date,data[14],data[18]]);
+            statsSeries[2].data.push([date,data[15],data[17]]);
+            statsSeries[3].data.push([date,data[16]]);
+            statsSeries[4].data.push([date,data[9]]);
+            statsSeries[5].data.push([date,data[12]]);
+            statsSeries[6].data.push([date,data[10]]);
         }
       }
 
     });
-    console.log(statsSeries);
+    //console.log(statsSeries);
     $.each(statsSeries,function(){
-      this.marker = { enabled:false}
-      chart.addSeries(this);
-
+        this.marker = { enabled:false};
+        if(1){
+            chart.addSeries(this);
+        }    
     });
   });
 }
@@ -189,75 +205,62 @@ function initializeNWS() {
                    value: 9999,
                    def:''
                  },
-              bankfull : {
+            bankfull : {
                 text: 'Bankfull Stage',
                    value: 9999
-                 },
-                 action : {
+                },
+            action : {
                 text: 'Action Stage',
                    value: 9999,
                    def:'A stream, lake or reservoir has rised to a level where you should prepare for possible significant flooding'
-                 },
-                 flood : {
+                },
+            flood : {
                 text: 'Flood Stage',
                    value: 9999,
                    def:'Minimal or no property damage, but possible some public threat'
-                 },
-               moderate : {
+                },
+            moderate : {
                 text: 'Moderate Flood Stage',
                    value: 9999,
                    def: 'Some inundation of structures and roads near streams. Some evacuations of people and/or transfer of property to higher elevations are necessary'
                  },
-               major : {
+            major : {
                 text: 'Major Flood Stage',
                    value: 9999,
                    def:'Extensive inundation of structures and roads. Significant evacuations of people and/or transfer of property to higher elevations'
                  },
-                 record: {
+            record: {
                 text: 'Record Stage',
                    value: 9999,
                    def:'Highest stage at a given site during the period of record'
                  }
-             },
-             maxY : -1,
-             nwsTitle: '',
-             usgsTitle:'',
-             forecastStage: [],
-             observedStage: [],
-             forecastDischarge: [],
-             observedDischarge: [],
-             sources:[],
-             stageSeries: [],
-             dailyUSGS: [],
-             ratingsSeries:[],
-             dischargeSeries: [],
-             forecastIssued : ''
+            },
+            maxY : -9999,
+            nwsTitle: '',
+            usgsTitle:'',
+            forecastStage: [],
+            observedStage: [],
+            forecastDischarge: [],
+            observedDischarge: [],
+            sources:[],
+            stageSeries: [],
+            dailyUSGS: [],
+            ratingsSeries:[],
+            dischargeSeries: [],
+            forecastIssued : ''
   }
 
 }
 
 
 
-$.ajax({
-    type: 'GET',
-      url: 'crossWalk.json',
-      dataType: 'json',
-      success: function(data) {
-        crossWalkTable = data;
-        usgsSite = crossWalkTable[nwsLid];
-        },
-      async: true,
-      error : function(XMLHttpRequest, textStatus, errorThrown) {
-            alert('error');
 
-        }
-});
 
 
 function getRDBSiteInfo(RDB,values){
-      var data = { }
+    var data = { }
 
-      var extractVals = new Array()
+    var extractVals = new Array()
     var lines = RDB.split('\n');
 
     //Iterate through the comment lines of the RDB file
@@ -355,10 +358,8 @@ function qMeasJSON2HC(json){
     var dtIndex = GetObjectKeyIndex(json.columns,"measurement_dt");
     var tzIndex = GetObjectKeyIndex(json.columns,"tz_cd");
 
-
-
     var base = {
-            data: [],
+           data: [],
            tooltip: {
                 headerFormat: 'USGS Measured Discharge<br>',
                 pointFormat: '{point.name} <br> Gage Height:{point.y} ft Discharge:{point.x} cfs  </b>'
@@ -379,38 +380,48 @@ function qMeasJSON2HC(json){
                 }
              }
         }
-
     var allSeries = [base];
     allSeries.push(jQuery.extend(true, {}, base));
     allSeries.push(jQuery.extend(true, {}, base));
     allSeries.push(jQuery.extend(true, {}, base));
-    allSeries[0].zIndex = 5;
-    allSeries[1].zIndex = 4;
-    allSeries[2].zIndex = 3;
-    allSeries[3].zIndex = 2;
+    allSeries.push(jQuery.extend(true, {}, base));
+    allSeries[0].zIndex = 6;
+    allSeries[1].zIndex = 5;
+    allSeries[2].zIndex = 4;
+    allSeries[3].zIndex = 3;
+    allSeries[4].zIndex = 2;
     allSeries[1].linkedTo = ':previous';
     allSeries[2].linkedTo = ':previous';
     allSeries[3].linkedTo = ':previous';
-    allSeries[0].marker.fillColor = 'black';
-    allSeries[1].marker.fillColor = 'rgba(0,0,205,0.7)';
-    allSeries[2].marker.fillColor = 'rgba(0,0,205,0.3)';
-    allSeries[3].marker.fillColor = 'rgba(0,0,205,0.1)';
+    allSeries[4].linkedTo = ':previous';
+    allSeries[0].marker.fillColor = 'red';
+    allSeries[1].marker.fillColor = 'yellow';
+    allSeries[2].marker.fillColor = 'rgba(0,0,205,0.5)';
+    allSeries[3].marker.fillColor = 'rgba(0,0,205,0.3)';
+    allSeries[4].marker.fillColor = 'rgba(0,0,205,0.1)';
 
     json.records = json.records.sort(sortNinthCol);
     len = json.records.length;
 
     if(len == 0) return data = null;
-
-
-
+    
     var data = new Array();
+    
+    var mostRecentDate = 0;
     for (var i = 0; i < len; i++) {
         date = new Date(json.records[i][dtIndex]);
+        if(date > mostRecentDate) {
+            allSeries[0].data[0] = ( {'x' : json.records[i][indepIndex],
+                'y': json.records[i][depIndex],
+                'name': date.toDateString()
+            });
+            mostRecentDate = date;
+        }    
         age = _calculateAge(date);
-        var index = 3;
-        if(age < 10) index =2 ;
-        if(age < 5) index = 1;
-        if(age < 1 ) index = 0;
+        var index = 4;
+        if(age < 10) index =3 ;
+        if(age < 5) index = 2;
+        if(age < 1 ) index = 1; 
         if(isFinite(String(json.records[i][depIndex])) && (json.records[i][indepIndex] > 0)){
             allSeries[index].data.push( {'x' : json.records[i][indepIndex],
                 'y': json.records[i][depIndex],
@@ -418,7 +429,7 @@ function qMeasJSON2HC(json){
             });
         }
     }
-
+        //Push the most recent value into a series
     return allSeries;
 }
 
@@ -429,19 +440,19 @@ function USGStoHC(usgsObj,TSvalue){
     data = new Array();
     QRarr = 0;
     for (var i = 0; i < len; i++) {
-      if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
-        QRarr = i;
-        break;
-      }
+        if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
+            QRarr = i;
+            break;
+        }
     }
 
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
-      d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime).getTime();
-      val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value;
-      val = parseFloat(val);
-      if(val < -999) val  = null;
-      data.push([parseInt(d),val])
+        d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime).getTime();
+        val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value;
+        val = parseFloat(val);
+        if(val < -999) val  = null;
+        data.push([parseInt(d),val])
     }
     return data;
 }
@@ -498,93 +509,90 @@ function addNWSBands(chart,NWSobj){
     action : 'rgba(255,255,0,0.7)',
   }
 
-  $.each( colors, function( key, value ){
-      if(NWSobj.stage[key].value < 9999){
-      chart.yAxis[0].addPlotBand({
-        from: NWSobj.stage[key].value,
-        to: upperEnd,
-        color: value,
-        id : 'plotBand'+key,
-        zIndex:0
-      })
-      chart.yAxis[0].addPlotLine({
-        color: 'black',
-        width: 1,
-        zIndex:6,
-        id: 'plotLine'+key,
-        value: NWSobj.stage[key].value,
-        label: {
-          text: NWSobj.stage[key].text.split(/\s+/)[0]+': '+NWSobj.stage[key].value+' ft',
-          textAlign: 'left',
-          y:-2
-        }
-      })
-      upperEnd = NWSobj.stage[key].value
-      text = chart.renderer.text(NWSobj.stage[key].text,legendx,legendy)
-        .attr({
-          zIndex:6,
-          class:'nwsLegend'})
-        .css({
-          color: 'black',
-                    'text-align': 'center',
-                     'font-weight': 'bold',
-                    width:  col1Width,
-                    fontSize: legTextHeight+'px'
-              }).add();
+    $.each( colors, function( key, value ){
+        console.log(NWSobj.stage[key].value);
+        if(NWSobj.stage[key].value < 9999){
+            chart.yAxis[0].addPlotBand({
+                from: NWSobj.stage[key].value,
+                to: upperEnd,
+                color: value,
+                id : 'plotBand'+key,
+                zIndex:0
+            })
+            chart.yAxis[0].addPlotLine({
+                color: 'black',
+                width: 1,
+                zIndex:6,
+                id: 'plotLine'+key,
+                value: NWSobj.stage[key].value,
+                label: {
+                    text: NWSobj.stage[key].text.split(/\s+/)[0]+': '+NWSobj.stage[key].value+' ft',
+                    textAlign: 'left',
+                    y:-2
+                }
+            })
+            upperEnd = NWSobj.stage[key].value
+            text = chart.renderer.text(NWSobj.stage[key].text,legendx,legendy)
+                .attr({
+                    zIndex:6,
+                class:'nwsLegend'})
+                .css({
+                    color: 'black',
+                        'text-align': 'center',
+                        'font-weight': 'bold',
+                        width:  col1Width,
+                        fontSize: legTextHeight+'px'
+                }).add();
             text = chart.renderer.text(NWSobj.stage[key].value+' ft',legendx+col1Width-40,legendy)
-        .attr({
-          zIndex:6,
-          class:'nwsLegend'})
-        .css({
-          color: 'black',
-                    'text-align': 'center',
-                     'font-weight': 'bold',
-                    width:  col1Width,
-                    fontSize: legTextHeight+'px'
-              }).add();
-      text = chart.renderer.text(NWSobj.stage[key].def,legendx+col1Width,legendy)
-        .attr({
-          zIndex:6,
-          class:'nwsLegend'})
-        .css({
-          color: 'black',
+                .attr({
+                    zIndex:6,
+                class:'nwsLegend'})
+                .css({
+                    color: 'black',
+                        'text-align': 'center',
+                        'font-weight': 'bold',
+                        width:  col1Width,
+                        fontSize: legTextHeight+'px'
+                }).add();
+            text = chart.renderer.text(NWSobj.stage[key].def,legendx+col1Width,legendy)
+                .attr({
+                    zIndex:6,
+                    class:'nwsLegend'})
+                .css({
+                    color: 'black',
                     'text-align': 'center',
                     width:  legW-col1Width,
                     fontSize: legTextHeight+'px'
-              }).add();
+                }).add();
 
-      chart.renderer.rect(legendx - 5,legendy-legTextHeight-cellPadding, legW+5, 2*legTextHeight+5*cellPadding, 0)
-              .attr({
-                  fill: value,
-                  stroke: value,
-              class: 'nwsLegend',
-                  zIndex: 4
-              }).add();
-              legendy = legendy+2*legTextHeight+5*cellPadding
-
-
-    }
-  });
-
-    if(NWSobj.stage.record.value < 9999){
-      chart.yAxis[0].addPlotLine({
-                color: '#99FFFF',
-                width: 2,
-                zIndex:6,
-                value: NWSobj.stage.record.value,
-                dashStyle: 'longDash',
-                id : 'plotLineRecord',
-                label: {
-                    text: 'NWS Record Stage'+': '+NWSobj.stage.record.value+' ft',
-                    align: 'center',
-                    style: {
-                      color: 'black',
-                    }
-                }
-            })
+            chart.renderer.rect(legendx - 5,legendy-legTextHeight-cellPadding, legW+5, 2*legTextHeight+5*cellPadding, 0)
+                .attr({
+                    fill: value,
+                    stroke: value,
+                    class: 'nwsLegend',
+                    zIndex: 4
+                }).add();
+            legendy = legendy+2*legTextHeight+5*cellPadding
         }
-
-
+    });
+    console.log(NWSobj.stage.record.value);
+    if(NWSobj.stage.record.value < 9999){
+        chart.yAxis[0].addPlotLine({
+            color: '#99FFFF',
+            width: 2,
+            zIndex:6,
+            value: NWSobj.stage.record.value,
+            dashStyle: 'longDash',
+            id : 'plotLineRecord',
+            label: {
+                text: 'NWS Record Stage'+': '+NWSobj.stage.record.value+' ft',
+                align: 'center',
+                style: {
+                    color: 'black',
+                }
+            }
+        })
+    }
 }
 
 
@@ -594,100 +602,100 @@ function addNWSRender(chart){
     nowP = chart.xAxis[0].toPixels(new Date().getTime())
     extX = chart.xAxis[0].getExtremes();
     extY = chart.yAxis[0].getExtremes();
-    xmaxP = chart.xAxis[0].toPixels(extX.max)
-    xminP = chart.xAxis[0].toPixels(extX.min)
-    ymaxP = chart.yAxis[0].toPixels(extY.max)
+    xmaxP = chart.xAxis[0].toPixels(extX.max);
+    xminP = chart.xAxis[0].toPixels(extX.min);
+    ymaxP = chart.yAxis[0].toPixels(extY.max);
     chart.renderer.path(['M', xminP+10, ymaxP-10, 'L', nowP-10, ymaxP-10])
-      .attr({
-                'stroke-width': 3,
-                stroke: 'grey',
-                class: 'nwsRender',
-                zIndex: 3
-            }).add()
+        .attr({
+            'stroke-width': 3,
+            stroke: 'grey',
+            class: 'nwsRender',
+            zIndex: 3
+        }).add();
     chart.renderer.path(['M',nowP+10,ymaxP-10,'L',xmaxP-10,ymaxP-10])
-      .attr({
-                'stroke-width': 3,
-                stroke: 'blue',
-                class: 'nwsRender',
-                zIndex: 3
-            }).add()
+        .attr({
+            'stroke-width': 3,
+            stroke: 'blue',
+            class: 'nwsRender',
+            zIndex: 3
+        }).add()
     text = chart.renderer.text(
-                  'Observed',
-                  ((nowP+xminP)/2) -30,
-                    ymaxP-5
-                ).attr({
-                  zIndex: 5,
-                  class: 'nwsRender'
-              }).css({
-                    color: 'grey',
-                  fontSize: '16px'
-              }).add(),
-        box = text.getBBox();
-        chart.renderer.rect(box.x - 5, box.y, box.width + 10,box.height-3)
-            .attr({
-                fill: 'white',
-                stroke: 'white',
-                class: 'nwsRender',
-                zIndex: 4
-            })
-            .add();
-        text = chart.renderer.text(
-                'Forecast',
-                  ((nowP+xmaxP)/2) -30,
-                    ymaxP-5
-                ).attr({
-                  zIndex: 5,
-                  class: 'nwsRender'
-              }).css({
-                    color: 'blue',
-                  fontSize: '16px'
-              }).add(),
-        box = text.getBBox();
-        chart.renderer.rect(box.x - 5, box.y, box.width + 10, box.height-3)
-            .attr({
-                fill: 'white',
-                stroke: 'white',
-                class: 'nwsRender',
-                zIndex: 4
-            })
-            .add();
-        var point;
-        if(chart.series[0].data.length>0){
+        'Observed',
+        ((nowP+xminP)/2) -30,
+        ymaxP-5
+        ).attr({
+            zIndex: 5,
+            class: 'nwsRender'
+        }).css({
+            color: 'grey',
+            fontSize: '16px'
+        }).add(),
+    box = text.getBBox();
+    chart.renderer.rect(box.x - 5, box.y, box.width + 10,box.height-3)
+        .attr({
+            fill: 'white',
+            stroke: 'white',
+            class: 'nwsRender',
+            zIndex: 4
+        })
+    .add();
+    text = chart.renderer.text(
+        'Forecast',
+        ((nowP+xmaxP)/2) -30,
+            ymaxP-5
+        ).attr({
+            zIndex: 5,
+            class: 'nwsRender'
+        }).css({
+            color: 'blue',
+            fontSize: '16px'
+    }).add(),
+    box = text.getBBox();
+    chart.renderer.rect(box.x - 5, box.y, box.width + 10, box.height-3)
+        .attr({
+            fill: 'white',
+            stroke: 'white',
+            class: 'nwsRender',
+            zIndex: 4
+        })
+        .add();
+    var point;
+    if(chart.series[0].data.length>0){
         point = chart.series[0].data[chart.series[0].data.length-1];
-      }else if(chart.series[1].data.length>0){
+    }else if(chart.series[1].data.length>0){
         point = chart.series[1].data[chart.series[1].data.length-1];
-      }
+    }
 
     text = chart.renderer.text(
         'Current Level: '+point.y+' ft',
         point.plotX + chart.plotLeft - 130,
         point.plotY + chart.plotTop - 15
-      ).css({
+        ).css({
         fontSize: '12px',
         fontWeight: 'bold'
-      }).attr({
+        }).attr({
         zIndex: 10,
         class: 'nwsRender'
-      }).add();
+    }).add();
     text = chart.renderer.text(
         'Latest Observed Value: '+point.y+' ft at '+Highcharts.dateFormat('%l %P %b %e',point.x),
         chart.plotLeft+10,
         chart.plotTop+15
         ).attr({
-          zIndex: 10,
-          class: 'nwsRender'
+            zIndex: 10,
+            class: 'nwsRender'
         }).css({
-          color: 'black',
-          width:  '550px',
-          fontSize: '12px'
+            color: 'black',
+            width:  '550px',
+            fontSize: '12px'
         }).add();
     box = text.getBBox();
-     chart.renderer.rect(box.x - 5, box.y - 1, box.width + 10, box.height + 1, 5)
+    chart.renderer.rect(box.x - 5, box.y - 1, box.width + 10, box.height + 1, 5)
        .attr({
-         fill: 'white',
-         stroke: 'rgba(255,255,0,1)',
-         zIndex: 9,
-         class: 'nwsRender'
+           fill: 'white',
+           stroke: 'rgba(255,255,0,1)',
+           zIndex: 9,
+           class: 'nwsRender'
        }).add();
 }
 
@@ -695,69 +703,71 @@ function addNWSRender(chart){
 
 // Proof of concept for AJAX usage with instantaneous values service
 $('#showFloodStages').change(function() {
-  $(".nwsRender").remove();
-  var chart = $('#stagegraph').highcharts();
+    $(".nwsRender").remove();
+    var chart = $('#stagegraph').highcharts();
 
 
-  if($(this).is(':checked')){
-      addNWSBands(chart,NWS);
+    if($(this).is(':checked')){
+        addNWSBands(chart,NWS);
         hasNWSBands = !hasNWSBands;
         chart.yAxis[0].update({
-          tickPositioner: function () {
-        var positions = []
-        tick = Math.floor(extremes.dataMin)-2
-        max = NWS.maxY+2
-        increment = 1
-        if((max-tick)>20) increment = 2
-        for (tick; tick - increment <= max; tick += increment) {
-          positions.push(tick);
-        }
-        return positions
-      }
+            tickPositioner: function () {
+                var positions = [];
+                tick = Math.floor(extremes.dataMin)-2;
+                if(NWS.maxY > -9999){
+                    max = NWS.maxY+2;
+                }else{
+                    max = extremes.dataMax+2;
+                }    
+                console.log(max);
+                
+                increment = 1;
+                if((max-tick)>20) increment = 2;
+                for (tick; tick - increment <= max; tick += increment) {
+                    positions.push(tick);
+                }
+                return positions
+            }
         });
-  }else{
-    $(".nwsLegend").remove();
-    $("#removeLegend").attr('value', 'Add Flood Stages');
-    chart.yAxis[0].removePlotBand('plotBandaction');
-    chart.yAxis[0].removePlotLine('plotLineaction');
-    chart.yAxis[0].removePlotBand('plotBandflood');
-    chart.yAxis[0].removePlotLine('plotLineflood');
-    chart.yAxis[0].removePlotBand('plotBandmoderate');
-    chart.yAxis[0].removePlotLine('plotLinemoderate');
-    chart.yAxis[0].removePlotBand('plotBandmajor');
-    chart.yAxis[0].removePlotLine('plotLinemajor');
-    chart.yAxis[0].removePlotLine('plotLineRecord');
-    extremes = chart.yAxis[0].getExtremes();
-    chart.yAxis[0].update({
-      tickPositioner: function () {
-        var positions = []
-        tick = Math.floor(extremes.dataMin)-2
-        max = extremes.dataMax+2
-        increment = 1
-        if((max-tick)>20) increment = 2
-        for (tick; tick - increment <= max; tick += increment) {
-          positions.push(tick);
-        }
-        return positions
-      }
-    });
+    }else{
+        $(".nwsLegend").remove();
+        $("#removeLegend").attr('value', 'Add Flood Stages');
+        chart.yAxis[0].removePlotBand('plotBandaction');
+        chart.yAxis[0].removePlotLine('plotLineaction');
+        chart.yAxis[0].removePlotBand('plotBandflood');
+        chart.yAxis[0].removePlotLine('plotLineflood');
+        chart.yAxis[0].removePlotBand('plotBandmoderate');
+        chart.yAxis[0].removePlotLine('plotLinemoderate');
+        chart.yAxis[0].removePlotBand('plotBandmajor');
+        chart.yAxis[0].removePlotLine('plotLinemajor');
+        chart.yAxis[0].removePlotLine('plotLineRecord');
+        extremes = chart.yAxis[0].getExtremes();
+        chart.yAxis[0].update({
+            tickPositioner: function () {
+                var positions = []
+                tick = Math.floor(extremes.dataMin)-2
+                max = extremes.dataMax+2
+                increment = 1
+                if((max-tick)>20) increment = 2
+                for (tick; tick - increment <= max; tick += increment) {
+                    positions.push(tick);
+                }
+                return positions
+            }
+        });
     }
     addNWSRender(chart);
-
 });
 
 
-$('#heatQ').click(function() {
-    plotHeatQ();
-    plotRating();
-})
 
 
-function addMeasureQ(){
+
+function addMeasureQ(site){
 
     var chart = $('#ratinggraph').highcharts();
     $.ajax({
-        url: "rdbajax.php?site="+usgsSite+"&type=qmeas",
+        url: "rdbajax.php?site="+site+"&type=qmeas",
         dataType: 'json',
         data: '',
         success: function(json){
@@ -774,14 +784,13 @@ function addMeasureQ(){
 
 
 
-function plotRating(){
-    if($('#site').val().length<= 5){
-        nwsLid = $('#site').val().toLowerCase();
-        ;
+function plotRating(site){
+    if(site.length<= 5){
+        nwsLid = site.toLowerCase();
         usgsSite = crossWalkTable[nwsLid];
     }
     else{
-        usgsSite= $('#site').val();
+        usgsSite= site;
     }
     $.ajax({
         url: "rdbajax.php?site="+usgsSite+"&type=rating",
@@ -791,7 +800,7 @@ function plotRating(){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
                 graphRating(NWS);
-                addMeasureQ();
+                addMeasureQ(usgsSite);
             }
 
         },
@@ -800,14 +809,13 @@ function plotRating(){
 }
 
 
-function plotHeatQ(){
-    if($('#site').val().length<= 5){
-        nwsLid = $('#site').val().toLowerCase();
-        ;
+function plotHeatQ(site){
+    if(site.length<= 5){
+        nwsLid = site.toLowerCase();
         usgsSite = crossWalkTable[nwsLid];
     }
     else{
-        usgsSite= $('#site').val();
+        usgsSite= site;
     }
     //Load USGS Rating Curve
     $.ajax({
@@ -824,7 +832,7 @@ function plotHeatQ(){
                 });
                 NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName;
                 graphHeatQ(NWS);
-                graphAnnual(NWS);
+                //graphAnnual(NWS);
             }
         },
         error : function(XMLHttpRequest, textStatus, errorThrown) {
@@ -839,15 +847,21 @@ function plotHeatQ(){
 
 
 $('#query').click(function() {
+    loadPage($('#site').val());
+});
+
+
+
+function loadPage(site){
     initializeNWS();
-    plotHeatQ();
-    plotRating();
-    if($('#site').val().length<=5){
-        nwsLid = $('#site').val().toLowerCase();
+    plotHeatQ(site);
+    plotRating(site);
+    if(site.length<=5){
+        nwsLid = site.toLowerCase();
         usgsSite = crossWalkTable[nwsLid];
     }
     else{
-        usgsSite= $('#site').val();
+        usgsSite= site;
     }
 
     USGS = {
@@ -910,8 +924,8 @@ $('#query').click(function() {
             $(XML).find("sigstages").each(function(){
                 $(this).children().each(function(){
                     if($(this).text()){
-                        NWS.stage[this.nodeName].value = parseFloat($(this).text());
-                        NWS.maxY = Math.round(parseFloat($(this).text()) + 4);
+                            NWS.stage[this.nodeName].value = parseFloat($(this).text());
+                            NWS.maxY = Math.round(parseFloat($(this).text()) + 4);
                     }
                 })
             })
@@ -972,13 +986,13 @@ $('#query').click(function() {
 
             graphStage(NWS);
             graphDischarge(NWS);
-            graphAnnual(NWS);
+            //graphAnnual(NWS);
 
         },
         timeout: 10000 // sets timeout to 3 seconds
 
     })
-  })
+  }
 
 function graphStage(NWS){
     var title;
@@ -988,99 +1002,102 @@ function graphStage(NWS){
       title = NWS.nwsTitle;
     }
 
-  stagechartobj= {
-      credits: {
-        enabled: false
+    stagechartobj= {
+        credits: {
+            enabled: false
         },
         chart: {
-      renderTo: 'stagegraph',
-      zoomType: 'xy',
-      marginTop: 80,
-      marginBottom:175,
-      marginLeft:80,
-      events: {
-        load: function (event) {
-          addNWSRender(this);
-          addNWSBands(this,NWS);
-        }
-      }
-    },
-    title: {
-      text: title,
-      x: -20 //center
-    },
-    subtitle: {
-      text: 'Sources: '+NWS.sources.join(','),
-      x: -20
-    },
-    xAxis: {
-      max : new Date().getTime()+3600000*24*4,
-      min : new Date().getTime()-3600000*24*7,
-      type: 'datetime',
-      tickPixelInterval: 25,
-      gridLineColor: "#E8E8E8",
-      gridLineWidth: 1,
-      labels: {
-        step: 2,
-        staggerLines: 1,
-        formatter: function () {
-          return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
-        }
-      },
-      plotLines: [{
-        color: 'black', // Color value
-        dashStyle: 'dot', // Style of the plot line. Default to solid
-        value: new Date().getTime(), // Value of where the line will appear
-        width: '2', // Width of the line
-        zIndex:10
-      }],
-      plotBands: [{
-            from: 0,
-            to: new Date().getTime(),
-            color: 'rgba(248,248,248,0.4)',
-            zIndex:5,
-            id: 'plot-band-observed'
-          }]
+            renderTo: 'stagegraph',
+            zoomType: 'xy',
+            marginTop: 80,
+            marginBottom:175,
+            marginLeft:80,
+            events: {
+                load: function (event) {
+                    addNWSRender(this);
+                    addNWSBands(this,NWS);
+                }
+            }
+        },
+        title: {
+            text: title,
+            x: -20 //center
+        },
+        subtitle: {
+            text: 'Sources: '+NWS.sources.join(','),
+            x: -20
+        },
+        xAxis: {
+            max : new Date().getTime()+3600000*24*4,
+            min : new Date().getTime()-3600000*24*7,
+            type: 'datetime',
+            tickPixelInterval: 25,
+            gridLineColor: "#E8E8E8",
+            gridLineWidth: 1,
+            labels: {
+                step: 2,
+                staggerLines: 1,
+                formatter: function () {
+                    return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
+                }
+            },
+            plotLines: [{
+                color: 'black', // Color value
+                dashStyle: 'dot', // Style of the plot line. Default to solid
+                value: new Date().getTime(), // Value of where the line will appear
+                width: '2', // Width of the line
+                zIndex:10
+            }],
+            plotBands: [{
+                from: 0,
+                to: new Date().getTime(),
+                color: 'rgba(248,248,248,0.4)',
+                zIndex:5,
+                id: 'plot-band-observed'
+            }]
+        },
+        yAxis: [{
+            title: {
+                text: 'River Stage (ft)',
+                style: {
+                    color: 'Black',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                }
+            },
+            labels:{
+                x: -5
+            },
+            tickPositioner: function () {
+                var positions = []
+                tick = Math.floor(this.dataMin)-2
+                if(NWS.maxY>-9999){
+                    max = NWS.maxY
+                }else{  
+                    max = this.dataMax+2
+                }    
+                increment = 1
+                if((max-tick)>20) increment = 2
+                for (tick; tick - increment <= max; tick += increment) {
+                    positions.push(tick);
+                }
+                return positions
+            } 
 
-    },
-    yAxis: [{
-      title: {
-        text: 'River Stage (ft)',
-        style: {
-          color: 'Black',
-          fontWeight: 'bold',
-          fontSize: '14px'
-        }
-      },
-      labels:{
-        x: -5
-      },
-      tickPositioner: function () {
-        var positions = []
-        tick = Math.floor(this.dataMin)-2
-        max = NWS.maxY
-        increment = 1
-        if((max-tick)>20) increment = 2
-        for (tick; tick - increment <= max; tick += increment) {
-          positions.push(tick);
-        }
-        return positions
-      }
+        }],
+        tooltip: {
+            valueSuffix: ' ft'
+        },
+        legend: {
+            align: 'center',
+            verticalAlign: 'bottom',
+            borderWidth: 0,
+            y:-100,
+            x:25
+        },
+        series: NWS.stageSeries
 
-    }],
-    tooltip: {
-      valueSuffix: ' ft'
-    },
-    legend: {
-      align: 'center',
-      verticalAlign: 'bottom',
-      borderWidth: 0,
-      y:-100,
-      x:25
-    },
-    series: NWS.stageSeries
-
-  }
+    }
   chart = new Highcharts.Chart(stagechartobj);
 }
 
@@ -1421,6 +1438,27 @@ $(function () {
         H.seriesTypes.heatmap.prototype.directTouch = false; // Use k-d-tree
     }(Highcharts));
 
+    //Load USGS to NWSLID Cross Walk Table
+    $.ajax({
+        type: 'GET',
+          url: 'crossWalk.json',
+          dataType: 'json',
+          success: function(data) {
+            crossWalkTable = data;
+            usgsSite = crossWalkTable[nwsLid];
+            },
+          async: false,
+          error : function(XMLHttpRequest, textStatus, errorThrown) {
+                alert('error');
+
+            }
+    });
+   
+    site = getParameterByName('site');
+    if(site != null){
+        loadPage(site);
+    }
+
 });
 
 
@@ -1448,21 +1486,21 @@ function graphHeatQ(NWS){
         plotOptions:{
             series:{
                 point: {
-				    events: {
-					    mouseOver: function() {
-						    ratingchart.xAxis[0].removePlotLine('vert_loc');
+                    events: {
+                        mouseOver: function() {
+                            ratingchart.xAxis[0].removePlotLine('vert_loc');
                             ratingchart.xAxis[0].addPlotLine({
                                 value: this.value,
                                 color: 'red',
                                 width: 1,
                                 id: 'vert_loc'
                             });
-						},
-						mouseOut: function() {
-						    ratingchart.xAxis[0].removePlotLine('vert_loc');
+                        },
+                        mouseOut: function() {
+                            ratingchart.xAxis[0].removePlotLine('vert_loc');
                         }
 
-				    }
+                    }
                 }
             }
        },
