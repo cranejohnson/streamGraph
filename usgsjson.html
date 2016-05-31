@@ -46,7 +46,7 @@
         <td>
           <input type="checkbox" id="dischargeAxis" style="padding-left:20px" checked >Log Scale<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
-           End Date:<input type="text" id="dischargeStart" length=10>
+           End Date:<input type="text" id="dischargeEnd" length=10>
            <input type="button" id="loadQ" value="Load Data"></br>
           <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
     </td>
@@ -95,11 +95,43 @@ function getParameterByName(name, url) {
 }
 
 
-function addStats(chart,USGSsiteID){
+function addUSGSQ(chartDiv,USGSsiteID){
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var extX = chartAdd.xAxis[0].getExtremes();
+    
+    var dischargeSeries;
+    var start = Highcharts.dateFormat('%c',extX.min);
+    var end = Highcharts.dateFormat('%c',extX.max);
+    //Load USGS Observed Data
+    $.ajax({
+        url: "http://waterservices.usgs.gov/nwis/iv/?format=json&sites=" + usgsSite + "&parameterCd=00060,00065&startDT="+start+"&endDT="+end,
+        dataType: 'json',
+        data: '',
+        success: function(json){
+            if(json.value.timeSeries.length>0){
+                dischargeSeries.push({
+                    data: USGStoHC(json,"00060"),
+                    name:'USGS Observed Data',
+                    zIndex:2,
+                    nwsType: 'observed'
+                });
+            }
+        },
+        async: false,
+        error : function(XMLHttpRequest, textStatus, errorThrown) {
+            $('#discharge').val('')
+            $('#date').val('')
+        }
+    })
+    
+    chartAdd.addSeries(dischargeSeries);
+}    
 
-  $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsiteID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
-    //console.log(ext);
 
+function addStats(chartDiv,USGSsiteID){
+    $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+USGSsiteID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
+    
+    var chartAdd = $('#'+chartDiv).highcharts();
     var lines = data.split('\n');
     var statsSeries = [
         {
@@ -160,7 +192,6 @@ function addStats(chart,USGSsiteID){
             visible : false
         }
     ];
-
     $.each(lines, function(){
       if (this.substring(0, 4) == "USGS") {
         var data = this.split('\t');
@@ -188,11 +219,11 @@ function addStats(chart,USGSsiteID){
       }
 
     });
-    //console.log(statsSeries);
+
     $.each(statsSeries,function(){
         this.marker = { enabled:false};
         if(1){
-            chart.addSeries(this);
+            chartAdd.addSeries(this);
         }
     });
   });
@@ -407,10 +438,12 @@ function qMeasJSON2HC(json){
 
     if(len == 0) return data = null;
 
-    var data = new Array();
+    //var data = new Array();
 
     var mostRecentDate = 0;
     for (var i = 0; i < len; i++) {
+        //Check if stage is included and if discharge is not zero
+        if((json.records[i][depIndex]=== null) || (Math.abs(json.records[i][indepIndex])=== 0)) continue;
         date = new Date(json.records[i][dtIndex]);
         if(date > mostRecentDate) {
             allSeries[0].data[0] = ( {'x' : json.records[i][indepIndex],
@@ -424,14 +457,13 @@ function qMeasJSON2HC(json){
         if(age < 10) index =3 ;
         if(age < 5) index = 2;
         if(age < 1 ) index = 1;
-        if(isFinite(String(json.records[i][depIndex])) && (json.records[i][indepIndex] > 0)){
-            allSeries[index].data.push( {'x' : json.records[i][indepIndex],
-                'y': json.records[i][depIndex],
-                'name': date.toDateString()
-            });
-        }
+        
+        allSeries[index].data.push( {'x' : json.records[i][indepIndex],
+            'y': json.records[i][depIndex],
+            'name': date.toDateString()
+        });
     }
-        //Push the most recent value into a series
+   
     return allSeries;
 }
 
@@ -529,6 +561,7 @@ function addNWSBands(chart,NWSobj){
                 label: {
                     text: NWSobj.stage[key].text.split(/\s+/)[0]+': '+NWSobj.stage[key].value+' ft',
                     textAlign: 'left',
+                    fontWeight: 'bold',
                     y:-2
                 }
             })
@@ -589,9 +622,11 @@ function addNWSBands(chart,NWSobj){
                 align: 'center',
                 style: {
                     color: 'black',
+                    fontWeight: 'bold',
                 }
             }
         })
+        
     }
 }
 
@@ -1007,14 +1042,16 @@ function loadPage(site){
             });
 
             graphStage('stagegraph',NWS);
-            graphDischarge(NWS);
+            graphDischarge('dischargegraph',NWS,Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()));
+            addStats('dischargegraph',usgsSite);
+            addUSGSQ('dischargegraph',usgsSite);
             //graphAnnual(NWS);
 
         },
         timeout: 10000 // sets timeout to 3 seconds
 
     })
-  }
+}
 
 function graphStage(container,NWS){
     var title;
@@ -1123,41 +1160,27 @@ function graphStage(container,NWS){
   chart = new Highcharts.Chart(stagechartobj);
 }
 
-function graphDischarge(NWS){
+function graphDischarge(container,NWS,minDate,maxDate){
     ////////////////////////////////////Discharge Graph////////////////////////////////
+
     dischargechartobj= {
         credits: {
             enabled: false
         },
         chart: {
-            renderTo: 'dischargegraph',
+            renderTo: container,
             zoomType: 'xy',
             marginTop: 50,
             marginBottom:100,
             marginLeft:80,
-            events: {
-                load: function (event) {
-                    addStats(this,usgsSite);
-
-                    },
-                redraw:function(event){
-                    extremes = this.yAxis[0].getExtremes();
-
-                    if(extremes.min<0){
-
-                    }
-                       //(extremes.min<0) ? ymin = .01 : ymin =  extremes.min;
-                       //this.yAxis[0].setExtremes(ymin,extremes.max);
-                }
-            }
         },
         title: {
             text: null,
             x: -20 //center
         },
         xAxis: {
-            max : new Date().getTime()+3600000*24*4,
-            min : new Date().getTime()-3600000*24*7,
+            max:maxDate,
+            min:minDate,
             type: 'datetime',
             tickPixelInterval: 25,
             gridLineColor: "#E8E8E8",
@@ -1203,9 +1226,10 @@ function graphDischarge(NWS){
           borderWidth: 0,
           x:10
         },
-        series: NWS.dischargeSeries
+        series : [{data:[null,null]}]
     }
-    dischargechart = new Highcharts.Chart(dischargechartobj);
+    
+    new Highcharts.Chart(dischargechartobj);
   }
 
 function graphAnnual(NWS){
@@ -1390,100 +1414,6 @@ $('#ratingLog').change(function() {
   }
 });
 
-$(function () {
-
-    /**
-     * This plugin extends Highcharts in two ways:
-     * - Use HTML5 canvas instead of SVG for rendering of the heatmap squares. Canvas
-     *   outperforms SVG when it comes to thousands of single shapes.
-     * - Add a K-D-tree to find the nearest point on mouse move. Since we no longer have SVG shapes
-     *   to capture mouseovers, we need another way of detecting hover points for the tooltip.
-     */
-    (function (H) {
-        var Series = H.Series,
-            each = H.each;
-
-        /**
-         * Create a hidden canvas to draw the graph on. The contents is later copied over
-         * to an SVG image element.
-         */
-        Series.prototype.getContext = function () {
-            if (!this.canvas) {
-                this.canvas = document.createElement('canvas');
-                this.canvas.setAttribute('width', this.chart.chartWidth);
-                this.canvas.setAttribute('height', this.chart.chartHeight);
-                this.image = this.chart.renderer.image('', 0, 0, this.chart.chartWidth, this.chart.chartHeight).add(this.group);
-                this.ctx = this.canvas.getContext('2d');
-            }
-            return this.ctx;
-        };
-
-        /**
-         * Draw the canvas image inside an SVG image
-         */
-        Series.prototype.canvasToSVG = function () {
-            this.image.attr({ href: this.canvas.toDataURL('image/png') });
-        };
-
-        /**
-         * Wrap the drawPoints method to draw the points in canvas instead of the slower SVG,
-         * that requires one shape each point.
-         */
-        H.wrap(H.seriesTypes.heatmap.prototype, 'drawPoints', function () {
-
-            var ctx = this.getContext();
-
-            if (ctx) {
-
-                // draw the columns
-                each(this.points, function (point) {
-                    var plotY = point.plotY,
-                        shapeArgs;
-
-                    if (plotY !== undefined && !isNaN(plotY) && point.y !== null) {
-                        shapeArgs = point.shapeArgs;
-
-                        ctx.fillStyle = point.pointAttr[''].fill;
-                        ctx.fillRect(shapeArgs.x, shapeArgs.y, shapeArgs.width, shapeArgs.height);
-                    }
-                });
-
-                this.canvasToSVG();
-
-            } else {
-                this.chart.showLoading('Your browser doesn\'t support HTML5 canvas, <br>please use a modern browser');
-
-                // Uncomment this to provide low-level (slow) support in oldIE. It will cause script errors on
-                // charts with more than a few thousand points.
-                // arguments[0].call(this);
-            }
-        });
-        H.seriesTypes.heatmap.prototype.directTouch = false; // Use k-d-tree
-    }(Highcharts));
-
-    //Load USGS to NWSLID Cross Walk Table
-    $.ajax({
-        type: 'GET',
-          url: 'crossWalk.json',
-          dataType: 'json',
-          success: function(data) {
-            crossWalkTable = data;
-            usgsSite = crossWalkTable[nwsLid];
-            },
-          async: false,
-          error : function(XMLHttpRequest, textStatus, errorThrown) {
-                alert('error');
-
-            }
-    });
-
-    site = getParameterByName('site');
-    if(site != null){
-        loadPage(site);
-    }
-
-});
-
 
 function graphHeatQ(NWS){
     var title;
@@ -1498,7 +1428,8 @@ function graphHeatQ(NWS){
         chart: {
             renderTo: 'heatMapQ',
             type: 'heatmap',
-            zoomType: 'xy'
+            zoomType: 'xy',
+            
         },
         credits: {
             enabled: false
@@ -1591,6 +1522,33 @@ function graphHeatQ(NWS){
 
 }
 
+$(function () {
+    
+    $('#dischargeStart').val(Highcharts.dateFormat('%Y-%m-%d',new Date().getTime()-3600000*24*14));
+    $('#dischargeEnd').val(Highcharts.dateFormat('%Y-%m-%d',new Date().getTime()+3600000*24*4));
+
+    //Load USGS to NWSLID Cross Walk Table
+    $.ajax({
+        type: 'GET',
+          url: 'crossWalk.json',
+          dataType: 'json',
+          success: function(data) {
+            crossWalkTable = data;
+            usgsSite = crossWalkTable[nwsLid];
+            },
+          async: false,
+          error : function(XMLHttpRequest, textStatus, errorThrown) {
+                alert('error');
+
+            }
+    });
+
+    site = getParameterByName('site');
+    if(site != null){
+        loadPage(site);
+    }
+
+});
 
 </script>
 </body>
