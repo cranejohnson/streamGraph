@@ -696,14 +696,16 @@ function addNWSBands(graphId,nwslid,AHPSjson){
              }
     };
 
+    console.log(AHPSjson[nwslid].sigstages);
 
     $.each( colors, function( key, value ){
-        if(typeof AHPSjson[nwslid].sigstages[key] === 'object'){
+        console.log(AHPSjson[nwslid].sigstages[key]);
+        console.log(typeof AHPSjson[nwslid].sigstages[key]);
+        if(typeof AHPSjson[nwslid].sigstages[key].value != 'undefined'){
             if(AHPSjson[nwslid].sigstages[key].value > maxY){
                 maxY = parseInt(AHPSjson[nwslid].sigstages[key].value);
-
             }
-
+                
             chart.yAxis[0].addPlotBand({
                 from: AHPSjson[nwslid].sigstages[key].value,
                 to: upperEnd,
@@ -769,6 +771,9 @@ function addNWSBands(graphId,nwslid,AHPSjson){
         }
     });
     if(typeof AHPSjson[nwslid].sigstages.record === 'object'){
+        if(AHPSjson[nwslid].sigstages.record.value > maxY){
+            maxY = parseInt(AHPSjson[nwslid].sigstages.record.value);
+        }
         chart.yAxis[0].addPlotLine({
             color: '#99FFFF',
             width: 2,
