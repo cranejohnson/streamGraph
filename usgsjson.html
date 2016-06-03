@@ -1109,7 +1109,7 @@ $('#showFloodStages').change(function() {
     nwsLid = chart.NWSid;
 
     if($(this).is(':checked')){
-        addNWSBands('stagegraph',nwslid,AHPSjson);
+        addNWSBands('stagegraph',AHPSjson);
     }else{
         $(".nwsLegend").remove();
         $("#removeLegend").attr('value', 'Add Flood Stages');
