@@ -15,6 +15,9 @@ if($type == 'rating'){
 elseif($type == 'qmeas'){
     $my_url = "http://waterdata.usgs.gov/nwis/measurements?agency_cd=USGS&format=rdb&site_no=".$my_site;
 }
+elseif($type == 'annualPeaks'){
+    $my_url = "http://nwis.waterdata.usgs.gov/ak/nwis/peak?agency_cd=USGS&format=rdb&site_no=".$my_site;
+}
 
 
 $my_rdb = new rdb($my_url,false);			// Fetch this RDB file and load it into an object
