@@ -7,6 +7,7 @@ require_once('rdb/rdb.php');
 // Get the site number from the client
 $my_site = htmlspecialchars($_GET['site']);
 $type = htmlspecialchars($_GET['type']);
+if(isset($_GET['state'])) $state = htmlspecialchars($_GET['state']);
 
 // Construct the URL
 if($type == 'rating'){
@@ -16,7 +17,7 @@ elseif($type == 'qmeas'){
     $my_url = "http://waterdata.usgs.gov/nwis/measurements?agency_cd=USGS&format=rdb&site_no=".$my_site;
 }
 elseif($type == 'annualPeaks'){
-    $my_url = "http://nwis.waterdata.usgs.gov/ak/nwis/peak?agency_cd=USGS&format=rdb&site_no=".$my_site;
+    $my_url = "http://nwis.waterdata.usgs.gov/".$state."/nwis/peak?agency_cd=USGS&format=rdb&site_no=".$my_site;
 }
 
 
