@@ -268,7 +268,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         usgsID = chart.options.usgsID;
     }
 
-    console.log(usgsID);
     $.ajax({
         url: "rdbajax.php?site="+usgsID+"&type=qmeas",
         dataType: 'json',
@@ -278,7 +277,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
             var newSeries = qMeasJSON2HC_Rating(json,type);
             for(j = 0;j < newSeries.length;j++){
                 if(json.error_info.error == 0){
-                    console.log('Adding Data');
                     chart.addSeries(newSeries[j]);
                 }
             }
@@ -392,16 +390,37 @@ function addStats(chartDiv){
         var lines = data.split('\n');
         var statsSeries = [
             {
-                name: 'Min-Max Flows',
+                name: 'Daily Statistics',
                 data: [],
                 visible : true,
-                type: 'arearange',
-                trackByArea: false,
+                type: 'line',
                 lineWidth: 1,
                 color: '#ECC5C0',
-                fillOpacity: 0.0,
                 zIndex: 0,
-                showInLegend:true
+                showInLegend:true,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                    pointFormatter: function (){
+                        return '<b>'+numberWithCommas(this.y) + ' cfs (year:'+this.year+')</b>';
+                    },
+                }
+            },
+            {
+                name: 'Max Flows',
+                data: [],
+                visible : true,
+                type: 'line',
+                lineWidth: 1,
+                color: '#ECC5C0',
+                zIndex: 0,
+                showInLegend:false,
+                linkedTo: ':previous',
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                    pointFormatter: function (){
+                        return '<b>'+numberWithCommas(this.y) + ' cfs (year:'+this.year+')</b>';
+                    },
+                }
             },
             {
                 name: 'P 5% -  95%',
@@ -413,8 +432,11 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#00bfff',
                 fillOpacity: 0.2,
-                zIndex: 1
-            },
+                zIndex: 1,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                }
+           },
             {
                 name: 'P 25% - 75%',
                 data: [],
@@ -425,14 +447,20 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#0040ff',
                 fillOpacity: 0.3,
-                zIndex: 2
+                zIndex: 2,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                }
             },
             {
                 name: 'P 50% (median)',
                 linkedTo: ':previous',
                 color: '#D1D0CE',
                 data: [],
-                zIndex: 3
+                zIndex: 3,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                }
             },
             {
                 name: 'Count',
@@ -474,6 +502,8 @@ function addStats(chartDiv){
              },
             {
                 data:[]
+             },{
+                data:[]
              }];
 
         $.each(lines, function(){
@@ -491,19 +521,22 @@ function addStats(chartDiv){
             var year = '2016';
             var vdate = Date.UTC(year,month,day,20);    //Noon ak standard time
             //console.log(year+'-'+month+'-'+day);
-            annualSeries[0].data[vdate] = [vdate,tdata[13],tdata[11]];
-            annualSeries[1].data[vdate] = [vdate,tdata[14],tdata[18]];
-            annualSeries[2].data[vdate] = [vdate,tdata[15],tdata[17]];
-            annualSeries[3].data[vdate] = [vdate,tdata[16]];
-            annualSeries[4].data[vdate] = [vdate,tdata[9]];
-            annualSeries[5].data[vdate] = [vdate,tdata[12]];
-            annualSeries[6].data[vdate] = [vdate,tdata[10]];
+            var minData = {x:vdate,y:tdata[13],year:tdata[12]};
+            var maxData = {x:vdate,y:tdata[11],year:tdata[10]};
+            annualSeries[0].data[vdate] = minData;
+            annualSeries[1].data[vdate] = maxData;
+            annualSeries[2].data[vdate] = [vdate,tdata[14],tdata[18]];
+            annualSeries[3].data[vdate] = [vdate,tdata[15],tdata[17]];
+            annualSeries[4].data[vdate] = [vdate,tdata[16]];
+            annualSeries[5].data[vdate] = [vdate,tdata[9]];
+            annualSeries[6].data[vdate] = [vdate,tdata[12]];
+            annualSeries[7].data[vdate] = [vdate,tdata[10]];
         }
 
         });
 
 
-        //console.log(annualSeries[0]);
+        console.log(annualSeries[0]);
         var extX = chartAdd.xAxis[0].getExtremes();
 
         var days= 1;
@@ -516,6 +549,8 @@ function addStats(chartDiv){
             day = sdate.getDate();
             year= sdate.getFullYear();
             var plotDate = sdate;
+            plotDate.setHours(12);
+            datetime = plotDate.getTime();
             var annualdate =Date.UTC('2016',month,day,20);
 
             var newDate = sdate.setDate(sdate.getDate() + 1);
@@ -524,11 +559,19 @@ function addStats(chartDiv){
 
             //Skip Feb 29th - it tends to through off the plot
             if(month ==1 && day == 29) continue;
-            for(var j=0;j<=6;j++){
-                var dat = annualSeries[j].data[annualdate];
+
+            //Push max and min data into series
+            var dat = annualSeries[0].data[annualdate];
+            dat.x = datetime;
+            statsSeries[0].data.push(dat);
+            dat = annualSeries[1].data[annualdate];
+            dat.x = datetime;
+            statsSeries[1].data.push(dat);
+
+            for(var j=2;j<=7;j++){
+                dat = annualSeries[j].data[annualdate];
                 if(typeof dat !== 'undefined'){
-                    plotDate.setHours(12);
-                    datetime = plotDate.getTime();
+
                     if(dat.length ==3){
                         statsSeries[j].data.push([datetime,dat[1],dat[2]]);
                      }else{
@@ -539,6 +582,7 @@ function addStats(chartDiv){
 
         }
 
+        console.log(statsSeries[0]);
 
         $.each(statsSeries,function(){
             this.marker = { enabled:false};
@@ -818,7 +862,7 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
         allSeries[index].data.push(ratingInfo);
 
     }
-    console.log(allSeries);
+    //console.log(allSeries);
     return allSeries;
 }
 
@@ -1369,8 +1413,6 @@ function loadPage(site){
     }
 
 
-    console.log(usgsID);
-    console.log(nwsLid);
 
 
     plotHeatQ(usgsID);
