@@ -52,7 +52,7 @@
            Start Date:<input type="text" id="dischargeStart" length=10>
            End Date:<input type="text" id="dischargeEnd" length=10>
            <input type="button" id="loadQ" value="Load Custom Range"> or <input type="button" id="loadAnnual" value="Current Year"></br>
-           <input type="button" id="togglePeakLabels" value="Toggle Peak Labels">
+           <!--<input type="button" id="togglePeakLabels" value="Toggle Peak Labels">-->
           <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
     </td>
   </tr>
@@ -182,74 +182,76 @@ function addAHPS(chartDiv,type = 'discharge'){
     var issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
     var stageArray = [];
     var dischargeArray = [];
-    $.each(AHPSjson[nwsLid].forecast.datum, function(){
-        var mult = 1;
-        var d = new Date(this.valid.value).getTime();
-        stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
-        if(this.secondary._units == 'kcfs') mult = 1000;
-        dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
-    });
+    if(typeof AHPSjson[nwsLid].forecast.datum != 'undefined'){
+        $.each(AHPSjson[nwsLid].forecast.datum, function(){
+            var mult = 1;
+            var d = new Date(this.valid.value).getTime();
+            stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+            if(this.secondary._units == 'kcfs') mult = 1000;
+            dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+        });
 
-    newSeries.push({
-        data : stageArray,
-        name : 'NWS Forecast ( Issued: '+issued+' )',
-        color: 'purple',
-        qual: 'Forecast',
-        param: 'stage',
-        source: 'NWS',
-        NWSid: nwsLid,
-        zIndex:3,
-    });
-
-    if(dischargeArray.length>0){
         newSeries.push({
-            data : dischargeArray,
-            name : 'NWS Forecast( Issued: '+issued+' )',
+            data : stageArray,
+            name : 'NWS Forecast ( Issued: '+issued+' )',
             color: 'purple',
             qual: 'Forecast',
-            param: 'discharge',
+            param: 'stage',
             source: 'NWS',
             NWSid: nwsLid,
             zIndex:3,
         });
+
+        if(dischargeArray.length>0){
+            newSeries.push({
+                data : dischargeArray,
+                name : 'NWS Forecast( Issued: '+issued+' )',
+                color: 'purple',
+                qual: 'Forecast',
+                param: 'discharge',
+                source: 'NWS',
+                NWSid: nwsLid,
+                zIndex:3,
+            });
+        }
     }
     var stageArray = [];
     var dischargeArray = [];
 
-    $.each(AHPSjson[nwsLid].observed.datum, function(){
-        var mult = 1;
-        var d = new Date(this.valid.value).getTime();
-        stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
-        if(this.secondary._units == 'kcfs') mult = 1000;
-        dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
-    });
+    if(typeof AHPSjson[nwsLid].observed.datum != 'undefined'){
 
-    newSeries.push({
-        data : stageArray.sort(),
-        name : 'NWS Observed',
-        color: 'blue',
-        qual: 'Observed',
-        param: 'stage',
-        source: 'NWS',
-        NWSid: nwsLid,
-        id: 'nwsObserved',
-        zIndex:3,
-    });
+        $.each(AHPSjson[nwsLid].observed.datum, function(){
+            var mult = 1;
+            var d = new Date(this.valid.value).getTime();
+            stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+            if(this.secondary._units == 'kcfs') mult = 1000;
+            dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+        });
 
-    if(dischargeArray.length>0){
         newSeries.push({
-            data : dischargeArray.sort(),
+            data : stageArray.sort(),
             name : 'NWS Observed',
             color: 'blue',
             qual: 'Observed',
-            param: 'discharge',
+            param: 'stage',
             source: 'NWS',
             NWSid: nwsLid,
+            id: 'nwsObserved',
             zIndex:3,
-
-
-
         });
+
+        if(dischargeArray.length>0){
+            newSeries.push({
+                data : dischargeArray.sort(),
+                name : 'NWS Observed',
+                color: 'blue',
+                qual: 'Observed',
+                param: 'discharge',
+                source: 'NWS',
+                NWSid: nwsLid,
+                zIndex:3,
+            });
+        }
     }
 
 
@@ -393,7 +395,7 @@ function addStats(chartDiv){
                 name: 'Daily Statistics',
                 data: [],
                 visible : true,
-                type: 'line',
+                type: 'scatter',
                 lineWidth: 1,
                 color: '#ECC5C0',
                 zIndex: 0,
@@ -409,18 +411,16 @@ function addStats(chartDiv){
                 name: 'Max Flows',
                 data: [],
                 visible : true,
-                type: 'line',
+                type: 'arearange',
                 lineWidth: 1,
                 color: '#ECC5C0',
+                fillOpacity: 0.1,
                 zIndex: 0,
                 showInLegend:false,
                 linkedTo: ':previous',
                 tooltip:{
-                    headerFormat:'<b>{point.x:%b %e}</b><br>',
-                    pointFormatter: function (){
-                        return '<b>'+numberWithCommas(this.y) + ' cfs (year: '+this.year+')</b>';
-                    },
-                }
+                     headerFormat:'<b>{point.x:%b %e}</b><br>',
+               }
             },
             {
                 name: 'P 5% -  95%',
@@ -523,8 +523,8 @@ function addStats(chartDiv){
             //console.log(year+'-'+month+'-'+day);
             var minData = {x:vdate,y:tdata[13],year:tdata[12]};
             var maxData = {x:vdate,y:tdata[11],year:tdata[10]};
-            annualSeries[0].data[vdate] = minData;
-            annualSeries[1].data[vdate] = maxData;
+            annualSeries[0].data[vdate] = maxData;
+            annualSeries[1].data[vdate] = [vdate,tdata[13],tdata[11]];
             annualSeries[2].data[vdate] = [vdate,tdata[14],tdata[18]];
             annualSeries[3].data[vdate] = [vdate,tdata[15],tdata[17]];
             annualSeries[4].data[vdate] = [vdate,tdata[16]];
@@ -536,7 +536,6 @@ function addStats(chartDiv){
         });
 
 
-        console.log(annualSeries[0]);
         var extX = chartAdd.xAxis[0].getExtremes();
 
         var days= 1;
@@ -564,11 +563,8 @@ function addStats(chartDiv){
             var dat = annualSeries[0].data[annualdate];
             dat.x = datetime;
             statsSeries[0].data.push(dat);
-            dat = annualSeries[1].data[annualdate];
-            dat.x = datetime;
-            statsSeries[1].data.push(dat);
 
-            for(var j=2;j<=7;j++){
+            for(var j=1;j<=7;j++){
                 dat = annualSeries[j].data[annualdate];
                 if(typeof dat !== 'undefined'){
 
@@ -776,7 +772,7 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
            data: [],
            tooltip: {
                 headerFormat: 'USGS Measured Discharge<br>',
-                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Quality:{point.measured_rating_diff}<br>'
+                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}'
             },
             name: 'USGS Measured',
             type: 'scatter',
@@ -1578,6 +1574,7 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
         plotOptions:{
             series:{
                 stickyTracking : false,
+                turboThreshold: 0,
                 point: {
                     events: {
                         mouseOver: function() {
