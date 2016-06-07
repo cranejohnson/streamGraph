@@ -1,4 +1,4 @@
-<?
+<?php
 //Simple script to get ahps data and avoid cross site request
 $site = $_GET['site'];
 $format = 'xml';
