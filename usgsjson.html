@@ -610,7 +610,7 @@ function initializeNWS() {
             flood : {
                 text: 'Flood Stage',
                    value: 9999,
-                   def:'Minimal or no property damage, but possible some public threat'
+                   def:'Minimal or no property damage, but possibly some public threat'
                 },
             moderate : {
                 text: 'Moderate Flood Stage',
@@ -1256,8 +1256,7 @@ function plotRating(usgsSite){
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }
 
-        },
-        async: false
+        }
     });
 }
 
@@ -1839,7 +1838,16 @@ function graphRating(container,NWS){
                 zIndex: 4
             })
             .add();
-  }
+
+    //This was added to zoom to the current rating curve, helps when bad/old data skews the extents of graph
+    var points=ratingchart.series[0].points;
+    var ymin=points[0].y;
+    var ymax=points[points.length-1].y+1;
+    ratingchart.yAxis[0].setExtremes(ymin,ymax);
+    ratingchart.showResetZoom();
+
+}
+
 
 
 $('#dischargeAxis').change(function() {
