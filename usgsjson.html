@@ -46,7 +46,8 @@
           <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
         </td>
         <td>
-            <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale</br>
+            <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
+            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Add 2016 Flood Frequency Lines</br>
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
@@ -285,6 +286,70 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         }
     });
 }
+
+function addPeakFlow(chartDiv){
+
+    var chart = $('#'+chartDiv).highcharts();
+    usgsID = chart.options.usgsID;
+    $.ajax({
+        url: "Flood_Stats.json",
+        dataType: 'json',
+        data: '',
+        success: function(json){
+            if(typeof json[usgsID] != undefined){
+                console.log(json[usgsID]);
+                year = '2016';
+                console.log(json[usgsID][2016]['10yr']['wtd']);
+                if(typeof json[usgsID][2016] != undefined){
+
+                    chart.yAxis[0].addPlotLine({
+                        value: json[usgsID][2016]['2yr']['wtd'],
+                        color: 'yellow',
+                        width:3,
+                        id: 'ffline',
+                        label:{
+                            align: 'left',
+                            text: '2 Year'
+                        }
+                    });
+                    chart.yAxis[0].addPlotLine({
+                        value: json[usgsID][2016]['10yr']['wtd'],
+                        color: 'orange',
+                        width:3,
+                        id: 'ffline',
+                        label:{
+                            align: 'left',
+                            text: '10 Year'
+                        }
+                    });
+                    chart.yAxis[0].addPlotLine({
+                        value: json[usgsID][2016]['25yr']['wtd'],
+                        color: 'red',
+                        width:3,
+                        id: 'ffline',
+                        label:{
+                            align: 'left',
+                            text: '25 Year'
+                        }
+                    });
+                    chart.yAxis[0].addPlotLine({
+                        value: json[usgsID][2016]['100yr']['wtd'],
+                        color: 'blue',
+                        width:4,
+                        id: 'ffline',
+                        label:{
+                            align: 'left',
+                            text: '100 Year'
+                        }
+                    });
+                }
+            }
+        }
+    });
+
+}
+
+
 
 function addAnnualPeaks(chartDiv,state='ak'){
     var chart = $('#'+chartDiv).highcharts();
@@ -1346,6 +1411,16 @@ $('#togglePeakLabels').click(function(){
 });
 
 
+$('#addFFlines').change(function() {
+  if($(this).is(':checked')){
+        addPeakFlow('dischargegraph');
+    }
+    else
+    {
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline');
+  }
+});
+
 $('#loadAnnual').click(function(){
     var year = new Date().getFullYear();
     $('#dischargeStart').val(year+'-01-01');
@@ -1361,6 +1436,11 @@ $('#loadAnnual').click(function(){
     addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
+    if($('#addFFlines').is(':checked')){
+        addPeakFlow('dischargegraph');
+    }
+
+
 });
 
 
@@ -1377,8 +1457,9 @@ $('#loadQ').click(function(){
     addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
-
-
+    if($('#addFFlines').is(':checked')){
+        addPeakFlow('dischargegraph');
+    }
 
 });
 
@@ -1442,7 +1523,9 @@ function loadPage(site){
     addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
-
+    if($('#addFFlines').is(':checked')){
+        addPeakFlow('dischargegraph');
+    }
 }
 
 function graphStage(container,minDate,maxDate,usgs,nws){
