@@ -151,6 +151,7 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv){
 
 function getAhps(site,AHPS){
     var data;
+    var result;
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
             url: "get_ahps_data.php?format=json&site="+nwsLid,
@@ -159,102 +160,117 @@ function getAhps(site,AHPS){
             async: false,
             success: function(data){
                 AHPS[site] = data.site;
+                result = true;
+                },
+            error: function(){
+                    result = false;
                 }
         })
     }else{
         console.log('AHPS already loaded');
     }
+    return false;
 }
 
 
 function addAHPS(chartDiv,type = 'discharge'){
     var chartAdd = $('#'+chartDiv).highcharts();
     nwsLid = chartAdd.options.nwsLid;
-
+    var issued= '';
     var newSeries=[];
 
     var tzoffset = -1000*(new Date().getTimezoneOffset());
 
     //Load AHPS data if it is not already loaded
-    getAhps(nwsLid,AHPSjson);
+    if(getAhps(nwsLid,AHPSjson) == true){
+        issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
+     }
+     else{
+        issued = 'No forecast';
+     }
+
 
     //chartAdd.setTitle({ text: AHPSjson[nwsLid]._name});
 
-    var issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
     var stageArray = [];
     var dischargeArray = [];
-    if(typeof AHPSjson[nwsLid].forecast.datum != 'undefined'){
-        $.each(AHPSjson[nwsLid].forecast.datum, function(){
-            var mult = 1;
-            var d = new Date(this.valid.value).getTime();
-            stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
-            if(this.secondary._units == 'kcfs') mult = 1000;
-            dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
-        });
+    try{
+        if(typeof AHPSjson[nwsLid].forecast.datum != 'undefined'){
+            $.each(AHPSjson[nwsLid].forecast.datum, function(){
+                var mult = 1;
+                var d = new Date(this.valid.value).getTime();
+                stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+                if(this.secondary._units == 'kcfs') mult = 1000;
+                dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+            });
 
-        newSeries.push({
-            data : stageArray,
-            name : 'NWS Forecast ( Issued: '+issued+' )',
-            color: 'purple',
-            qual: 'Forecast',
-            param: 'stage',
-            source: 'NWS',
-            NWSid: nwsLid,
-            zIndex:3,
-        });
-
-        if(dischargeArray.length>0){
             newSeries.push({
-                data : dischargeArray,
-                name : 'NWS Forecast( Issued: '+issued+' )',
+                data : stageArray,
+                name : 'NWS Forecast ( Issued: '+issued+' )',
                 color: 'purple',
                 qual: 'Forecast',
-                param: 'discharge',
+                param: 'stage',
                 source: 'NWS',
                 NWSid: nwsLid,
                 zIndex:3,
             });
+
+            if(dischargeArray.length>0){
+                newSeries.push({
+                    data : dischargeArray,
+                    name : 'NWS Forecast( Issued: '+issued+' )',
+                    color: 'purple',
+                    qual: 'Forecast',
+                    param: 'discharge',
+                    source: 'NWS',
+                    NWSid: nwsLid,
+                    zIndex:3,
+                });
+            }
         }
     }
+    catch(e){}
+
     var stageArray = [];
     var dischargeArray = [];
+    try{
+        if(typeof AHPSjson[nwsLid].observed.datum != 'undefined'){
 
-    if(typeof AHPSjson[nwsLid].observed.datum != 'undefined'){
+            $.each(AHPSjson[nwsLid].observed.datum, function(){
+                var mult = 1;
+                var d = new Date(this.valid.value).getTime();
+                stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+                if(this.secondary._units == 'kcfs') mult = 1000;
+                dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+            });
 
-        $.each(AHPSjson[nwsLid].observed.datum, function(){
-            var mult = 1;
-            var d = new Date(this.valid.value).getTime();
-            stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
-            if(this.secondary._units == 'kcfs') mult = 1000;
-            dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
-        });
-
-        newSeries.push({
-            data : stageArray.sort(),
-            name : 'NWS Observed',
-            color: 'blue',
-            qual: 'Observed',
-            param: 'stage',
-            source: 'NWS',
-            NWSid: nwsLid,
-            id: 'nwsObserved',
-            zIndex:3,
-        });
-
-        if(dischargeArray.length>0){
             newSeries.push({
-                data : dischargeArray.sort(),
+                data : stageArray.sort(),
                 name : 'NWS Observed',
                 color: 'blue',
                 qual: 'Observed',
-                param: 'discharge',
+                param: 'stage',
                 source: 'NWS',
                 NWSid: nwsLid,
+                id: 'nwsObserved',
                 zIndex:3,
             });
+
+            if(dischargeArray.length>0){
+                newSeries.push({
+                    data : dischargeArray.sort(),
+                    name : 'NWS Observed',
+                    color: 'blue',
+                    qual: 'Observed',
+                    param: 'discharge',
+                    source: 'NWS',
+                    NWSid: nwsLid,
+                    zIndex:3,
+                });
+            }
         }
     }
-
+    catch(e){}
 
     $.each(newSeries, function(){
         if(this.param == type){
@@ -296,10 +312,10 @@ function addPeakFlow(chartDiv){
         dataType: 'json',
         data: '',
         success: function(json){
-            if(typeof json[usgsID] != undefined){
+            if(typeof json[usgsID] != 'undefined'){
                 console.log(json[usgsID]);
                 year = '2016';
-                console.log(json[usgsID][2016]['10yr']['wtd']);
+                //console.log(json[usgsID][2016]['10yr']['wtd']);
                 if(typeof json[usgsID][2016] != undefined){
 
                     chart.yAxis[0].addPlotLine({
@@ -1002,7 +1018,7 @@ function addNWSBands(graphId,AHPSjson){
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
     extremes = chart.yAxis[0].getExtremes();
-    getAhps(nwsLid,AHPSjson);
+     if(getAhps(nwsLid,AHPSjson) == false) return;
 
 
     legW = 550;
@@ -1236,41 +1252,45 @@ function addNWSRender(graphId){
         .add();
     var point;
 
-    if(chart.get('nwsObserved').data.length>0){
-        point = chart.get('nwsObserved').data[chart.get('nwsObserved').data.length-1];
-    }
-
-    text = chart.renderer.text(
-        'Current Level: '+point.y+' ft',
-        point.plotX + chart.plotLeft - 130,
-        point.plotY + chart.plotTop - 15
-        ).css({
-        fontSize: '12px',
-        fontWeight: 'bold'
-        }).attr({
-        zIndex: 10,
-        class: 'nwsRender'
-    }).add();
-    text = chart.renderer.text(
-        'Latest Observed Value: '+point.y+' ft at '+Highcharts.dateFormat('%l %P %b %e',point.x),
-        chart.plotLeft+10,
-        chart.plotTop+15
-        ).attr({
+    try{
+       // if(chart.get('nwsObserved').data.length>0){
+            point = chart.get('nwsObserved').data[chart.get('nwsObserved').data.length-1];
+       // }
+        text = chart.renderer.text(
+            'Current Level: '+point.y+' ft',
+            point.plotX + chart.plotLeft - 130,
+            point.plotY + chart.plotTop - 15
+            ).css({
+            fontSize: '12px',
+            fontWeight: 'bold'
+            }).attr({
             zIndex: 10,
             class: 'nwsRender'
-        }).css({
-            color: 'black',
-            width:  '550px',
-            fontSize: '12px'
         }).add();
-    box = text.getBBox();
-    chart.renderer.rect(box.x - 5, box.y - 1, box.width + 10, box.height + 1, 5)
-       .attr({
-           fill: 'white',
-           stroke: 'rgba(255,255,0,1)',
-           zIndex: 9,
-           class: 'nwsRender'
-       }).add();
+        text = chart.renderer.text(
+            'Latest Observed Value: '+point.y+' ft at '+Highcharts.dateFormat('%l %P %b %e',point.x),
+            chart.plotLeft+10,
+            chart.plotTop+15
+            ).attr({
+                zIndex: 10,
+                class: 'nwsRender'
+            }).css({
+                color: 'black',
+                width:  '550px',
+                fontSize: '12px'
+            }).add();
+        box = text.getBBox();
+        chart.renderer.rect(box.x - 5, box.y - 1, box.width + 10, box.height + 1, 5)
+           .attr({
+               fill: 'white',
+               stroke: 'rgba(255,255,0,1)',
+               zIndex: 9,
+               class: 'nwsRender'
+           }).add();
+
+    }
+    catch(e){
+    }
 }
 
 
