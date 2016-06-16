@@ -1470,7 +1470,9 @@ $('#loadQ').click(function(){
 
 
 function loadPage(site){
-
+    var year = new Date().getFullYear();
+    $('#dischargeStart').val(year+'-01-01');
+    $('#dischargeEnd').val(year+'-12-31');
     initializeNWS();
     var nwsLid;
     var usgsID;
