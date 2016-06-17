@@ -47,7 +47,8 @@
         </td>
         <td>
             <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
-            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Add 2016 Flood Frequency Lines</br>
+            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Add 2016 Flood Frequency Lines
+            <input type="checkbox" id="addFFlines2003" style="padding-left:20px">Add 2003 Flood Frequency Lines</br>
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
@@ -236,13 +237,15 @@ function addAHPS(chartDiv,type = 'discharge'){
     var dischargeArray = [];
     try{
         if(typeof AHPSjson[nwsLid].observed.datum != 'undefined'){
-
             $.each(AHPSjson[nwsLid].observed.datum, function(){
                 var mult = 1;
                 var d = new Date(this.valid.value).getTime();
                 stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
-                if(this.secondary._units == 'kcfs') mult = 1000;
-                dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                if(typeof this.secondary != 'undefined'){
+                    if(this.secondary._units == 'kcfs') mult = 1000;
+                    dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                }
+
             });
 
             newSeries.push({
@@ -271,7 +274,9 @@ function addAHPS(chartDiv,type = 'discharge'){
             }
         }
     }
-    catch(e){}
+    catch(e){
+        console.log('No observed AHPS data: '+e);
+    }
 
     $.each(newSeries, function(){
         if(this.param == type){
@@ -304,8 +309,16 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
     });
 }
 
-function addPeakFlow(chartDiv){
-
+function addPeakFlow(chartDiv,year='2016'){
+    console.log(year);
+    if(year == '2016'){
+        halign = 'left';
+        style = 'solid';
+    }
+    else{
+        halign = 'right';
+        style = 'longdashdot';
+    }
     var chart = $('#'+chartDiv).highcharts();
     usgsID = chart.options.usgsID;
     $.ajax({
@@ -315,48 +328,50 @@ function addPeakFlow(chartDiv){
         success: function(json){
             if(typeof json[usgsID] != 'undefined'){
                 console.log(json[usgsID]);
-                year = '2016';
-                //console.log(json[usgsID][2016]['10yr']['wtd']);
                 if(typeof json[usgsID][2016] != undefined){
 
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][2016]['2yr']['wtd'],
+                        value: json[usgsID][year]['2yr']['wtd'],
                         color: 'yellow',
-                        width:3,
-                        id: 'ffline',
+                        width:2,
+                        id: 'ffline'+year,
+                        dashStyle: style,
                         label:{
-                            align: 'left',
-                            text: '2 Year'
+                            align: halign,
+                            text: '2 Year ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][2016]['10yr']['wtd'],
+                        value: json[usgsID][year]['10yr']['wtd'],
                         color: 'orange',
-                        width:3,
-                        id: 'ffline',
+                        width:2,
+                        id: 'ffline'+year,
+                        dashStyle: style,
                         label:{
-                            align: 'left',
-                            text: '10 Year'
+                            align: halign,
+                            text: '10 Year ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][2016]['25yr']['wtd'],
+                        value: json[usgsID][year]['25yr']['wtd'],
                         color: 'red',
-                        width:3,
-                        id: 'ffline',
+                        width:2,
+                        id: 'ffline'+year,
+                        dashStyle: style,
                         label:{
-                            align: 'left',
-                            text: '25 Year'
+                            align: halign,
+                            text: '25 Year ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][2016]['100yr']['wtd'],
+                        value: json[usgsID][year]['100yr']['wtd'],
                         color: 'blue',
-                        width:4,
-                        id: 'ffline',
+                        width:2,
+                        id: 'ffline'+year,
+                        dashStyle: style,
                         label:{
-                            align: 'left',
-                            text: '100 Year'
+                            align: halign,
+                            text: '100 Year ('+year+')'
                         }
                     });
                 }
@@ -757,6 +772,7 @@ function getRDBSiteInfo(RDB,values){
     return data
   }
 
+
 function GetObjectKeyIndex(obj, keyToFind) {
     var i = 0, key;
     for (key in obj) {
@@ -768,6 +784,20 @@ function GetObjectKeyIndex(obj, keyToFind) {
     return null;
 }
 
+
+function ratingLookup(rating,value){
+
+    //console.log(typeof value);
+    $.each(rating,function(key,val){
+        console.log(key+'  -  '+val.x);
+       if(value > val.x) {
+            return val.y;
+            console.log(val.y);
+        }
+
+    });
+    return false;
+}
 
 function ratingJSON2HC(json){
     var indepIndex = GetObjectKeyIndex(json.columns,"INDEP");
@@ -786,6 +816,7 @@ function ratingJSON2HC(json){
 
     series['name'] = 'USGS Rating Curve';
     series['zIndex'] = 9;
+    series['id'] = 'curve',
     series['tooltip']= {
                 headerFormat: 'USGS Rating Curve<br>',
                 pointFormat: 'Gage Height: {point.y} ft Discharge: {point.x} cfs  </b>'
@@ -1438,7 +1469,17 @@ $('#addFFlines').change(function() {
     }
     else
     {
-      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline');
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline2016');
+  }
+});
+
+$('#addFFlines2003').change(function() {
+  if($(this).is(':checked')){
+        addPeakFlow('dischargegraph','2003');
+    }
+    else
+    {
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline2003');
   }
 });
 
@@ -1512,8 +1553,17 @@ function loadPage(site){
     }
 
 
+    //Setup Stage and Discharge Graphs with AHPS data
+    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,usgsID,nwsLid);
+    addAHPS('stagegraph','stage');
+    addNWSBands('stagegraph',AHPSjson);
+    addNWSRender('stagegraph');
 
+    //Setup Discharge Graph
+    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
+    addAHPS('dischargegraph','discharge');
 
+    if(usgsID == '') return;
     plotHeatQ(usgsID);
     plotRating(usgsID);
 
@@ -1531,19 +1581,11 @@ function loadPage(site){
         }
     })
 
-    //Setup Stage Graph
-    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,usgsID,nwsLid);
-    addAHPS('stagegraph','stage');
-    addUSGS('stagegraph','stage','iv');
-    addNWSBands('stagegraph',AHPSjson);
-    addNWSRender('stagegraph');
 
-    //Setup Discharge Graph
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
+    addUSGS('stagegraph','stage','iv');
     addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
-    addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlines').is(':checked')){
@@ -1686,6 +1728,13 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
                             ratingchart.xAxis[0].addPlotLine({
                                 value: this.y,
+                                color: 'red',
+                                width: 1,
+                                id: 'vert_loc'
+                            });
+                            console.log(ratingLookup(ratingchart.get('curve').data,this.y));
+                            ratingchart.yAxis[0].addPlotLine({
+                                value: ratingLookup(ratingchart.get('curve').data,this.y),
                                 color: 'red',
                                 width: 1,
                                 id: 'vert_loc'
