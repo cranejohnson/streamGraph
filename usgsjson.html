@@ -63,7 +63,9 @@
           <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto"></div>
         </td>
         <td>
-          <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale<br>
+          <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
+          <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
+
           <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
         </td>
     </tr>
@@ -85,16 +87,14 @@
 
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATE BY SITE  AHPSjson[nwslid];
-//var usgsSite = '';
-//var nwsLid = '';
-//var USGS;
-//var chart;
-//var crossWalkTable;
 var FIPSCODES;
 var NWS;
 var state;   //need to get rid of this one.
 
 
+String.prototype.capitalize = function() {
+    return this.charAt(0).toUpperCase() + this.slice(1);
+}
 
 function getParameterByName(name, url) {
         if (!url) url = window.location.href;
@@ -168,7 +168,7 @@ function getAhps(site,AHPS){
                 }
         })
     }else{
-        console.log('AHPS already loaded');
+        //console.log('AHPS already loaded');
         result = true;
     }
     return result;
@@ -310,7 +310,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
 }
 
 function addPeakFlow(chartDiv,year='2016'){
-    console.log(year);
     if(year == '2016'){
         halign = 'left';
         style = 'solid';
@@ -327,7 +326,7 @@ function addPeakFlow(chartDiv,year='2016'){
         data: '',
         success: function(json){
             if(typeof json[usgsID] != 'undefined'){
-                console.log(json[usgsID]);
+                //console.log(json[usgsID]);
                 if(typeof json[usgsID][2016] != undefined){
 
                     chart.yAxis[0].addPlotLine({
@@ -675,7 +674,6 @@ function addStats(chartDiv){
 
         }
 
-        console.log(statsSeries[0]);
 
         $.each(statsSeries,function(){
             this.marker = { enabled:false};
@@ -785,18 +783,32 @@ function GetObjectKeyIndex(obj, keyToFind) {
 }
 
 
-function ratingLookup(rating,value){
+function ratingLookup(rating,xvalue){
+    var lowx;
+    var highx;
+    var lowy;
+    var highy;
+    var yvalue
 
-    //console.log(typeof value);
+
     $.each(rating,function(key,val){
-        console.log(key+'  -  '+val.x);
-       if(value > val.x) {
-            return val.y;
-            console.log(val.y);
+       if(xvalue == val.x){
+            yvalue = val.y;
+            return false;
+       }
+       if(xvalue < val.x) {
+            highx = val.x;
+            highy = val.y;
+            lowx = rating[key-1].x;
+            lowy =  rating[key-1].y;
+            yvalue = ((highx-xvalue)/(xvalue-lowx))*(highy-lowy)+lowy
+            //alert(yvalue);
+            return false;
+
         }
 
     });
-    return false;
+    return yvalue;
 }
 
 function ratingJSON2HC(json){
@@ -971,7 +983,6 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
         allSeries[index].data.push(ratingInfo);
 
     }
-    //console.log(allSeries);
     return allSeries;
 }
 
@@ -1046,11 +1057,13 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  * Add the NWS flood level bands to the chart
  *
  */
-function addNWSBands(graphId,AHPSjson){
+function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = true){
     var chart = $('#'+graphId).highcharts();
+
     var nwsLid = chart.options.nwsLid;
     extremes = chart.yAxis[0].getExtremes();
      if(getAhps(nwsLid,AHPSjson) == false) return;
+
 
 
     legW = 550;
@@ -1070,38 +1083,38 @@ function addNWSBands(graphId,AHPSjson){
     stage ={
         low : {
             text: 'Low Flow Stage',
-               value: 9999,
-               def:''
+            value: extremes.max,
+            def:''
         },
         bankfull : {
             text: 'Bankfull Stage',
-               value: 9999
-            },
+            value: extremes.max
+        },
         action : {
             text: 'Action Stage',
-               value: 9999,
-               def:'A stream, lake or reservoir has rised to a level where you should prepare for possible significant flooding'
-            },
+            value: extremes.max,
+            def:'A stream, lake or reservoir has rised to a level where you should prepare for possible significant flooding'
+        },
         flood : {
             text: 'Flood Stage',
-               value: 9999,
-               def:'Minimal or no property damage, but possible some public threat'
-            },
+            value: extremes.max,
+            def:'Minimal or no property damage, but possible some public threat'
+        },
         moderate : {
             text: 'Moderate Flood Stage',
-               value: 9999,
-               def: 'Some inundation of structures and roads near streams. Some evacuations of people and/or transfer of property to higher elevations are necessary'
-             },
+            value: extremes.max,
+            def: 'Some inundation of structures and roads near streams. Some evacuations of people and/or transfer of property to higher elevations are necessary'
+        },
         major : {
             text: 'Major Flood Stage',
-               value: 9999,
-               def:'Extensive inundation of structures and roads. Significant evacuations of people and/or transfer of property to higher elevations'
-             },
+            value: extremes.max+10,
+            def:'Extensive inundation of structures and roads. Significant evacuations of people and/or transfer of property to higher elevations'
+        },
         record: {
             text: 'Record Stage',
-               value: 9999,
-               def:'Highest stage at a given site during the period of record'
-             }
+            value: extremes.max,
+            def:'Highest stage at a given site during the period of record'
+        }
     };
 
 
@@ -1110,14 +1123,26 @@ function addNWSBands(graphId,AHPSjson){
             if(AHPSjson[nwsLid].sigstages[key].value > maxY){
                 maxY = parseInt(AHPSjson[nwsLid].sigstages[key].value);
             }
+            if(type == 'band'){
+                chart.yAxis[0].addPlotBand({
+                    from: AHPSjson[nwsLid].sigstages[key].value,
+                    to: upperEnd,
+                    color: value,
+                    id : 'plotBand',
+                    zIndex:0
+                })
+            }
+            else{
+                chart.yAxis[0].addPlotLine({
+                    value: AHPSjson[nwsLid].sigstages[key].value,
+                    color: value,
+                    id : 'plotLine',
+                    zIndex:7,
+                    width:2,
 
-            chart.yAxis[0].addPlotBand({
-                from: AHPSjson[nwsLid].sigstages[key].value,
-                to: upperEnd,
-                color: value,
-                id : 'plotBand',
-                zIndex:0
-            })
+                })
+            }
+
             chart.yAxis[0].addPlotLine({
                 color: 'black',
                 width: 1,
@@ -1125,13 +1150,16 @@ function addNWSBands(graphId,AHPSjson){
                 id: 'plotLine',
                 value: AHPSjson[nwsLid].sigstages[key].value,
                 label: {
-                    text: key+': '+AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,
+                    text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,
                     textAlign: 'left',
                     fontWeight: 'bold',
                     y:-2
                 }
             })
+
             upperEnd = AHPSjson[nwsLid].sigstages[key].value
+
+            if(addTable == false) return;
             text = chart.renderer.text(stage[key].text,legendx,legendy)
                 .attr({
                     zIndex:6,
@@ -1196,26 +1224,25 @@ function addNWSBands(graphId,AHPSjson){
             }
         })
     }
-
-    chart.yAxis[0].update({
-        tickPositioner: function () {
-            var positions = [];
-            tick = Math.floor(extremes.dataMin)-2;
-            if(maxY > -9999){
-                max = maxY+2;
-            }else{
-                max = extremes.dataMax+2;
+    if(setTicks == true){
+        chart.yAxis[0].update({
+            tickPositioner: function () {
+                var positions = [];
+                tick = Math.floor(extremes.dataMin)-2;
+                if(maxY > -9999){
+                    max = maxY+2;
+                }else{
+                    max = extremes.dataMax+2;
+                }
+                increment = 1;
+                if((max-tick)>20) increment = 2;
+                for (tick; tick - increment <= max; tick += increment) {
+                    positions.push(tick);
+                }
+                return positions
             }
-            increment = 1;
-            if((max-tick)>20) increment = 2;
-            for (tick; tick - increment <= max; tick += increment) {
-                positions.push(tick);
-            }
-
-            return positions
-        }
-    });
-
+        });
+    }
 }
 
 
@@ -1334,7 +1361,7 @@ $('#showFloodStages').change(function() {
     nwsLid = chart.NWSid;
 
     if($(this).is(':checked')){
-        addNWSBands('stagegraph',AHPSjson);
+        addNWSBands('stagegraph',AHPSjson,true,'band',true);
     }else{
         $(".nwsLegend").remove();
         $("#removeLegend").attr('value', 'Add Flood Stages');
@@ -1358,18 +1385,28 @@ $('#showFloodStages').change(function() {
     addNWSRender('stagegraph');
 });
 
+$('#showFloodStagesRating').change(function() {
+    var chart = $('#ratinggraph').highcharts();
+        nwsLid = chart.NWSid;
 
+        if($(this).is(':checked')){
+            addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+        }else{
+            chart.yAxis[0].removePlotLine('plotLine');
+        }
+});
 
-function plotRating(usgsSite){
+function plotRating(usgsSite,ahps){
 
     $.ajax({
         url: "rdbajax.php?site="+usgsSite+"&type=rating",
         dataType: 'json',
         data: '',
+        async: false,
         success: function(json){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
-                graphRating('ratinggraph',NWS);
+                graphRating('ratinggraph',NWS,usgsSite,ahps);
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }
 
@@ -1556,8 +1593,10 @@ function loadPage(site){
     //Setup Stage and Discharge Graphs with AHPS data
     graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,usgsID,nwsLid);
     addAHPS('stagegraph','stage');
-    addNWSBands('stagegraph',AHPSjson);
-    addNWSRender('stagegraph');
+    if($('#showFloodStages').is(':checked')){
+        addNWSBands('stagegraph',AHPSjson,true,'band',true);
+        addNWSRender('stagegraph');
+    }
 
     //Setup Discharge Graph
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
@@ -1565,7 +1604,8 @@ function loadPage(site){
 
     if(usgsID == '') return;
     plotHeatQ(usgsID);
-    plotRating(usgsID);
+
+    plotRating(usgsID,nwsLid);
 
 
     //Load USGS Site Information
@@ -1582,6 +1622,7 @@ function loadPage(site){
     })
 
 
+
     addUSGS('stagegraph','stage','iv');
     addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
@@ -1590,6 +1631,12 @@ function loadPage(site){
     addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlines').is(':checked')){
         addPeakFlow('dischargegraph');
+    }
+    var chart = $('#ratinggraph').highcharts();
+    console.log(chart);
+    var nwsLid = chart.options.nwsLid;
+    if($('#showFloodStagesRating').is(':checked')){
+        addNWSBands('ratinggraph',AHPSjson,false,'line',false);
     }
 }
 
@@ -1680,7 +1727,6 @@ function graphStage(container,minDate,maxDate,usgs,nws){
             valueSuffix: ' ft',
             shared: true,
             zIndex: 11,
-            backgroundColor : 'rgba(255, 255, 255, 1)',
             //headerFormat: '<span style="font-size: 14px">'+moment({point.key})format('MMM D, YYYY HH:mm')+'</span><br/>',
             headerFormat: '<span style="font-size: 12px;font-weight: bold;">{point.key:%Y-%m-%d %H:%M}</span><br/>',
             positioner: function () {
@@ -1726,22 +1772,23 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                     events: {
                         mouseOver: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
+                            ratingchart.yAxis[0].removePlotLine('horz_loc');
                             ratingchart.xAxis[0].addPlotLine({
                                 value: this.y,
                                 color: 'red',
                                 width: 1,
                                 id: 'vert_loc'
                             });
-                            console.log(ratingLookup(ratingchart.get('curve').data,this.y));
                             ratingchart.yAxis[0].addPlotLine({
                                 value: ratingLookup(ratingchart.get('curve').data,this.y),
                                 color: 'red',
                                 width: 1,
-                                id: 'vert_loc'
+                                id: 'horz_loc'
                             });
                         },
                         mouseOut: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
+                            ratingchart.yAxis[0].removePlotLine('horz_loc');
                         }
 
                     }
@@ -1902,19 +1949,23 @@ function graphAnnual(NWS){
 
 
 
-function graphRating(container,NWS){
+function graphRating(container,NWS,usgs,nws){
     ////////////////////////////////////Rating Graph////////////////////////////////
+
     ratingchartobj= {
       credits: {
           enabled: false
         },
+
         chart: {
           renderTo: container,
           zoomType: 'xy',
           marginTop: 50,
           marginBottom:100,
           marginLeft:80,
-          custom:'regular'
+          custom:'regular',
+          usgsID: usgs,
+          nwsLid:nws,
       },
         title: {
         text: null,
@@ -1957,6 +2008,7 @@ function graphRating(container,NWS){
         }],
         tooltip: {
             headerFormat: 'Rating Curve<br>',
+            zIndex:10,
             positioner: function () {
                     return { x: 20, y: 20 };
                 }
@@ -2056,15 +2108,23 @@ function graphHeatQ(NWS){
                     events: {
                         mouseOver: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
+                            ratingchart.yAxis[0].removePlotLine('horz_loc');
                             ratingchart.xAxis[0].addPlotLine({
                                 value: this.value,
                                 color: 'red',
                                 width: 1,
                                 id: 'vert_loc'
                             });
+                            ratingchart.yAxis[0].addPlotLine({
+                                value: ratingLookup(ratingchart.get('curve').data,this.value),
+                                color: 'red',
+                                width: 1,
+                                id: 'horz_loc'
+                            });
                         },
                         mouseOut: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
+                            ratingchart.yAxis[0].removePlotLine('horz_loc');
                         }
 
                     }
@@ -2142,7 +2202,11 @@ $(function () {
 	    },
 	    lang: {
             thousandsSep: ','
+         },
+         tooltip: {
+            backgroundColor : 'rgba(255, 255, 255, 1)',
          }
+
     });
 
     $('#dischargeStart').val(Highcharts.dateFormat('%Y-%m-%d',new Date().getTime()-3600000*24*30));
