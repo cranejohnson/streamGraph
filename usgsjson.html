@@ -47,8 +47,8 @@
         </td>
         <td>
             <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
-            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Add 2016 Flood Frequency Lines
-            <input type="checkbox" id="addFFlines2003" style="padding-left:20px">Add 2003 Flood Frequency Lines</br>
+            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
+            <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
@@ -122,7 +122,13 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv){
     var end = Highcharts.dateFormat('%Y-%m-%d',extX.max);
 
     usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    var durLabel = 'Instantaneous';
+    var lineColor = 'royalblue';
+    var lineIndex = 2;
     if(dv_iv == 'dv'){
+        durLabel = 'Daily';
+        lineColor = 'darkgreen';
+        lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
     $.ajax({
@@ -134,9 +140,9 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv){
             if(json.value.timeSeries.length>0){
                 newSeries ={
                     data: USGStoHC(json,"00060"),
-                    name:'USGS Observed Data',
-                    zIndex:2,
-                    color:'green',
+                    name:'USGS '+durLabel+' Data',
+                    zIndex:lineIndex,
+                    color: lineColor,
                     qual: 'Observed',
                     param: 'stage',
                     source: 'USGS',
@@ -251,7 +257,7 @@ function addAHPS(chartDiv,type = 'discharge'){
             newSeries.push({
                 data : stageArray.sort(),
                 name : 'NWS Observed',
-                color: 'blue',
+                color: 'green',
                 qual: 'Observed',
                 param: 'stage',
                 source: 'NWS',
@@ -264,7 +270,7 @@ function addAHPS(chartDiv,type = 'discharge'){
                 newSeries.push({
                     data : dischargeArray.sort(),
                     name : 'NWS Observed',
-                    color: 'blue',
+                    color: 'green',
                     qual: 'Observed',
                     param: 'discharge',
                     source: 'NWS',
@@ -327,50 +333,52 @@ function addPeakFlow(chartDiv,year='2016'){
         success: function(json){
             if(typeof json[usgsID] != 'undefined'){
                 //console.log(json[usgsID]);
-                if(typeof json[usgsID][2016] != undefined){
+                if(typeof json[usgsID][year] != undefined){
+                    var source = 'wtd';
+                    if(json[usgsID][year]['2yr'][source] == "") source = 'sta';
 
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['2yr']['wtd'],
+                        value: json[usgsID][year]['2yr'][source],
                         color: 'yellow',
                         width:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
                             align: halign,
-                            text: '2 Year ('+year+')'
+                            text: '2 Year '+source+' ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['10yr']['wtd'],
+                        value: json[usgsID][year]['10yr'][source],
                         color: 'orange',
                         width:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
                             align: halign,
-                            text: '10 Year ('+year+')'
+                            text: '10 Year '+source+' ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['25yr']['wtd'],
+                        value: json[usgsID][year]['25yr'][source],
                         color: 'red',
                         width:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
                             align: halign,
-                            text: '25 Year ('+year+')'
+                            text: '25 Year '+source+' ('+year+')'
                         }
                     });
                     chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['100yr']['wtd'],
+                        value: json[usgsID][year]['100yr'][source],
                         color: 'blue',
                         width:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
                             align: halign,
-                            text: '100 Year ('+year+')'
+                            text: '100 Year '+source+' ('+year+')'
                         }
                     });
                 }
@@ -391,6 +399,12 @@ function addAnnualPeaks(chartDiv,state='ak'){
         var peakSeries = [
             {
                 name: 'Annual Peaks',
+                tooltip: {
+                    headerFormat:'<b>Peak Annual Flow<br>{point.x:%b %e %Y}</b><br>',
+                    pointFormatter: function (){
+                        return '<b>' +numberWithCommas(this.y) + ' cfs</b>';
+                    },
+                },
                 states: {
                     hover: {
                         enabled: false

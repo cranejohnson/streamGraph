@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
+  <script src="http://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+  <script src="https://code.highcharts.com/highcharts-more.js"></script>
+  <script src="http://code.highcharts.com/modules/exporting.js"></script>
+  <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
+  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  <script src="moment.js"></script>
+  <script src="underscore.js"></script>
+
+  <title>NWS JS Graphing Example</title>
+</head>
+<body>
+<input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
+<div id="peakComparisonGraph" style="width: 800px; height: 500px; padding-left:20px"></div>
+</body>
+
+
+<script type="text/javascript">
+
+function numberWithCommas(x) {
+
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+
+function addPeakFlow(chartDiv){
+   // var chart = $('#'+chartDiv).highcharts();
+
+    var recInt = ["2yr","5yr","10yr","25yr","50yr","100yr","200yr","500yr"];
+    var allData = [{
+                        name: '1 to 1',
+                        data: [[1,1],[1750000,1750000]],
+                        visible : true,
+                        type: 'scatter',
+                        lineWidth: 1,
+                        zIndex: 0,
+                        showInLegend:false,
+
+                    }];
+    $.ajax({
+        url: "Flood_Stats.json",
+        dataType: 'json',
+        data: '',
+        async: false,
+        success: function(json){
+            $.each(recInt, function(index,value){
+
+                var seriesData = {
+                        name: value,
+                        data: [],
+                        visible : true,
+                        type: 'scatter',
+                        lineWidth: 0,
+                        zIndex: 0,
+                        showInLegend:true,
+                        tooltip:{
+                            pointFormatter: function (){
+                                return '<b>'+this.usgsID+'</b><br>'+
+                                '<b>2003: '+numberWithCommas(this['2003'])+'</b><br>'+
+                                '<b>2016: '+numberWithCommas(this['2016'])+'</b>';
+                            },
+                        }
+                    };
+
+                $.each(json,function(key,val){
+
+                    var point;
+                    if((typeof val['2016'] != 'undefined') && (typeof val['2003'] != 'undefined')){
+                        var point={};
+                        point.x = val['2003'][value]['sta'];
+                        point.y = val['2016'][value]['sta'];
+                        point['2003'] = val['2003'][value]['sta'];
+                        point['2016'] = val['2016'][value]['sta'];
+                        point.usgsID = key;
+                        //console.log(point);
+                        if((point.x > 0) && (point.y > 0)){
+                            seriesData.data.push(point);
+                        }
+                    }
+                });
+                allData.push(seriesData);
+            });
+        }
+    });
+    console.log(allData);
+    return allData;
+}
+
+//addPeakFlow('test');
+
+$('#dischargeAxis').change(function() {
+  if($(this).is(':checked')){
+    $('#peakComparisonGraph').highcharts().yAxis[0].update({ type: 'logarithmic'});
+    $('#peakComparisonGraph').highcharts().xAxis[0].update({ type: 'logarithmic'});
+    }
+    else
+    {
+      $('#peakComparisonGraph').highcharts().yAxis[0].update({ type: 'linear'});
+      $('#peakComparisonGraph').highcharts().xAxis[0].update({ type: 'linear'});
+  }
+});
+
+
+$(function () {
+    $('#peakComparisonGraph').highcharts({
+        chart: {
+            zoomType: 'xy',
+        },
+        title: {
+            text: 'Comparison of Peak Flows',
+        },
+        xAxis: {
+            title: {
+                text: '2003 Discharge (cfs)'
+            },
+        },
+        yAxis: {
+            title: {
+                text: '2016 Discharge (cfs)'
+            },
+        },
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0
+        },
+        series: addPeakFlow()
+    });
+});
+
+
+</script>
+
