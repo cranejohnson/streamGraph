@@ -54,7 +54,8 @@
            Start Date:<input type="text" id="dischargeStart" length=10>
            End Date:<input type="text" id="dischargeEnd" length=10>
            <input type="button" id="loadQ" value="Load Custom Range"> or <input type="button" id="loadAnnual" value="Current Year"></br>
-           <!--<input type="button" id="togglePeakLabels" value="Toggle Peak Labels">-->
+           Comparison Site:<input type="text" id="comparisonSite" length=20>
+            <input type="button" id="loadComparison" value="Load Comparison Site"></br>
           <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
     </td>
   </tr>
@@ -107,9 +108,17 @@ function getParameterByName(name, url) {
 }
 
 
-function addUSGS(chartDiv,type = 'discharge',dv_iv){
+function addUSGS(chartDiv,type = 'discharge',dv_iv,USGSsiteID = null){
     var chartAdd = $('#'+chartDiv).highcharts();
-    USGSsiteID = chartAdd.options.usgsID;
+    var style = 'dashed';
+    var siteLabel = USGSsiteID;
+
+    if(USGSsiteID == null){
+        USGSsiteID = chartAdd.options.usgsID;
+        style = 'solid';
+        siteLabel = '';
+    }
+
     var extX = chartAdd.xAxis[0].getExtremes();
     var cD = '00060';
     var unit = 'cfs';
@@ -131,6 +140,7 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv){
         lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
+    if(style == 'dashed')lineColor = 'orange';
     $.ajax({
         url: usgsUrl,
         dataType: 'json',
@@ -140,9 +150,10 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv){
             if(json.value.timeSeries.length>0){
                 newSeries ={
                     data: USGStoHC(json,"00060"),
-                    name:'USGS '+durLabel+' Data',
+                    name:'USGS '+durLabel+' '+siteLabel,
                     zIndex:lineIndex,
                     color: lineColor,
+                    dashStyle:style,
                     qual: 'Observed',
                     param: 'stage',
                     source: 'USGS',
@@ -645,8 +656,6 @@ function addStats(chartDiv){
         }
 
         });
-
-        console.log(annualSeries.length);
 
         var extX = chartAdd.xAxis[0].getExtremes();
 
@@ -1541,33 +1550,20 @@ $('#loadAnnual').click(function(){
     var year = new Date().getFullYear();
     $('#dischargeStart').val(year+'-01-01');
     $('#dischargeEnd').val(year+'-12-31');
-    var chart = $('#stagegraph').highcharts();
-    var nwsLid = chart.options.nwsLid;
-    var usgsID = chart.options.usgsID;
-    chart.destroy;
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
-    addStats('dischargegraph');
-    if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
-    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
-    addAHPS('dischargegraph','discharge');
-    addAnnualPeaks('dischargegraph',state);
-    addMeasureQ_Rating('dischargegraph',null,"series");
-    if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph');
-    }
 
+    $( "#loadQ" ).trigger( "click" );
 
 });
 
 
 $('#loadQ').click(function(){
 
-    var chart = $('#stagegraph').highcharts();
+    var chart = $('#dischargegraph').highcharts();
     var nwsLid = chart.options.nwsLid;
     var usgsID = chart.options.usgsID;
     chart.destroy;
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
-    addStats('dischargegraph');
+    //addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
@@ -1579,19 +1575,7 @@ $('#loadQ').click(function(){
 
 });
 
-
-
-
-
-
-
-function loadPage(site){
-
-
-    var year = new Date().getFullYear();
-    $('#dischargeStart').val(year+'-01-01');
-    $('#dischargeEnd').val(year+'-12-31');
-    initializeNWS();
+function getBothIds(site){
     var nwsLid = '';
     var usgsID;
     if(site.length<=5){
@@ -1607,10 +1591,36 @@ function loadPage(site){
             }
          });
     }
+    return {
+        nws:nwsLid,
+        usgs:usgsID
+        }
+}
 
+
+$('#loadComparison').click(function(){
+
+    var id = getBothIds($('#comparisonSite').val());
+
+
+    if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',id.usgs);
+    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',id.nws);
+});
+
+
+
+
+function loadPage(site){
+
+
+    var year = new Date().getFullYear();
+    $('#dischargeStart').val(year+'-01-01');
+    $('#dischargeEnd').val(year+'-12-31');
+    initializeNWS();
+    var siteId = getBothIds(site);
     //Load USGS Site Information
     $.ajax({
-        url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+usgsID+"&siteOutput=expanded",
+        url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
         dataType: 'text',
         data: '',
         async: false,
@@ -1623,13 +1633,12 @@ function loadPage(site){
 	                text:siteInfo.station_nm
 	            }
             });
-            console.log(siteInfo.station_nm);
         }
     });
 
 
     //Setup Stage and Discharge Graphs with AHPS data
-    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,usgsID,nwsLid);
+    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
     addAHPS('stagegraph','stage');
     if($('#showFloodStages').is(':checked')){
         addNWSBands('stagegraph',AHPSjson,true,'band',true);
@@ -1637,17 +1646,12 @@ function loadPage(site){
     }
 
     //Setup Discharge Graph
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
+    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
     addAHPS('dischargegraph','discharge');
 
-    if(usgsID == '') return;
-    plotHeatQ(usgsID);
-
-    plotRating(usgsID,nwsLid);
-
-
-
-
+    if(siteId.usgs == '') return;
+    plotHeatQ(siteId.usgs);
+    plotRating(siteId.usgs,siteId.nws);
 
     addUSGS('stagegraph','stage','iv');
     addStats('dischargegraph');
@@ -1659,7 +1663,6 @@ function loadPage(site){
         addPeakFlow('dischargegraph');
     }
     var chart = $('#ratinggraph').highcharts();
-    console.log(chart);
     if(chart != undefined){
         var nwsLid = chart.options.nwsLid;
         if($('#showFloodStagesRating').is(':checked')){
@@ -1897,7 +1900,7 @@ function graphAnnual(NWS){
             events: {
                 load: function (event) {
 
-                    addStats(this,usgsSite);
+                    //addStats(this,usgsSite);
 
                     },
                 redraw:function(event){
