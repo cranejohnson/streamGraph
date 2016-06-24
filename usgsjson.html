@@ -1563,7 +1563,7 @@ $('#loadQ').click(function(){
     var usgsID = chart.options.usgsID;
     chart.destroy;
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
-    //addStats('dischargegraph');
+    addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
