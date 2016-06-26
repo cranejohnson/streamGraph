@@ -49,6 +49,7 @@
             <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
             <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
             <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
+            <input type="checkbox" id="includeStats" style="padding-left:20px" checked>Include Stats</br>
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
            Start Date:<input type="text" id="dischargeStart" length=10>
@@ -1643,7 +1644,7 @@ $('#loadQ').click(function(){
     var usgsID = chart.options.usgsID;
     chart.destroy;
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
-    addStats('dischargegraph');
+    if(document.getElementById('includeStats').checked) addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
@@ -1684,7 +1685,7 @@ $('#loadComparison').click(function(){
 
 
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',id.usgs);
-    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',id.nws);
+    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',id.usgs);
 });
 
 
@@ -1735,7 +1736,8 @@ function loadPage(site){
     plotRating(siteId.usgs,siteId.nws);
 
     addUSGS('stagegraph','stage','iv');
-    addStats('dischargegraph');
+
+    if(document.getElementById('includeStats').checked) addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAnnualPeaks('dischargegraph',state);
@@ -1877,12 +1879,11 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
             marginBottom:100,
             marginLeft:80,
             events: {
+
 					click: function() {
 						if(first_line){
                             if(this.get('baseFlow')) this.get('baseFlow').remove();
-							this.xAxis[0].removePlotLine('vert_1');
-							this.xAxis[0].removePlotLine('vert_2');
-							this.xAxis[0].addPlotLine({
+                            this.xAxis[0].addPlotLine({
 								value: event.xAxis[0].value.toFixed(0),
 								color: 'red',
 								width: 1,
@@ -1895,25 +1896,18 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 						}
 						else{
 							first_line = true;
-							this.xAxis[0].addPlotLine({
-								value: event.xAxis[0].value.toFixed(0),
-								color: 'red',
-								width: 1,
-								id: 'vert_2',
-								zIndex:5
-							});
+							this.xAxis[0].removePlotLine('vert_1');
 							xMax = event.xAxis[0].value.toFixed(0);
 							series = this.get('USGSiv');
 							var totalVolume = volumeUnderCurve(series,xMin,xMax);
 							baseVolume = addBaseFlowSeries(this,series,xMin,xMax);
-							alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume);
-							this.xAxis[0].addPlotLine({
-								value: event.xAxis[0].value.toFixed(0),
-								color: 'red',
-								width: 1,
-								id: 'vert_2',
-								zIndex:5
-							});
+							series = this.get('baseFlow');
+							var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
+							var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
+                            var diff = (series.data[1].y-series.data[0].y);
+
+							alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume+'\nSlope: '+Math.round(slope)+' cfs change per day\nDuration: '+len.toFixed(1)+' days\nDelta: '+Math.round(diff)+' cfs');
+
 						}
 					}
 				}
@@ -1927,45 +1921,29 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                         click: function() {
                             chart= this.series.chart;
                             if(first_line){
-
                                 if(chart.get('baseFlow')) chart.get('baseFlow').remove();
-
-                                chart.xAxis[0].removePlotLine('vert_1');
-                                chart.xAxis[0].removePlotLine('vert_2');
-                                chart.xAxis[0].addPlotLine({
-                                    value: this.x,
-                                    color: 'red',
-                                    width: 1,
-                                    id: 'vert_1',
-                                    zIndex:5
-                                });
                                 xMin = this.x;
                                 first_line = false;
-
+                                chart.xAxis[0].addPlotLine({
+								    value: this.x,
+								    color: 'red',
+								    width: 1,
+								    id: 'vert_1',
+								    zIndex:5
+							    });
                             }
                             else{
                                 first_line = true;
-                                chart.xAxis[0].addPlotLine({
-                                    value: this.x,
-                                    color: 'red',
-                                    width: 1,
-                                    id: 'vert_2',
-                                    zIndex:5
-                                });
+                                chart.xAxis[0].removePlotLine('vert_1');
                                 xMax = this.x;
                                 series = this.series;
                                 baseVolume = addBaseFlowSeries(chart,series,xMin,xMax)/(Area*640)*12;
                                 var totalVolume = volumeUnderCurve(series,xMin,xMax)/(Area*640)*12;
-
-    							alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume);
-                                chart.xAxis[0].addPlotLine({
-                                    value: this.x,
-                                    color: 'red',
-                                    width: 1,
-                                    id: 'vert_2',
-                                    zIndex:5
-                                });
-
+    							series = chart.get('baseFlow');
+	    						var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
+		    					var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
+                                var diff = (series.data[1].y-series.data[0].y);
+                                alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume+'\nSlope: '+Math.round(slope)+' cfs change per day\nDuration: '+len.toFixed(1)+' days\nDelta: '+Math.round(diff)+' cfs');
                             }
                         },
                         mouseOver: function() {
