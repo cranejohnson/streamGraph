@@ -40,11 +40,7 @@
 
 
 <table>
-  <tr>
-        <td>
-          <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
-          <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
-        </td>
+    <tr>
         <td>
             <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
             <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
@@ -52,28 +48,32 @@
             <input type="checkbox" id="includeStats" style="padding-left:20px" checked>Include Stats</br>
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
-           Start Date:<input type="text" id="dischargeStart" length=10>
-           End Date:<input type="text" id="dischargeEnd" length=10>
-           <input type="button" id="loadQ" value="Load Custom Range"> or <input type="button" id="loadAnnual" value="Current Year"></br>
-           Comparison Site:<input type="text" id="comparisonSite" length=20>
+            Start Date:<input type="text" id="dischargeStart" length=10>
+            End Date:<input type="text" id="dischargeEnd" length=10>
+            <input type="button" id="loadQ" value="Load Custom Range"> or <input type="button" id="loadAnnual" value="Current Year"></br>
+            Comparison Site:<input type="text" id="comparisonSite" length=20>
             <input type="button" id="loadComparison" value="Load Comparison Site"></br>
-          <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
-    </td>
-  </tr>
-    <tr>
-        <td>
-          <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto"></div>
+            <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
         </td>
         <td>
-          <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
-          <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
-
-          <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
+            <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
+            <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
+            <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
+        </td>
+        
+    </tr>
+    <tr>
+        <td>
+            <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
+            <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
+        </td>
+        <td>
+            <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto"></div>
         </td>
     </tr>
     <tr>
         <td colspan = "2">
-          <div id="annualDischarge" style="width: 1000px; height: 750px; margin: 0 auto"></div>
+            <div id="annualDischarge" style="width: 1000px; height: 750px; margin: 0 auto"></div>
         </td>
     <tr>
 
@@ -122,6 +122,11 @@ function lineInterpolate( point1, point2,XorY,value){
 ///////////////////////////////////
 
 function volumeUnderCurve(flowData,xMin,xMax){
+    if(xMin>xMax){
+        var temp = xMin;
+        xMin = xMax;
+        xMax = temp;
+    }    
     var volume = 0;
     var volArray = [];
     for(i=0;i<flowData.data.length-1;i++){
@@ -168,6 +173,9 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
         name:'Base Flow',
         color: 'grey',
         id: 'baseFlow',
+        dataGrouping: {
+             	enabled: false   
+        }
     };
     chart.addSeries(newSeries);
     var volume = ((volArray[0].y+volArray[1].y)/2)*(volArray[1].x-volArray[0].x)/1000;
@@ -220,7 +228,7 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv,USGSsiteID = null){
         lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
-    if(style == 'dashed')lineColor = 'orange';
+    if(style == 'dashed')lineColor = '';
     $.ajax({
         url: usgsUrl,
         dataType: 'json',
@@ -1711,9 +1719,9 @@ function loadPage(site){
             $('#watershedArea').val(siteInfo.drain_area_va);
             Area = siteInfo.drain_area_va;
             Highcharts.setOptions({
-	            title: {
-	                text:siteInfo.station_nm
-	            }
+                title: {
+                    text:siteInfo.station_nm
+                }
             });
         }
     });
@@ -1879,38 +1887,71 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
             marginBottom:100,
             marginLeft:80,
             events: {
-
-					click: function() {
-						if(first_line){
+                    click: function() {
+                        chart = this;
+                        if(first_line){
                             if(this.get('baseFlow')) this.get('baseFlow').remove();
+                            $(".baseFlowLabel").remove();
                             this.xAxis[0].addPlotLine({
-								value: event.xAxis[0].value.toFixed(0),
-								color: 'red',
-								width: 1,
-								id: 'vert_1',
-								zIndex:5
-							});
-							xMin = event.xAxis[0].value.toFixed(0);
-							first_line = false;
+                                value: event.xAxis[0].value.toFixed(0),
+                                color: 'red',
+                                width: 1,
+                                id: 'vert_1',
+                                zIndex:5
+                            });
+                            xMin = event.xAxis[0].value.toFixed(0);
+                            first_line = false;
 
-						}
-						else{
-							first_line = true;
-							this.xAxis[0].removePlotLine('vert_1');
-							xMax = event.xAxis[0].value.toFixed(0);
-							series = this.get('USGSiv');
-							var totalVolume = volumeUnderCurve(series,xMin,xMax);
-							baseVolume = addBaseFlowSeries(this,series,xMin,xMax);
-							series = this.get('baseFlow');
-							var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
-							var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
+                        }
+                        else{
+                            first_line = true;
+                            //if(this.get('baseFlow')) this.get('baseFlow').remove();
+                            this.xAxis[0].removePlotLine('vert_1');
+                            xMax = event.xAxis[0].value.toFixed(0);
+                            series = this.get('USGSiv');
+                            var baseVolume = addBaseFlowSeries(this,series,xMin,xMax);
+                            var totalVolume = volumeUnderCurve(series,xMin,xMax);
+                            var baseVolumeIn = baseVolume/(Area*640)*12;
+                            var totalVolumeIn =totalVolume/(Area*640)*12;
+                            series = this.get('baseFlow');
+                            var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
+                            var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
                             var diff = (series.data[1].y-series.data[0].y);
-
-							alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume+'\nSlope: '+Math.round(slope)+' cfs change per day\nDuration: '+len.toFixed(1)+' days\nDelta: '+Math.round(diff)+' cfs');
-
-						}
-					}
-				}
+                            labelText = 'Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Duration: '+len.toFixed(1)+' days<br>Delta: '+Math.round(diff)+' cfs'
+                            textBox = this.renderer.label(labelText, 10, 80)
+                                .css({                                       
+                                    class: 'baseFlowLabel'
+                                })
+                                .attr({
+                                    fill: 'rgba(255, 255, 255,1)',
+                                    padding: 8,
+                                    r: 5,
+                                    zIndex: 100,
+                                    'stroke-width':2,
+                                    stroke: 'black'
+                                })
+                                .on('click', function () {
+                                    textBox.destroy();
+                                 })
+                                .add();
+                            removeBox = this.renderer.label('<center>Click to<br> Remove</center>', 10, 40)
+                                .attr({
+                                    fill: 'rgba(255, 255, 255,1)',
+                                    padding: 1,
+                                    zIndex: 100,
+                                    class: 'baseFlowLabel',
+                                    'stroke-width':2,
+                                    r:5,
+                                    stroke: 'black'
+                                 })
+                                 .on('click', function () {
+                                    textBox.destroy();
+                                    removeBox.destroy();
+                                    if(chart.get('baseFlow')) chart.get('baseFlow').remove();
+                                 })
+                                .add()                        }
+                    }
+                }
         },
         plotOptions:{
             series:{
@@ -1919,31 +1960,63 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                 point: {
                     events: {
                         click: function() {
-                            chart= this.series.chart;
+                            chart = this.series.chart;
                             if(first_line){
+                                $(".baseFlowLabel").remove();
                                 if(chart.get('baseFlow')) chart.get('baseFlow').remove();
                                 xMin = this.x;
                                 first_line = false;
                                 chart.xAxis[0].addPlotLine({
-								    value: this.x,
-								    color: 'red',
-								    width: 1,
-								    id: 'vert_1',
-								    zIndex:5
-							    });
+                                    value: this.x,
+                                    color: 'red',
+                                    width: 1,
+                                    id: 'vert_1',
+                                    zIndex:5
+                                });
                             }
                             else{
                                 first_line = true;
+                                if(chart.get('baseFlow')) chart.get('baseFlow').remove();
                                 chart.xAxis[0].removePlotLine('vert_1');
                                 xMax = this.x;
                                 series = this.series;
-                                baseVolume = addBaseFlowSeries(chart,series,xMin,xMax)/(Area*640)*12;
-                                var totalVolume = volumeUnderCurve(series,xMin,xMax)/(Area*640)*12;
-    							series = chart.get('baseFlow');
-	    						var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
-		    					var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
+                                var baseVolume = addBaseFlowSeries(chart,series,xMin,xMax);
+                                var totalVolume = volumeUnderCurve(series,xMin,xMax);
+                                var baseVolumeIn = baseVolume/(Area*640)*12;
+                                var totalVolumeIn =totalVolume/(Area*640)*12;
+                                series = chart.get('baseFlow');
+                                var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
+                                var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
                                 var diff = (series.data[1].y-series.data[0].y);
-                                alert('Total  Volume: '+totalVolume+'\n'+'Baseflow Volume: '+baseVolume+'\nSlope: '+Math.round(slope)+' cfs change per day\nDuration: '+len.toFixed(1)+' days\nDelta: '+Math.round(diff)+' cfs');
+                                
+                                labelText = '<br>Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Duration: '+len.toFixed(1)+' days<br>Delta: '+Math.round(diff)+' cfs'
+                                textBox = chart.renderer.label(labelText, 10, 80)
+                                    .attr({
+                                        fill: 'rgba(255, 255, 255,1)',
+                                        padding: 8,
+                                        r: 5,
+                                        zIndex: 100,
+                                        class: 'baseFlowLabel',
+                                        'stroke-width':2,
+                                        stroke: 'black'
+                                     })
+                                     .add();
+                                removeBox = chart.renderer.label('<center>Click to<br> Remove</center>', 10, 40)
+                                    .attr({
+                                        fill: 'rgba(255, 255, 255,1)',
+                                        padding: 1,
+                                        zIndex: 100,
+                                        class: 'baseFlowLabel',
+                                        'stroke-width':2,
+                                        r:5,
+                                        stroke: 'black'
+                                     })
+                                     .on('click', function () {
+                                        textBox.destroy();
+                                        removeBox.destroy();
+                                        if(chart.get('baseFlow')) chart.get('baseFlow').remove();
+                                     })
+                                    .add();
                             }
                         },
                         mouseOver: function() {
@@ -1952,20 +2025,24 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                             ratingchart.xAxis[0].addPlotLine({
                                 value: this.y,
                                 color: 'red',
-                                width: 1,
+                                width: 2,
                                 id: 'vert_loc',
+                                zIndex:100
 
                             });
                             ratingchart.yAxis[0].addPlotLine({
                                 value: ratingLookup(ratingchart.get('curve').data,this.y),
                                 color: 'red',
-                                width: 1,
+                                width: 2,
                                 id: 'horz_loc',
                                 label: {
                                     text: ratingLookup(ratingchart.get('curve').data,this.y),
                                     align: 'center',
-                                    fontWeight: 'bold',
-                                    y:-2
+                                    style: {
+                                        fontWeight: 'bold'
+                                    },
+                                    y:-2,
+                                    zIndex:100
                                 }
 
                             });
@@ -2375,13 +2452,13 @@ $(function () {
 
     Highcharts.setOptions({
         title: {
-		        text:'test'
-		},
-	    global: {
-		    useUTC: false,
+                text:'test'
+        },
+        global: {
+            useUTC: false,
 
-	    },
-	    lang: {
+        },
+        lang: {
             thousandsSep: ','
          },
          tooltip: {
