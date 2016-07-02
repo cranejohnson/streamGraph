@@ -997,16 +997,17 @@ function dateFromDay(year, day){
 }
 
 
-function _calculateAge(birthday) { // birthday is a date
-    var ageDifMs = Date.now() - birthday.getTime();
-    var ageDate = new Date(ageDifMs); // miliseconds from epoch
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-}
+// function _calculateAge(birthday) { // birthday is a date
+//     var ageDifMs = Date.now() - birthday.getTime();
+//     var ageDate = new Date(ageDifMs); // miliseconds from epoch
+//     return Math.abs(ageDate.getUTCFullYear() - 1970);
+// }
 
 function qMeasJSON2HC_Rating(json,type = 'curve'){
     var indepIndex = GetObjectKeyIndex(json.columns,"discharge_va");
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
     var dtIndex = GetObjectKeyIndex(json.columns,"measurement_dt");
+    var tzIndex = GetObjectKeyIndex(json.columns,"tz_cd");
     var xVal,yVal;
     var base = {
            data: [],
@@ -1070,6 +1071,8 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
         if((json.records[i][depIndex]=== null) || (Math.abs(json.records[i][indepIndex])=== 0)) continue;
 
         date = new Date(json.records[i][dtIndex]);
+        date = moment(json.records[i][dtIndex]);
+
 
         if(type == 'curve'){
             xVal = json.records[i][indepIndex];
@@ -1080,15 +1083,20 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
 
          }
 
-        ratingInfo = $.extend({'x' : xVal,
+        ratingInfo = $.extend({
+            'x' : xVal,
             'y': yVal,
-            'name': date.toDateString()},ratingInfo);
+            //'name': date.toDateString()
+            'name': date.format('MMMM Do YYYY, h:mm:ss a')
+            },
+            ratingInfo);
+
 
         if(date > mostRecentDate) {
             allSeries[0].data[0] = ratingInfo;
             mostRecentDate = date;
         }
-        age = _calculateAge(date);
+        age = moment().diff(date,'years',true);
         var index = 4;
         if(age < 10) index =3 ;
         if(age < 5) index = 2;
