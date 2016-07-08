@@ -194,6 +194,60 @@ function getParameterByName(name, url) {
 }
 
 
+function addAnnualData(chartDiv,dv_iv){
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var usgsID = chartAdd.options.usgsID;
+    var cD = '00060';
+    var start = '1900-01-01';
+    var end = '2020-01-01';
+
+    usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    var durLabel = 'Instantaneous';
+    var lineColor = 'royalblue';
+    var lineIndex = 2;
+    if(dv_iv == 'dv'){
+        durLabel = 'Daily';
+        lineColor = 'darkgreen';
+        seriesId = 'USGSdv';
+        lineIndex = 3;
+        usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    };
+
+    $.ajax({
+        url: usgsUrl,
+        dataType: 'json',
+        //async: false,
+        timeout: 20000, // sets timeout to 3 seconds
+        success: function(json){
+            if(json.value.timeSeries.length>0){
+                var allData = USGStoHC(json,"00060");
+                var workingYear = moment.unix(allData[0][0]).format("YYYY");
+                var yearData = [];
+                for(i=0;i<allData.length;i++){
+                    if(workingYear ==  moment.unix(allData[i][0]).format("YYYY")){
+                        yearData.push(allData[i]);
+                    }
+                    else{
+                        newSeries ={
+                            data: yearData,
+                            name:workingYear,
+                            param: 'stage',
+                            source: 'USGS',
+                            USGSid:usgsID,
+                        };
+                        chartAdd.addSeries(newSeries);
+                        yearData = [];
+                        yearData.push(allData[i]);
+                        workingYear = moment.unix(allData[i][0]).format("YYYY");
+                    }
+                }
+            }
+        },
+    })
+
+}
+
+
 function addUSGS(chartDiv,type = 'discharge',dv_iv,USGSsiteID = null){
     var chartAdd = $('#'+chartDiv).highcharts();
     var style = 'dashed';
@@ -593,6 +647,7 @@ function addAnnualPeaks(chartDiv,state='ak'){
 
 
 
+
 function addStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID = chartAdd.options.usgsID;
@@ -904,8 +959,6 @@ function ratingLookup(rating,xvalue){
     var lowy;
     var highy;
     var yvalue
-
-
     $.each(rating,function(key,val){
        if(xvalue == val.x){
             yvalue = val.y;
@@ -997,11 +1050,6 @@ function dateFromDay(year, day){
 }
 
 
-// function _calculateAge(birthday) { // birthday is a date
-//     var ageDifMs = Date.now() - birthday.getTime();
-//     var ageDate = new Date(ageDifMs); // miliseconds from epoch
-//     return Math.abs(ageDate.getUTCFullYear() - 1970);
-// }
 
 function qMeasJSON2HC_Rating(json,type = 'curve'){
     var indepIndex = GetObjectKeyIndex(json.columns,"discharge_va");
@@ -1185,7 +1233,7 @@ function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = t
 
     var nwsLid = chart.options.nwsLid;
     extremes = chart.yAxis[0].getExtremes();
-     if(getAhps(nwsLid,AHPSjson) == false) return;
+    if(getAhps(nwsLid,AHPSjson) == false) return;
 
 
 
@@ -1696,10 +1744,7 @@ function getBothIds(site){
 
 
 $('#loadComparison').click(function(){
-
     var id = getBothIds($('#comparisonSite').val());
-
-
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',id.usgs);
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',id.usgs);
 });
@@ -1768,7 +1813,11 @@ function loadPage(site){
             addNWSBands('ratinggraph',AHPSjson,false,'line',false);
         }
     }
+    graphAnnual('annualDischarge',siteId.usgs,siteId.nws);
+    //addAnnualData('annualDischarge','dv');
+
 }
+
 
 function graphStage(container,minDate,maxDate,usgs,nws){
     var title;
@@ -2052,7 +2101,8 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                                     text: ratingLookup(ratingchart.get('curve').data,this.y),
                                     align: 'center',
                                     style: {
-                                        fontWeight: 'bold'
+                                        fontWeight: 'bold',
+                                        backgroundColor: 'white'
                                     },
                                     y:-2,
                                     zIndex:100
@@ -2131,14 +2181,16 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
     new Highcharts.Chart(dischargechartobj);
   }
 
-function graphAnnual(NWS){
+function graphAnnual(container,usgs,nws){
     ////////////////////////////////////Discharge Graph////////////////////////////////
     dischargechartobj= {
+        usgsID: usgs,
+        nwsLid:nws,
         credits: {
             enabled: false
         },
         chart: {
-            renderTo: 'annualDischarge',
+            renderTo: container,
             zoomType: 'xy',
             marginTop: 50,
             marginBottom:100,
