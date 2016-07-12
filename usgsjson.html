@@ -69,6 +69,8 @@
             Drag Box:<input type="radio" name="stageDrag" value="zoom" checked>Zoom
             <input type="radio" name="stageDrag" value="missing" >Set Missing</br>
             <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
+            <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
+
             <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
         </td>
         <td>
@@ -83,10 +85,9 @@
 
 </table>
 <div id='stats'></div>
-      <p>
-            <input type="button"  id="heatQ" value="Create Daily Qmap" />
-      </p>
-
+<textarea id='shefText' rows="25" cols="100">
+Shef Data
+</textarea>
 <script type="text/javascript">
 
 //Global Vars
@@ -101,6 +102,30 @@ var state;   //need to get rid of this one.
 String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 }
+
+///////////////////////////////////
+//  shef Encode Data
+///////////////////////////////////
+
+function shefEncode(dataSet){
+    console.log(dataSet);
+    var nwsLid = dataSet.options.NWSid;
+    var data = dataSet.data;
+
+    var pedts = dataSet.options.pedts;
+
+    var shefData = '';
+    for(i=0;i<data.length-1;i++){
+
+        var date = moment.unix(data[i].x/1000).format("YYMMDD");
+        var time = moment.unix(data[i].x/1000).format("HHmm");
+        var dc = moment.utc().format('MMDDHH');
+        var shefMessage = '.AR ' + nwsLid.toUpperCase() +' '+date+' '+time+' / '+dc+' / '+pedts+' '+data[i].y.toFixed(2)+'\n';
+        shefData = shefData + shefMessage;
+    }
+    alert(shefData);
+}
+
 
 ///////////////////////////////////
 //  Linear Interpolation
@@ -388,6 +413,7 @@ function addAHPS(chartDiv,type = 'discharge'){
                 pedts: AHPSjson[nwsLid].forecast.datum[0].pedts,
                 source: 'NWS',
                 draggableY: true,
+                id:'nwsStageForecast',
                 NWSid: nwsLid,
                 zIndex:3,
             });
@@ -408,6 +434,7 @@ function addAHPS(chartDiv,type = 'discharge'){
         }
     }
     catch(e){}
+    console.log(newSeries);
 
     var stageArray = [];
     var dischargeArray = [];
@@ -435,7 +462,7 @@ function addAHPS(chartDiv,type = 'discharge'){
                 draggableY: true,
                 source: 'NWS',
                 NWSid: nwsLid,
-                id: 'nwsObserved',
+                id: 'nwsStageObserved',
                 zIndex:3,
             });
 
@@ -1726,6 +1753,11 @@ $('#zoomToStage').click(function(){
     dischargeChart.showResetZoom();
 });
 
+$('#shefEncodeForecast').click(function(){
+    var chart = $('#stagegraph').highcharts();
+    var forecastSeries = chart.get('nwsStageForecast');
+    shefEncode(forecastSeries);
+});
 
 $('#loadQ').click(function(){
 
