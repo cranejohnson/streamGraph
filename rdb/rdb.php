@@ -818,10 +818,10 @@ class rdb
 						$is_numeric = is_numeric($value2);
 
 
-// 						if ($is_numeric && substr($value2,0,1) == '0')
-// 						{
-// 							$is_numeric = false;
-// 						}
+ 						if ($is_numeric && substr($value2,0,1) == '0')
+ 						{
+ 							$is_numeric = false;
+ 						}
 					    if(strlen($value2)>7) $is_numeric = false;
 						$quote_char = ($is_numeric) ? NULL : '"';
 
