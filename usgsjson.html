@@ -13,6 +13,8 @@
 
   <script src="moment.js"></script>
   <script src="underscore.js"></script>
+  <script src="clipboard.js"></script>
+
 
   <title>NWS JS Graphing Example</title>
 </head>
@@ -70,11 +72,13 @@
             <input type="radio" name="stageDrag" value="missing" >Set Missing</br>
             <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
             <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
-
+            <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
             <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
+            <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
+            <div id='shefText'></div>
         </td>
-        <td>
-            <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto"></div>
+        <td style="vertical-align: top;">
+            <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto;"></div>
         </td>
     </tr>
     <tr>
@@ -85,9 +89,7 @@
 
 </table>
 <div id='stats'></div>
-<textarea id='shefText' rows="25" cols="100">
-Shef Data
-</textarea>
+
 <script type="text/javascript">
 
 //Global Vars
@@ -97,6 +99,7 @@ var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
 var FIPSCODES;
 var NWS;
 var state;   //need to get rid of this one.
+new Clipboard('.btn');
 
 
 String.prototype.capitalize = function() {
@@ -107,8 +110,8 @@ String.prototype.capitalize = function() {
 //  shef Encode Data
 ///////////////////////////////////
 
-function shefEncode(dataSet){
-    console.log(dataSet);
+function shefEncode(dataSet,onlyMissing = false){
+
     var nwsLid = dataSet.options.NWSid;
     var data = dataSet.data;
 
@@ -116,14 +119,23 @@ function shefEncode(dataSet){
 
     var shefData = '';
     for(i=0;i<data.length-1;i++){
+        var shefMessage = '';
 
-        var date = moment.unix(data[i].x/1000).format("YYMMDD");
-        var time = moment.unix(data[i].x/1000).format("HHmm");
-        var dc = moment.utc().format('MMDDHH');
-        var shefMessage = '.AR ' + nwsLid.toUpperCase() +' '+date+' '+time+' / '+dc+' / '+pedts+' '+data[i].y.toFixed(2)+'\n';
+        if(typeof data[i] == 'undefined') continue;
+
+        var date = moment.utc(data[i].x).format("YYMMDD");
+        var time = moment.utc(data[i].x).format("HHmm");
+        var dc = moment.utc().format('YYMMDDHHmm');
+
+        if(onlyMissing && (data[i].y == null)){
+            shefMessage = '.AR ' + nwsLid.toUpperCase() +' '+date+' Z DH'+time+'/DC'+dc+'/'+pedts+' -9999\n';
+        }
+        else if(!onlyMissing){
+            shefMessage = '.AR ' + nwsLid.toUpperCase() +' '+date+' Z DH'+time+'/DC'+dc+'/'+pedts+' '+data[i].y.toFixed(2)+'\n';
+        }
         shefData = shefData + shefMessage;
     }
-    alert(shefData);
+    return shefData;
 }
 
 
@@ -434,7 +446,7 @@ function addAHPS(chartDiv,type = 'discharge'){
         }
     }
     catch(e){}
-    console.log(newSeries);
+
 
     var stageArray = [];
     var dischargeArray = [];
@@ -1756,7 +1768,15 @@ $('#zoomToStage').click(function(){
 $('#shefEncodeForecast').click(function(){
     var chart = $('#stagegraph').highcharts();
     var forecastSeries = chart.get('nwsStageForecast');
-    shefEncode(forecastSeries);
+
+    $('#shefText').html(shefEncode(forecastSeries).replace(/(?:\r\n|\r|\n)/g, '<br />'));
+});
+
+$('#shefEncodeObserved').click(function(){
+    var chart = $('#stagegraph').highcharts();
+    var forecastSeries = chart.get('nwsStageObserved');
+    console.log(forecastSeries);
+    $('#shefText').html(shefEncode(forecastSeries,true).replace(/(?:\r\n|\r|\n)/g, '<br />'));
 });
 
 $('#loadQ').click(function(){
@@ -1975,6 +1995,32 @@ function graphStage(container,minDate,maxDate,usgs,nws){
             series:{
                 stickyTracking : false,
                 turboThreshold: 0,
+                point:{
+                    events:{
+                        drop:function(){
+                            var extremes = this.series.yAxis.getExtremes();
+                            var max = extremes.max;
+                            var min = extremes.min;
+                            if(extremes.dataMax > extremes.max-3) max = extremes.max + 6;
+                            if(extremes.dataMin < extremes.min+3) min = extremes.min - 6;
+                            console.log(min+','+max);
+                            var chart = this.series.chart;
+                            var positions = chart.yAxis[0].tickPositions;
+                            var interval = positions[1]-positions[0];
+                            if(extremes.dataMax > extremes.max-3){
+                                var last = positions[positions.length-1];
+                                positions.push(last+interval,last+interval*2,last+interval*3);
+                            }
+                            chart.yAxis[0].update({
+                                tickPositioner: positions
+                            });
+                            console.log(chart.yAxis[0]);
+                            chart.yAxis[0].setExtremes(0,24,true);
+
+                            console.log(extremes);
+                        }
+                    }
+                 }
             }
         },
         legend: {
@@ -2619,6 +2665,7 @@ function graphHeatQ(NWS){
                         point.y >= e.yAxis[0].min && point.y <= e.yAxis[0].max) {
                     //point.select(true, true);
                     if (point.series.visible === true) point.update([point.x,null]);
+
                 }
             });
         });
