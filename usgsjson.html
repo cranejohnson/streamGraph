@@ -1290,19 +1290,18 @@ function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = t
     var chart = $('#'+graphId).highcharts();
 
     var nwsLid = chart.options.nwsLid;
-    extremes = chart.yAxis[0].getExtremes();
+    var extremes = chart.yAxis[0].getExtremes();
+
     if(getAhps(nwsLid,AHPSjson) == false) return;
 
-
-
-    legW = 550;
-    col1Width = 170;
-    legendy = chart.yAxis[0].toPixels(extremes.min)+70;
-    legTextHeight = 10;
-    cellPadding = 1;
-    legendx = 110;
-    upperEnd = 9999;
-    maxY = -9999;
+    var legW = 550;
+    var col1Width = 170;
+    var legendy = chart.yAxis[0].toPixels(extremes.min)+70;
+    var legTextHeight = 10;
+    var cellPadding = 1;
+    var legendx = 110;
+    var upperEnd = 9999;
+    var maxY = extremes.dataMax;
     var colors = {
         major : 'rgba(204,51,255,0.7)',
         moderate : 'rgba(255,0,0,0.7)',
@@ -1595,6 +1594,7 @@ $('#showFloodStages').change(function() {
         chart.yAxis[0].removePlotBand('plotBand');
         chart.yAxis[0].removePlotLine('plotLine');
         extremes = chart.yAxis[0].getExtremes();
+
         chart.yAxis[0].update({
             tickPositioner: function () {
                 var positions = []
@@ -1775,7 +1775,7 @@ $('#shefEncodeForecast').click(function(){
 $('#shefEncodeObserved').click(function(){
     var chart = $('#stagegraph').highcharts();
     var forecastSeries = chart.get('nwsStageObserved');
-    console.log(forecastSeries);
+
     $('#shefText').html(shefEncode(forecastSeries,true).replace(/(?:\r\n|\r|\n)/g, '<br />'));
 });
 
@@ -1952,6 +1952,7 @@ function graphStage(container,minDate,maxDate,usgs,nws){
             }]
         },
         yAxis: [{
+            allowDecimals: false,
             title: {
                 text: 'River Stage (ft)',
                 style: {
@@ -1963,21 +1964,22 @@ function graphStage(container,minDate,maxDate,usgs,nws){
             labels:{
                 x: -5
             },
-            tickPositioner: function () {
-                var positions = []
-                tick = Math.floor(this.dataMin)-2
-                if(NWS.maxY>-9999){
-                    max = NWS.maxY
-                }else{
-                    max = this.dataMax+2
-                }
-                increment = 1
-                if((max-tick)>20) increment = 2
-                for (tick; tick - increment <= max; tick += increment) {
-                    positions.push(tick);
-                }
-                return positions
-            }
+           //  tickPositioner: function () {
+//                 var positions = []
+//                 tick = Math.floor(this.dataMin)-2
+//                 if(NWS.maxY>-9999){
+//                     max = NWS.maxY
+//                 }else{
+//                     max = this.dataMax+2
+//                 }
+//                 increment = 1
+//                 if((max-tick)>20) increment = 2
+//                 for (tick; tick - increment <= max; tick += increment) {
+//                     positions.push(tick);
+//                 }
+//                 console.log(positions);
+//                 return positions
+//             }
 
         }],
         tooltip: {
@@ -2001,9 +2003,9 @@ function graphStage(container,minDate,maxDate,usgs,nws){
                             var extremes = this.series.yAxis.getExtremes();
                             var max = extremes.max;
                             var min = extremes.min;
-                            if(extremes.dataMax > extremes.max-3) max = extremes.max + 6;
-                            if(extremes.dataMin < extremes.min+3) min = extremes.min - 6;
-                            console.log(min+','+max);
+                            if(extremes.dataMax > extremes.max-2) max = extremes.max + 4;
+                            if(extremes.dataMin < extremes.min+2) min = extremes.min - 4;
+
                             var chart = this.series.chart;
                             var positions = chart.yAxis[0].tickPositions;
                             var interval = positions[1]-positions[0];
@@ -2012,13 +2014,18 @@ function graphStage(container,minDate,maxDate,usgs,nws){
                                 positions.push(last+interval,last+interval*2,last+interval*3);
                             }
                             chart.yAxis[0].update({
-                                tickPositioner: positions
+                                tickPositioner: function () {
+                                    var positions = [];
+                                    var tick = Math.floor(min);
+                                    increment = 1;
+                                    if((max-tick)>20) increment = 2;
+                                    for (tick; tick - increment < max; tick += increment) {
+                                        positions.push(tick);
+                                    }
+                                    return positions
+                                }
                             });
-                            console.log(chart.yAxis[0]);
-                            chart.yAxis[0].setExtremes(0,24,true);
-
-                            console.log(extremes);
-                        }
+                       }
                     }
                  }
             }
