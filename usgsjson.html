@@ -1633,6 +1633,7 @@ function plotRating(usgsSite,ahps){
         success: function(json){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
+                console.log(NWS.ratingsSeries);
                 graphRating('ratinggraph',NWS,usgsSite,ahps);
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }
@@ -2463,8 +2464,8 @@ function graphRating(container,NWS,usgs,nws){
     ratingchart = new Highcharts.Chart(ratingchartobj);
     text = ratingchart.renderer.text(
                 '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>',
-                500,
-                350
+                550,
+                400
             ).attr({
                 zIndex: 5
             }).css({

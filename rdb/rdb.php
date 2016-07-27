@@ -814,13 +814,18 @@ class rdb
 						// Check record value to see if it is a USGS NWIS datatime stamp and convert if desired
 						$value2 = ($js_timestamps) ? $this->is_nwis_datetime($value2, TRUE) : $value2;
 
+
+
 						// If the value to be output is a string, it's important to escape certain characters.
 						$is_numeric = is_numeric($value2);
 
 
  						if ($is_numeric && substr($value2,0,1) == '0')
  						{
- 							$is_numeric = false;
+ 						    if (strpos($value2, '.') == false) {
+     							$is_numeric = false;
+     						}
+
  						}
 					    if(strlen($value2)>7) $is_numeric = false;
 						$quote_char = ($is_numeric) ? NULL : '"';
