@@ -1291,12 +1291,11 @@ function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = t
 
     var nwsLid = chart.options.nwsLid;
     var extremes = chart.yAxis[0].getExtremes();
-
     if(getAhps(nwsLid,AHPSjson) == false) return;
 
     var legW = 550;
     var col1Width = 170;
-    var legendy = chart.yAxis[0].toPixels(extremes.min)+70;
+    var legendy = chart.chartHeight-chart.margin[2]+70;
     var legTextHeight = 10;
     var cellPadding = 1;
     var legendx = 110;
@@ -1420,7 +1419,6 @@ function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = t
                     width:  legW-col1Width,
                     fontSize: legTextHeight+'px'
                 }).add();
-
             chart.renderer.rect(legendx - 5,legendy-legTextHeight-cellPadding, legW+5, 2*legTextHeight+5*cellPadding, 0)
                 .attr({
                     fill: value,
@@ -1633,7 +1631,7 @@ function plotRating(usgsSite,ahps){
         success: function(json){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
-                console.log(NWS.ratingsSeries);
+                //console.log(NWS.ratingsSeries);
                 graphRating('ratinggraph',NWS,usgsSite,ahps);
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }

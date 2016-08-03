@@ -14,6 +14,8 @@ if($format == 'xml'){
 if($format == 'json'){
     $xml = simplexml_load_string($xml_string);
     $array= xmlToArray($xml);
+    header("Access-Control-Allow-Origin: *");
+    header('Content-Type: application/json');
     echo json_encode($array);
 }
 
