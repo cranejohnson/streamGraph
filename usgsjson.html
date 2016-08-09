@@ -1265,11 +1265,12 @@ function USGStoHC(usgsObj,TSvalue){
     }
 
     var numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
-    var olddate = 0;
+    var olddate = moment("1900-01-01");
+    
+   // console.log(olddate);
     for (var i = 0; i < numQ; i++) {
-        d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime+tzoffset);
-        if(isDaily) d.setHours(d.getHours()+11);
-        d = d.getTime();
+        d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime+tzoffset);
+        if(isDaily) d.hour(12);
         val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value;
         val = parseFloat(val);
 
@@ -1277,15 +1278,17 @@ function USGStoHC(usgsObj,TSvalue){
         if(val != null){
             if(val <= 0) val = null;
         }
-        if(parseInt(d) > olddate){
-            data.push([parseInt(d),val]);
-            olddate = parseInt(d);
+        
+        if(d > olddate){
+            data.push([parseInt(d.format("x")),val]);
+            olddate = d;
         }else{
-            console.log('backwards'+d);
+            console.log('backwards'+d.format());
+               
         }
 
     }
-
+    
     return data;
 }
 
