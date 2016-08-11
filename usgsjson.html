@@ -46,10 +46,15 @@
 <table>
     <tr>
         <td>
+            Graph Options:
             <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
             <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
             <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
-            <input type="checkbox" id="includeStats" style="padding-left:20px" checked>Include Stats</br>
+            Graph Functions:
+            <input type="radio" name="Qfunction" value = "zoom" checked>Zoom
+            <input type="radio" name="Qfunction" value = "base">Base Flow Calc
+            <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
+
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
             <input type="checkbox" id="getIv" checked> Instantaneous<br>
             Start Date:<input type="text" id="dischargeStart" length=10>
@@ -285,10 +290,21 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
                     name:workingYear+'-'+dv_iv,
                     param: 'stage',
                     source: 'USGS',
-                    //showCheckbox: true,
                     timeShift: true,
                     calcVol: true,
                     USGSid:usgsID,
+                    dateShift:0,
+                    tooltip: {
+                        headerFormat:'<b>{point.x:%Y-%m-%d}</b><br>',
+                        pointFormatter: function (){
+                            if(this.series.options.dateShift == 0){
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b>';
+                            }else{
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.series.options.dateShift+this.x).format("YYYY-MM-DD H:mm")+')' ;
+                            }
+                        },
+                    },
+
                 };
                 chartAdd.addSeries(newSeries);
                 }
@@ -353,6 +369,7 @@ function addUSGS(chartDiv,type = 'discharge',dv_iv,USGSsiteID = null){
                     source: 'USGS',
                     calcVol: true,
                     USGSid:USGSsiteID,
+
                 };
                 chartAdd.addSeries(newSeries);
             }
@@ -423,7 +440,6 @@ function addAHPS(chartDiv,type = 'discharge'){
                 name : 'NWS Forecast ( Issued: '+issued+' )',
                 color: 'purple',
                 qual: 'Forecast',
-                //stickyTracking: false,
                 param: 'stage',
                 pedts: AHPSjson[nwsLid].forecast.datum[0].pedts,
                 source: 'NWS',
@@ -475,8 +491,8 @@ function addAHPS(chartDiv,type = 'discharge'){
                 qual: 'Observed',
                 param: 'stage',
                 pedts: AHPSjson[nwsLid].observed.datum[0].pedts,
-                //stickyTracking: false,
                 draggableY: true,
+                dateShift:0,
                 source: 'NWS',
                 NWSid: nwsLid,
                 id: 'nwsStageObserved',
@@ -490,6 +506,7 @@ function addAHPS(chartDiv,type = 'discharge'){
                     color: 'green',
                     qual: 'Observed',
                     param: 'discharge',
+                    dateShift: 0,
                     calcVol: true,
                     id: 'nwsDischargeObserved',
                     source: 'NWS',
@@ -1266,7 +1283,7 @@ function USGStoHC(usgsObj,TSvalue){
 
     var numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     var olddate = moment("1900-01-01");
-    
+
    // console.log(olddate);
     for (var i = 0; i < numQ; i++) {
         d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime+tzoffset);
@@ -1278,17 +1295,17 @@ function USGStoHC(usgsObj,TSvalue){
         if(val != null){
             if(val <= 0) val = null;
         }
-        
+
         if(d > olddate){
             data.push([parseInt(d.format("x")),val]);
             olddate = d;
         }else{
             console.log('backwards'+d.format());
-               
+
         }
 
     }
-    
+
     return data;
 }
 
@@ -1825,7 +1842,7 @@ $('#loadQ').click(function(){
     var usgsID = chart.options.usgsID;
     chart.destroy;
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
-    if(document.getElementById('includeStats').checked) addStats('dischargegraph');
+    addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
@@ -1926,7 +1943,7 @@ function loadPage(site){
 
     addUSGS('stagegraph','stage','iv');
 
-    if(document.getElementById('includeStats').checked) addStats('dischargegraph');
+    addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAnnualPeaks('dischargegraph',state);
@@ -2296,94 +2313,6 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
     new Highcharts.Chart(dischargechartobj);
   }
-
-function graphAnnual(container,usgs,nws){
-    ////////////////////////////////////Discharge Graph////////////////////////////////
-    dischargechartobj= {
-        usgsID: usgs,
-        nwsLid:nws,
-        credits: {
-            enabled: false
-        },
-        chart: {
-            renderTo: container,
-            zoomType: 'xy',
-            marginTop: 50,
-            marginBottom:100,
-            marginLeft:80,
-            events: {
-                load: function (event) {
-
-                    //addStats(this,usgsSite);
-
-                    },
-                redraw:function(event){
-                    extremes = this.yAxis[0].getExtremes();
-
-                    if(extremes.min<0){
-
-                    }
-                       //(extremes.min<0) ? ymin = .01 : ymin =  extremes.min;
-                       //this.yAxis[0].setExtremes(ymin,extremes.max);
-                }
-            }
-        },
-        title: {
-            text: null,
-            x: -20 //center
-        },
-        xAxis: {
-            max : new Date('2000/12/31').getTime(),
-            min : new Date('2000/1/1').getTime(),
-            type: 'datetime',
-            //tickPixelInterval: 25,
-            gridLineColor: "#E8E8E8",
-            gridLineWidth: 1,
-            labels: {
-                step: 2,
-                staggerLines: 1,
-                formatter: function () {
-                    return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
-                }
-            },
-            plotLines: [{
-                color: 'black', // Color value
-                dashStyle: 'dot', // Style of the plot line. Default to solid
-                value: new Date().getTime(), // Value of where the line will appear
-                width: '2', // Width of the line
-                zIndex:2
-            }],
-        },
-        yAxis: [{
-            title: {
-                text: 'River Discharge (cfs)',
-                style: {
-                    color: 'Black',
-                    fontWeight: 'bold',
-                    fontSize: '14px'
-                }
-            },
-            labels:{
-                x: -5
-            },
-            type: 'linear',
-
-        }],
-        tooltip: {
-            valueSuffix: ' cfs',
-            //shared: true,
-            crosshairs: true,
-        },
-        legend: {
-          align: 'center',
-          verticalAlign: 'bottom',
-          borderWidth: 0,
-          x:10
-        },
-        series: null
-    }
-    new Highcharts.Chart(dischargechartobj);
-}
 
 
 
@@ -2781,12 +2710,14 @@ $(function () {
                 if(chart.series[z].options.timeShift != true) continue;
                 if(chart.series[z].visible != true) continue;
                 series = chart.series[z];
-                allData = series.data;
+                series.options.dateShift = series.options.dateShift+(hours*3600*1000)
+                var xData = series.xData;
+                var yData = series.yData;
                 var shiftData = [];
-                for(i=0;i<allData.length;i++){
-                    if(typeof allData[i] == 'undefined') continue;
-                    date = moment(allData[i].x).add(hours, 'hours');
-                    shiftData.push([date.valueOf(),allData[i].y]);
+                for(i=0;i<xData.length;i++){
+                    if(typeof xData[i] == 'undefined') continue;
+                    date = moment(xData[i]).add(hours, 'hours');
+                    shiftData.push([date.valueOf(),yData[i]]);
                 }
                 series.setData(shiftData);
             }
