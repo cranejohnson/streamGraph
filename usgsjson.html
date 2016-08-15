@@ -2214,6 +2214,8 @@ function graphStage(container,minDate,maxDate,usgs,nws){
 function graphDischarge(container,minDate,maxDate,usgs,nws){
     ////////////////////////////////////Discharge Graph////////////////////////////////
     var first_line = true;
+    var shift;
+    var shiftIndex;
     var xMin;
     var xMax;
 
@@ -2267,6 +2269,26 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                                 }
 
                             }
+                            else if($("input[name=Qfunction]:checked").val() == 'shift'){
+                                if(first_line){
+                                    shift = this.x;
+                                    first_line = false;
+                                    shiftIndex = this.series.index;
+
+                                }
+                                else{
+                                    first_line = true;
+                                    var shiftData = [];
+                                    shift = this.x - shift;
+                                    chart.series[shiftIndex].options.dateShift = chart.series[shiftIndex].options.dateShift+shift
+                                    for(i=0;i<chart.series[shiftIndex].xData.length;i++){
+                                        if(typeof chart.series[shiftIndex].xData[i] == 'undefined') continue;
+                                        date = chart.series[shiftIndex].xData[i]+shift;
+                                        shiftData.push([date,chart.series[shiftIndex].yData[i]]);
+                                    }
+                               chart.series[shiftIndex].setData(shiftData);
+                               }
+                           }
                         },
                         mouseOver: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
@@ -2763,11 +2785,13 @@ $(function () {
         var hours = 24;
         var shift = false;
         if(e.keyCode == 39 && e.shiftKey){
+            e.preventDefault();
             hours = 24
             if(e.ctrlKey) hours = 1
             shift = true;
         }
         if(e.keyCode == 37 && e.shiftKey){
+            e.preventDefault();
             hours = -24
             if(e.ctrlKey) hours = -1
             shift = true;
