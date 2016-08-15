@@ -168,13 +168,10 @@ function lineInterpolate( point1, point2,XorY,value){
 ///////////////////////////////////
 
 function volumeUnderCurve(flowData,xMin=0,xMax=0){
-    console.log(flowData);
     if((xMin==0)&&(xMax==0)){
         xMin = flowData.xData[0];
         xMax = flowData.xData[flowData.xData.length-1];
     }
-    console.log(xMin);
-    console.log(xMax);
     if(xMin>xMax){
         var temp = xMin;
         xMin = xMax;
@@ -182,16 +179,16 @@ function volumeUnderCurve(flowData,xMin=0,xMax=0){
     }
     var volume = 0;
     var volArray = [];
-    for(i=0;i<flowData.data.length-1;i++){
+    for(i=0;i<flowData.data.length;i++){
         if(typeof flowData.data[i] == 'undefined') continue;
         if((flowData.data[i].x <= xMin) && (flowData.data[i+1].x > xMin)){
             point = lineInterpolate(flowData.data[i],flowData.data[i+1],'y',xMin);
             volArray.push(point);
         }
-        if((flowData.data[i].x > xMin) && (flowData.data[i].x < xMax)){
+        if((flowData.data[i].x > xMin) && (flowData.data[i].x <= xMax)){
             volArray.push(flowData.data[i]);
         }
-        if((flowData.data[i].x <= xMax) && (flowData.data[i+1].x > xMax)){
+        if((flowData.data[i].x < xMax) && (flowData.data[i+1].x > xMax)){
             point = lineInterpolate(flowData.data[i],flowData.data[i+1],'y',xMax);
             volArray.push(point);
         }
@@ -201,6 +198,55 @@ function volumeUnderCurve(flowData,xMin=0,xMax=0){
         }
     acreFeet = volume/43560;
     return acreFeet;
+}
+
+
+function handleBaseFlow(chart,series,xMin=0,xMax=0){
+    if(chart.get('baseFlow')){
+        $(".baseFlowLabel").remove();
+    }
+    var baseFlow = chart.get('baseFlow');
+    if((xMin+xMax) == 0){
+        xMin = baseFlow.data[0].x;
+        xMax = baseFlow.data[baseFlow.data.length-1].x;
+    }
+    var totalVolume = volumeUnderCurve(series,xMin,xMax);
+    var baseVolume = volumeUnderCurve(chart.get('baseFlow'));
+    var baseVolumeIn = baseVolume/(Area*640)*12;
+    var totalVolumeIn =totalVolume/(Area*640)*12;
+    series = chart.get('baseFlow');
+    var slope = (baseFlow.data[1].y-baseFlow.data[0].y)/((baseFlow.data[1].x-baseFlow.data[0].x)/1000)*3600*24;
+    var len = ((xMax-xMin)/1000)/(3600*24);
+    var diff = (baseFlow.data[baseFlow.data.length-1].y-baseFlow.data[0].y);
+
+    labelText = '<br>Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Duration: '+len.toFixed(1)+' days<br>Delta: '+Math.round(diff)+' cfs'
+    textBox = chart.renderer.label(labelText, 10, 80)
+    .attr({
+            fill: 'rgba(255, 255, 255,1)',
+            padding: 8,
+            r: 5,
+            zIndex: 100,
+            class: 'baseFlowLabel',
+            'stroke-width':2,
+            stroke: 'black'
+         })
+         .add();
+    removeBox = chart.renderer.label('<center>Click to<br> Remove</center>', 10, 40)
+        .attr({
+            fill: 'rgba(255, 255, 255,1)',
+            padding: 1,
+            zIndex: 100,
+            class: 'baseFlowLabel',
+            'stroke-width':2,
+            r:5,
+            stroke: 'black'
+         })
+         .on('click', function () {
+            textBox.destroy();
+            removeBox.destroy();
+            if(chart.get('baseFlow')) chart.get('baseFlow').remove();
+         })
+        .add();
 }
 
 ///////////////////////////////////
@@ -232,22 +278,34 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
             if((flowData.data[i].x <= newX) && (flowData.data[i+1].x > newX)){
                 var tempPt = lineInterpolate(flowData.data[i],flowData.data[i+1],'y',newX);
                 if(tempPt.y<newY){
+                    tempPt.y = Math.floor(tempPt.y);
                     volArray.push(tempPt);
                 }else{
-                    volArray.push([newX,newY]);
+                    volArray.push([newX,Math.floor(newY)]);
                 }
             }
         }
     }
-    console.log(volArray);
     newSeries ={
         type: "area",
         data: volArray,
         name:'Base Flow',
         color: 'grey',
         id: 'baseFlow',
+        draggableY: true,
+        zIndex:4,
+        draggableX: true,
         dataGrouping: {
              	enabled: false
+        },
+        point: {
+            events: {
+                drop: function(){
+                    this.y = Math.floor(this.y);
+                    handleBaseFlow(chart,flowData);
+
+                }
+            }
         }
     };
     chart.addSeries(newSeries);
@@ -423,7 +481,6 @@ function getAhps(site,AHPS){
                 }
         })
     }else{
-        //console.log('AHPS already loaded');
         result = true;
     }
     return result;
@@ -714,6 +771,14 @@ function addAnnualPeaks(chartDiv,state='ak'){
                 calcVol: false,
                 lineWidth: 0,
                 padding:0,
+                point:{
+                    events:{
+                        click: function(){
+                            addAnnualData(chartDiv,'iv',this.year);
+                            addAnnualData(chartDiv,'dv',this.year);
+                        }
+                     }
+                 },
                 dataLabels: {
                     enabled: true,
                     format: '{point.year}',
@@ -776,6 +841,14 @@ function addStats(chartDiv){
                 calcVol: false,
                 zIndex: 0,
                 showInLegend:true,
+                point:{
+                    events:{
+                        click: function(){
+                            addAnnualData(chartDiv,'iv',this.year);
+                            addAnnualData(chartDiv,'dv',this.year);
+                        }
+                     }
+                 },
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
@@ -857,7 +930,8 @@ function addStats(chartDiv){
                 name: 'Max year',
                 data: [],
                 showInLegend:false,
-                visible : false
+                visible : false,
+
             }
         ];
         var annualSeries =[
@@ -900,7 +974,6 @@ function addStats(chartDiv){
             var year = '2016';
             var vdate = Date.UTC(year,month,day,20);    //Noon ak standard time
             if(month > 8) tdata[10] = tdata[10]-1;
-            //console.log(year+'-'+month+'-'+day);
             var minData = {x:vdate,y:tdata[13],year:tdata[12]};
             var maxData = {x:vdate,y:tdata[11],year:tdata[10]};
             annualSeries[0].data[vdate] = maxData;
@@ -1310,7 +1383,6 @@ function USGStoHC(usgsObj,TSvalue){
     var numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     var olddate = moment("1900-01-01");
 
-   // console.log(olddate);
     for (var i = 0; i < numQ; i++) {
         d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime+tzoffset);
         if(isDaily) d.hour(12);
@@ -1714,7 +1786,6 @@ function plotRating(usgsSite,ahps){
         success: function(json){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
-                //console.log(NWS.ratingsSeries);
                 graphRating('ratinggraph',NWS,usgsSite,ahps);
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }
@@ -2189,51 +2260,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                                         chart.xAxis[0].removePlotLine('vert_1');
                                         xMax = this.x;
                                         series = this.series;
-                                        var baseVolume = addBaseFlowSeries(chart,series,xMin,xMax);
-                                        var totalVolume = volumeUnderCurve(series,xMin,xMax);
-                                        var baseVolume = volumeUnderCurve(chart.get('baseFlow'));
-                                        var baseVolumeIn = baseVolume/(Area*640)*12;
-                                        var totalVolumeIn =totalVolume/(Area*640)*12;
-                                        series = chart.get('baseFlow');
-                                        var slope = (series.data[1].y-series.data[0].y)/((series.data[1].x-series.data[0].x)/1000)*3600*24;
-                                        var len = ((series.data[1].x-series.data[0].x)/1000)/(3600*24);
-                                        var diff = (series.data[1].y-series.data[0].y);
+                                        addBaseFlowSeries(chart,series,xMin,xMax);
+                                        handleBaseFlow(chart,series,xMin,xMax);
 
-                                        labelText = '<br>Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Duration: '+len.toFixed(1)+' days<br>Delta: '+Math.round(diff)+' cfs'
-                                        textBox = chart.renderer.label(labelText, 10, 80)
-                                            .attr({
-                                                fill: 'rgba(255, 255, 255,1)',
-                                                padding: 8,
-                                                r: 5,
-                                                zIndex: 100,
-                                                class: 'baseFlowLabel',
-                                                'stroke-width':2,
-                                                stroke: 'black'
-                                             })
-                                             .add();
-                                        removeBox = chart.renderer.label('<center>Click to<br> Remove</center>', 10, 40)
-                                            .attr({
-                                                fill: 'rgba(255, 255, 255,1)',
-                                                padding: 1,
-                                                zIndex: 100,
-                                                class: 'baseFlowLabel',
-                                                'stroke-width':2,
-                                                r:5,
-                                                stroke: 'black'
-                                             })
-                                             .on('click', function () {
-                                                textBox.destroy();
-                                                removeBox.destroy();
-                                                if(chart.get('baseFlow')) chart.get('baseFlow').remove();
-                                             })
-                                            .add();
                                     }
                                 }
 
-                                else{
-                                    addAnnualData(container,'iv',this.year);
-                                    addAnnualData(container,'dv',this.year);
-                                }
                             }
                         },
                         mouseOver: function() {
