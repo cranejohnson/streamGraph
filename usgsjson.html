@@ -51,7 +51,6 @@
             <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
             <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
             Graph Functions:
-            <input type="radio" name="Qfunction" value = "zoom" checked>Zoom
             <input type="radio" name="Qfunction" value = "base">Base Flow Calc
             <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
 
@@ -78,7 +77,7 @@
             <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
             <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
             <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
-            <div id="stagegraph" style="width: 700px; height: 550px; margin: 0 auto"></div>
+            <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
             <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
             <div id='shefText'></div>
         </td>
@@ -2349,15 +2348,15 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
             max:maxDate,
             min:minDate,
             type: 'datetime',
-            //tickPixelInterval: 25,
+            tickPixelInterval: 25,
             gridLineColor: "#E8E8E8",
             gridLineWidth: 1,
             labels: {
                 step: 2,
                 staggerLines: 1,
-                //formatter: function () {
-                //    return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
-                //}
+                formatter: function () {
+                    return Highcharts.dateFormat('%l %P<br>%b %e',this.value)
+                }
             },
             plotLines: [{
                 color: 'black', // Color value
