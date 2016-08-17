@@ -15,6 +15,13 @@
   <script src="underscore.js"></script>
   <script src="clipboard.js"></script>
 
+<style type="text/css">
+
+      .success {
+        color: #228B22;
+      }
+
+</style>
 
   <title>NWS JS Graphing Example</title>
 </head>
@@ -85,14 +92,9 @@
             <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto;"></div>
         </td>
     </tr>
-    <tr>
-        <td colspan = "2">
-            <div id="annualDischarge" style="width: 1000px; height: 750px; margin: 0 auto"></div>
-        </td>
-    <tr>
-
 </table>
-<div id='stats'></div>
+<hr>
+<div id='log'>Data Download Log:<br></div>
 
 <script type="text/javascript">
 
@@ -100,10 +102,73 @@
 
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
-var FIPSCODES;
 var NWS;
 var state;   //need to get rid of this one.
 new Clipboard('.btn');
+var CROSSWALKTABLE;
+var FIPSCODES = {"02":"AK","01":"AL","05":"AR","60":"AS","04":"AZ","06":"CA","08":"CO","09":"CT","11":"DC","10":"DE","12":"FL","13":"GA","66":"GU","15":"HI","19":"IA","16":"ID","17":"IL","18":"IN","20":"KS","21":"KY","22":"LA","25":"MA","24":"MD","23":"ME","26":"MI","27":"MN","29":"MO","28":"MS","30":"MT","37":"NC","38":"ND","31":"NE","33":"NH","34":"NJ","35":"NM","32":"NV","36":"NY","39":"OH","40":"OK","41":"OR","42":"PA","72":"PR","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","51":"VA","78":"VI","50":"VT","53":"WA","55":"WI","54":"WV","56":"WY"  };
+var AJAXLOOKUPTABLE = [{
+                match:"crossWalk.json",
+                name:"USGS-NWS CrossWalk Table"
+                },
+                {
+                match:"\/nwis\/site",
+                name: "USGS Site Information"
+                },
+                {
+                match:"rdbajax.php.+rating",
+                name: "USGS Rating Curve"
+                },
+                {
+                match:"get_ahps_data",
+                name: "NWS AHPS Data"
+                },
+                {
+                match:"rdbajax.php.+annualPeaks",
+                name: "USGS Annual Peaks"
+                },
+                {
+                match:"rdbajax.php.+qmeas",
+                name: "USGS Discharge Measurements"
+                },
+                {
+                match:"Flood_Stats",
+                name: "Alaska Flood Frequency Data"
+                },
+                {
+                match:"\/nwis\/stat",
+                name: "USGS Statistics"
+                },
+                {
+                match:"\/nwis\/iv.+00060",
+                name: "USGS Inst. Discharge Data"
+                },
+                {
+                match:'\/nwis\/dv.+00060',
+                name: "USGS Daily Discharge Data"
+                },
+                {
+                match:'\/nwis\/iv.+00065',
+                name: "USGS Inst. Stage Data"
+                },]
+
+$( document ).ajaxSuccess(function( event, xhr, settings ) {
+        for(i=0;i<AJAXLOOKUPTABLE.length;i++){
+            var regExp = new RegExp(AJAXLOOKUPTABLE[i].match);
+            if(regExp.test(settings.url)){
+                 $( "#log" ).append( '<span style="color:green">Success</span>: ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" );
+             }
+         }
+});
+
+$( document ).ajaxError(function( event, xhr, settings,thrownError ) {
+        for(i=0;i<AJAXLOOKUPTABLE.length;i++){
+            var regExp = new RegExp(AJAXLOOKUPTABLE[i].match);
+            if(regExp.test(settings.url)){
+                 $( "#log" ).append( '<span style="color:red">Error</span>: ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a> (<i>"+thrownError+"</i>)<br>" );
+             }
+         }
+});
 
 
 String.prototype.capitalize = function() {
@@ -350,6 +415,10 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
     $.ajax({
         url: usgsUrl,
         dataType: 'json',
+        username: "USGS Real Time",
+        xhrFields: {
+            custom: "custom Field"
+        },
         //async: false,
         timeout: 20000, // sets timeout to 3 seconds
         success: function(json){
@@ -467,7 +536,7 @@ function getAhps(site,AHPS){
     var result;
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
-            url: "get_ahps_data.php?format=json&site="+nwsLid,
+            url: "get_ahps_data.php?format=json&site="+site,
             dataType: 'json',
             data: data,
             async: false,
@@ -488,7 +557,7 @@ function getAhps(site,AHPS){
 
 function addAHPS(chartDiv,type = 'discharge'){
     var chartAdd = $('#'+chartDiv).highcharts();
-    nwsLid = chartAdd.options.nwsLid;
+    var nwsLid = chartAdd.options.nwsLid;
     var issued= '';
     var newSeries=[];
 
@@ -507,6 +576,7 @@ function addAHPS(chartDiv,type = 'discharge'){
 
     var stageArray = [];
     var dischargeArray = [];
+
     try{
         if(typeof AHPSjson[nwsLid].forecast.datum != 'undefined'){
             $.each(AHPSjson[nwsLid].forecast.datum, function(){
@@ -650,7 +720,6 @@ function addPeakFlow(chartDiv,year='2016'){
         data: '',
         success: function(json){
             if(typeof json[usgsID] != 'undefined'){
-                //console.log(json[usgsID]);
                 if(typeof json[usgsID][year] != undefined){
                     var source = 'wtd';
                     if(json[usgsID][year]['2yr'][source] == "") source = 'sta';
@@ -1442,7 +1511,6 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  */
 function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = true){
     var chart = $('#'+graphId).highcharts();
-
     var nwsLid = chart.options.nwsLid;
     var extremes = chart.yAxis[0].getExtremes();
     if(getAhps(nwsLid,AHPSjson) == false) return;
@@ -1955,11 +2023,11 @@ function getBothIds(site){
     var usgsID;
     if(site.length<=5){
         nwsLid = site.toLowerCase();
-        usgsID = crossWalkTable[nwsLid];
+        usgsID = CROSSWALKTABLE[nwsLid];
     }
     else{
         usgsID = site;
-         $.each(crossWalkTable,function(key,value){
+         $.each(CROSSWALKTABLE,function(key,value){
             if(value == usgsID){
                 nwsLid = key;
                 return false;
@@ -2002,25 +2070,30 @@ function loadPage(site){
     initializeNWS();
     var siteId = getBothIds(site);
     //Load USGS Site Information
-    $.ajax({
-        url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
-        dataType: 'text',
-        data: '',
-        async: false,
-        success: function(data){
-            var siteInfo = getRDBSiteInfo(data);
-            state = FIPSCODES[siteInfo.state_cd].toLowerCase();
-            $('#watershedArea').val(siteInfo.drain_area_va);
-            Area = siteInfo.drain_area_va;
-            Highcharts.setOptions({
-                title: {
-                    text:siteInfo.station_nm
-                }
-            });
-        }
-    });
-
-
+    try{
+        $.ajax({
+            url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
+            dataType: 'text',
+            data: '',
+            async: false,
+            success: function(data){
+                var siteInfo = getRDBSiteInfo(data);
+                state = FIPSCODES[siteInfo.state_cd].toLowerCase();
+                $('#watershedArea').val(siteInfo.drain_area_va);
+                Area = siteInfo.drain_area_va;
+                Highcharts.setOptions({
+                    title: {
+                        text:siteInfo.station_nm
+                    }
+                });
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+            alert(xhr.status);
+            alert(thrownError);
+          }
+        });
+    }
+    catch(e){}
     //Setup Stage and Discharge Graphs with AHPS data
     graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
     addAHPS('stagegraph','stage');
@@ -2061,6 +2134,7 @@ function loadPage(site){
 
 
 function graphStage(container,minDate,maxDate,usgs,nws){
+
     var title;
     if(NWS.usgsTitle.length>0){
         title = NWS.usgsTitle;
@@ -2410,11 +2484,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
 function graphRating(container,NWS,usgs,nws){
     ////////////////////////////////////Rating Graph////////////////////////////////
-
     ratingchartobj= {
       credits: {
           enabled: false
         },
+        usgsID: usgs,
+        nwsLid:nws,
 
         chart: {
           renderTo: container,
@@ -2423,8 +2498,6 @@ function graphRating(container,NWS,usgs,nws){
           marginBottom:100,
           marginLeft:80,
           custom:'regular',
-          usgsID: usgs,
-          nwsLid:nws,
       },
         xAxis: {
             type: 'logarithmic',
@@ -2725,6 +2798,7 @@ function graphHeatQ(NWS){
 $(function () {
 
 
+
     Highcharts.setOptions({
         title: {
                 text:'test'
@@ -2754,7 +2828,7 @@ $(function () {
           url: 'crossWalk.json',
           dataType: 'json',
           success: function(data) {
-            crossWalkTable = data;
+            CROSSWALKTABLE = data;
             },
           async: false,
           error : function(XMLHttpRequest, textStatus, errorThrown) {
@@ -2762,19 +2836,7 @@ $(function () {
 
             }
     });
-    $.ajax({
-        type: 'GET',
-          url: 'FIPS.json',
-          dataType: 'json',
-          success: function(data) {
-            FIPSCODES = data;
-            },
-          async: false,
-          error : function(XMLHttpRequest, textStatus, errorThrown) {
-                alert('error getting fips codes');
 
-            }
-    });
 
     if(site != null){
         loadPage(site);
@@ -2818,8 +2880,9 @@ $(function () {
     });
 
 
-});
 
+
+});
 </script>
 </body>
 </html>
