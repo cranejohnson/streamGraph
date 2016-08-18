@@ -1219,7 +1219,7 @@ function ratingLookup(rating,value,type = 'discharge'){
     if(type == 'discharge'){
         $.each(rating,function(key,val){
            if(value == val.x){
-                lookValue = val.y;
+                lookupValue = val.y;
                 return false;
            }
            if(value < val.x) {
@@ -1227,7 +1227,7 @@ function ratingLookup(rating,value,type = 'discharge'){
                 highy = val.y;
                 lowx = rating[key-1].x;
                 lowy =  rating[key-1].y;
-                lookValue = ((highx-value)/(value-lowx))*(highy-lowy)+lowy
+                lookupValue = ((highx-value)/(value-lowx))*(highy-lowy)+lowy
                 return false;
             }
         });
@@ -1235,7 +1235,7 @@ function ratingLookup(rating,value,type = 'discharge'){
     if(type == 'stage'){
         $.each(rating,function(key,val){
            if(value == val.y){
-                lookValue = val.x;
+                lookupValue = val.x;
                 return false;
            }
            if(value < val.y) {
@@ -1243,12 +1243,12 @@ function ratingLookup(rating,value,type = 'discharge'){
                 highy = val.y;
                 lowx = rating[key-1].x;
                 lowy =  rating[key-1].y;
-                lookValue = ((highy-value)/(value-lowy))*(highx-lowx)+lowx
+                lookupValue = ((highy-value)/(value-lowy))*(highx-lowx)+lowx
                 return false;
             }
         });
     }
-    return lookValue;
+    return lookupValue;
 }
 
 function ratingJSON2HC(json){
@@ -2576,11 +2576,12 @@ function graphRating(container,NWS,usgs,nws){
 
     //This was added to zoom to the current rating curve, helps when bad/old data skews the extents of graph
     var points=ratingchart.series[0].points;
-    var ymin=points[0].y;
-    var ymax=points[points.length-1].y+1;
-    ratingchart.yAxis[0].setExtremes(ymin,ymax);
-    ratingchart.showResetZoom();
-
+    if( points.length > 0){
+        var ymin=points[0].y;
+        var ymax=points[points.length-1].y+1;
+        ratingchart.yAxis[0].setExtremes(ymin,ymax);
+        ratingchart.showResetZoom();
+    }
 }
 
 
