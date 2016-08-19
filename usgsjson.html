@@ -30,7 +30,7 @@
   <table>
     <tr>
           <td>
-        <table width="100%" border="0">
+            <table width="100%" border="0">
               <tr>
                    <td><label for="site"><strong>NWS Id No. </strong></label><input type="text" id="site" value ="lirv2" size="8" maxlength="15" /></td>
 
@@ -39,7 +39,11 @@
                   <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
                 </tr>
             </table>
-      </td>
+        </td>
+        <td>
+            Data Load Log:
+            <div id="log" style="overflow-y: scroll; height:175px; font-size:x-small;"><br></div>
+        </td>
   </tr>
   </table>
   <form id="form1" method="post" action="">
@@ -96,7 +100,6 @@
     </tr>
 </table>
 <hr>
-<div id="log" style="overflow-y: scroll; height:300px;">Data Load Log:<br></div>
 
 
 <script type="text/javascript">
@@ -179,7 +182,7 @@ $( document ).ajaxSend(function( event, xhr, settings ) {
             var regExp = new RegExp(AJAXLOOKUPTABLE[i].match);
             if(regExp.test(settings.url)){
                  //$( "#log" ).append( '<span style="color:red" id="'+AJAXLOOKUPTABLE[i].name.replace(/\s+/g, '')+'_log">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" );
-                $( "#log" ).append( '<span style="color:red" id="'+settings.url.replace(/\W/g, '')+'">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" );
+                $( '<span style="color:red" id="'+settings.url.replace(/\W/g, '')+'">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" ).prependTo( "#log" );
 
              }
          }
@@ -438,12 +441,12 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
         xhrFields: {
             custom: "custom Field"
         },
-        //async: false,
         timeout: 20000, // sets timeout to 3 seconds
         success: function(json){
             if(json.value.timeSeries.length>0){
                 var allData = USGStoHC(json,"00060");
-                var workingYear = moment(allData[0][0]).format("YYYY");
+                var workingYear = moment(allData[Math.round(allData.length/2)][0]).format("YYYY");
+                console.log(workingYear);
                 var yearData = [];
                 var olddate = 0;
                 for(var i=0;i<allData.length;i++){
@@ -478,6 +481,7 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
 
                 };
                 chartAdd.addSeries(newSeries);
+                console.log(newSeries);
                 }
             }
 
@@ -876,13 +880,16 @@ function addAnnualPeaks(chartDiv,state='ak'){
                 },
                 showInLegend:true
             }];
+
+        var d = new Date()
+        var n = d.getTimezoneOffset()/60;
          $.each(data.records,function(){
             var newD = this[2].split('-');
-            var d= Date.UTC(newD[0],newD[1]-1,newD[2],20);
+            var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
 
             var point = [d,this[4]];
             peakSeries[0].data.push([d,this[4]]);
-            d= Date.UTC(year,newD[1]-1,newD[2],20);
+            d= Date.UTC(year,newD[1]-1,newD[2],12+n);
             point = {x:d,
                      y:this[4],
                      peakDate:this[2],
@@ -893,7 +900,6 @@ function addAnnualPeaks(chartDiv,state='ak'){
           });
 
         chart.addSeries(peakSeries[0]);
-        //peakSeries[1].data.sort(sortDate);
         chart.addSeries(peakSeries[1]);
 
     })
@@ -907,6 +913,9 @@ function addAnnualPeaks(chartDiv,state='ak'){
 function addStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID = chartAdd.options.usgsID;
+    var d = new Date()
+    var n = d.getTimezoneOffset()/60;
+
     $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
 
 
@@ -1053,7 +1062,7 @@ function addStats(chartDiv){
             var month = tdata[5]-1;
             var day = tdata[6];
             var year = '2016';
-            var vdate = Date.UTC(year,month,day,20);    //Noon ak standard time
+            var vdate = Date.UTC(year,month,day,12+n);    //Noon ak standard time
             if(month > 8) tdata[10] = tdata[10]-1;
             var minData = {x:vdate,y:tdata[13],year:tdata[12]};
             var maxData = {x:vdate,y:tdata[11],year:tdata[10]};
@@ -1083,7 +1092,7 @@ function addStats(chartDiv){
             var plotDate = sdate;
             plotDate.setHours(12);
             datetime = plotDate.getTime();
-            var annualdate =Date.UTC('2016',month,day,20);
+            var annualdate =Date.UTC('2016',month,day,12+n);
 
             var newDate = sdate.setDate(sdate.getDate() + 1);
             sdate = new Date(newDate);
@@ -1444,6 +1453,9 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
 
 
 function USGStoHC(usgsObj,TSvalue){
+    var d = new Date()
+    var n = d.getTimezoneOffset()/60;
+
     var len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
     var urlSource = usgsObj.value.queryInfo.queryURL;
@@ -1465,7 +1477,7 @@ function USGStoHC(usgsObj,TSvalue){
     var olddate = moment("1900-01-01");
 
     for (var i = 0; i < numQ; i++) {
-        d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime+tzoffset);
+        d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
         if(isDaily) d.hour(12);
         val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value;
         val = parseFloat(val);
@@ -2809,6 +2821,8 @@ function graphHeatQ(NWS){
 
 $(function () {
 
+    var d = new Date()
+    var n = d.getTimezoneOffset()/60;
 
 
     Highcharts.setOptions({
@@ -2816,7 +2830,8 @@ $(function () {
                 text:'test'
         },
         global: {
-            useUTC: false,
+            //useUTC: false,
+            timezoneOffset: n * 60
 
         },
         lang: {
