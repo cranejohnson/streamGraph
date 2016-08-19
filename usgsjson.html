@@ -1864,13 +1864,13 @@ function plotRating(usgsSite,ahps){
         data: '',
         async: false,
         success: function(json){
+            graphRating('ratinggraph',NWS,usgsSite,ahps);
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
                 graphRating('ratinggraph',NWS,usgsSite,ahps);
                 addMeasureQ_Rating('ratinggraph',usgsSite);
             }
-
-        }
+        },
     });
 }
 
@@ -2553,6 +2553,9 @@ function graphRating(container,NWS,usgs,nws){
             borderWidth: 0,
             x:10
         },
+//         series : [{data:[null,null],
+//                     visible:false,
+//                     showInLegend:false}]
         series: NWS.ratingsSeries
     }
     ratingchart = new Highcharts.Chart(ratingchartobj);
@@ -2581,12 +2584,14 @@ function graphRating(container,NWS,usgs,nws){
             .add();
 
     //This was added to zoom to the current rating curve, helps when bad/old data skews the extents of graph
-    var points=ratingchart.series[0].points;
-    if( points.length > 0){
-        var ymin=points[0].y;
-        var ymax=points[points.length-1].y+1;
-        ratingchart.yAxis[0].setExtremes(ymin,ymax);
-        ratingchart.showResetZoom();
+    if(typeof ratingchart.series[0] != 'undefined'){
+        var points=ratingchart.series[0].points;
+        if( points.length > 0){
+            var ymin=points[0].y;
+            var ymax=points[points.length-1].y+1;
+            ratingchart.yAxis[0].setExtremes(ymin,ymax);
+            ratingchart.showResetZoom();
+        }
     }
 }
 

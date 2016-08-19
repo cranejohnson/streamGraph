@@ -82,6 +82,7 @@ class rdb
 		$format_line_found = false; // Indicates whether the format line was found in the RDB file
 		$lines_read = 0;
 		$sites_read = 0;
+		$data_lines = 0;
 		$fields_read = -1;			// Set to -1 so we can skip over a blank comment before actual field data is loaded
 
 		ini_set('user_agent', $this->user_agent);	// This identified this class and tracks usage of this class on USGS web servers
@@ -260,10 +261,14 @@ class rdb
 				// After comments, the column line and the format line, all remaining lines should be record lines
 				// Each line is a record and fields are separated by tabs
 				$this->data[] = $line;
+				$data_lines++;
 			}
 
 			$lines_read++;
 		}
+        if(!isset($this->data[0][0])){
+            $this->data[0][0] = '';
+        }
 
 		// Note: If the first data line contains the HTML <head> tag then we know an error page is being returned, probably due to a mangled URL
 		if (!(($this->data[0][0] == '<head>') || ($lines_read == 0) || (!$column_line_found) || (!$format_line_found)))
