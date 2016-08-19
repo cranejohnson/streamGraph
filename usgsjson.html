@@ -2007,9 +2007,6 @@ $('#zoomToStage').click(function(){
     var extremes = stageChart.xAxis[0].getExtremes();
     var dischargeChart = $('#dischargegraph').highcharts();
     dischargeChart.xAxis[0].setExtremes(extremes.min, extremes.max);
-    extremes = dischargeChart.yAxis[0].getExtremes();
-    console.log(extremes);
-    dischargeChart.yAxis[0].setExtremes(extremes.dataMin-1, extremes.dataMax+1);
     dischargeChart.showResetZoom();
 });
 
