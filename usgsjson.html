@@ -41,7 +41,7 @@
             </table>
         </td>
         <td>
-            Data Load Log:
+            Download Log:
             <div id="log" style="overflow-y: scroll; height:175px; font-size:x-small;"><br></div>
         </td>
   </tr>
@@ -1721,6 +1721,7 @@ function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = t
 
 
 function addNWSRender(graphId){
+    $(".nwsRender").remove();
     var chart = $('#'+graphId).highcharts();
     nowP = chart.xAxis[0].toPixels(new Date().getTime())
     extX = chart.xAxis[0].getExtremes();
@@ -1728,60 +1729,57 @@ function addNWSRender(graphId){
     xmaxP = chart.xAxis[0].toPixels(extX.max);
     xminP = chart.xAxis[0].toPixels(extX.min);
     ymaxP = chart.yAxis[0].toPixels(extY.max);
-    chart.renderer.path(['M', xminP+10, ymaxP-10, 'L', nowP-10, ymaxP-10])
-        .attr({
-            'stroke-width': 3,
-            stroke: 'grey',
-            class: 'nwsRender',
-            zIndex: 3
-        }).add();
-    chart.renderer.path(['M',nowP+10,ymaxP-10,'L',xmaxP-10,ymaxP-10])
-        .attr({
-            'stroke-width': 3,
-            stroke: 'blue',
-            class: 'nwsRender',
-            zIndex: 3
-        }).add()
-    text = chart.renderer.text(
-        'Observed',
-        ((nowP+xminP)/2) -30,
-        ymaxP-5
-        ).attr({
-            zIndex: 5,
-            class: 'nwsRender'
-        }).css({
-            color: 'grey',
-            fontSize: '16px'
-        }).add(),
-    box = text.getBBox();
-    chart.renderer.rect(box.x - 5, box.y, box.width + 10,box.height-3)
-        .attr({
-            fill: 'white',
-            stroke: 'white',
-            class: 'nwsRender',
-            zIndex: 4
-        })
-    .add();
-    text = chart.renderer.text(
-        'Forecast',
-        ((nowP+xmaxP)/2) -30,
-            ymaxP-5
-        ).attr({
-            zIndex: 5,
-            class: 'nwsRender'
-        }).css({
-            color: 'blue',
-            fontSize: '16px'
-    }).add(),
-    box = text.getBBox();
-    chart.renderer.rect(box.x - 5, box.y, box.width + 10, box.height-3)
-        .attr({
-            fill: 'white',
-            stroke: 'white',
-            class: 'nwsRender',
-            zIndex: 4
-        })
-        .add();
+
+    if(nowP>xmaxP) nowP = xmaxP;
+    if(nowP<xminP) nowP = xminP;
+
+
+
+
+    if(nowP > xminP){
+         chart.renderer.path(['M', xminP+10, ymaxP-10, 'L', nowP-10, ymaxP-10])
+            .attr({
+                'stroke-width': 3,
+                stroke: 'grey',
+                class: 'nwsRender',
+                zIndex: 3
+            }).add();
+        textBox = chart.renderer.label('Observed', ((nowP+xminP)/2),ymaxP-23)
+            .attr({
+                fill: 'white',
+                padding: 1,
+                zIndex: 4,
+                class: 'nwsRender',
+                align: 'center'
+             }).css({
+                    color: 'grey',
+                    fontSize: '16px'
+                })
+             .add();
+    }
+
+    if(nowP < xmaxP){
+         chart.renderer.path(['M',nowP+10,ymaxP-10,'L',xmaxP-10,ymaxP-10])
+            .attr({
+                'stroke-width': 3,
+                stroke: 'blue',
+                class: 'nwsRender',
+                zIndex: 3
+            }).add()
+        textBox = chart.renderer.label('Forecast', ((nowP+xmaxP)/2),ymaxP-23)
+            .attr({
+                fill: 'white',
+                padding: 1,
+                zIndex: 4,
+                class: 'nwsRender',
+                align: 'center'
+             }).css({
+                    color: 'blue',
+                    fontSize: '16px'
+                })
+             .add();
+    }
+
     var point;
 
     try{
@@ -1854,7 +1852,7 @@ $('#showFloodStages').change(function() {
             }
         });
     }
-    addNWSRender('stagegraph');
+   // addNWSRender('stagegraph');
 });
 
 $('#showFloodStagesRating').change(function() {
@@ -2117,7 +2115,7 @@ function loadPage(site){
     addAHPS('stagegraph','stage');
     if($('#showFloodStages').is(':checked')){
         addNWSBands('stagegraph',AHPSjson,true,'band',true);
-        addNWSRender('stagegraph');
+ //       addNWSRender('stagegraph');
     }
 
     //Setup Discharge Graph
@@ -2174,6 +2172,10 @@ function graphStage(container,minDate,maxDate,usgs,nws){
             marginLeft:80,
             events: {
                 selection: selectPointsByDrag,
+                redraw: function(){
+                    addNWSRender(this.options.chart.renderTo);
+                }
+
             },
         },
 
