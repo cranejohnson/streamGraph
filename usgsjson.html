@@ -413,6 +413,10 @@ function getParameterByName(name, url) {
 function addAnnualData(chartDiv,dv_iv,year = 'all'){
     var chartAdd = $('#'+chartDiv).highcharts();
 
+    var ext = chartAdd.xAxis[0].getExtremes();
+    console.log(ext);
+    var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
+    console.log(graphYear);
     var usgsID = chartAdd.options.usgsID;
     var cD = '00060';
     var start = '1900-01-01';
@@ -450,7 +454,7 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
                 var yearData = [];
                 var olddate = 0;
                 for(var i=0;i<allData.length;i++){
-                    var years = 2016 - workingYear;
+                    var years = graphYear - workingYear;
                     var date = moment(allData[i][0]).add(years, 'years');
                     if(date.valueOf() > olddate){
                         yearData.push([date.valueOf(),allData[i][1]]);
@@ -481,7 +485,7 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
 
                 };
                 chartAdd.addSeries(newSeries);
-                console.log(newSeries);
+                //console.log(newSeries);
                 }
             }
 
