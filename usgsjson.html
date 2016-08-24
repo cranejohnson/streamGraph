@@ -563,7 +563,7 @@ function getAhps(site,AHPS){
     var result;
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
-            url: "get_ahps_data.php?format=json&site="+site,
+            url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=json&site="+site,
             dataType: 'json',
             data: data,
             async: false,
@@ -709,7 +709,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
     }
 
     $.ajax({
-        url: "rdbajax.php?site="+usgsID+"&type=qmeas&rand="+Math.floor((Math.random() * 100000) + 1),
+        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas&rand="+Math.floor((Math.random() * 100000) + 1),
         dataType: 'json',
         data: '',
         success: function(json){
@@ -801,7 +801,12 @@ function addPeakFlow(chartDiv,year='2016'){
 function addAnnualPeaks(chartDiv,state='ak'){
     var chart = $('#'+chartDiv).highcharts();
     var usgsID = chart.options.usgsID;
-    $.get("rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state, function( data ) {
+    $.ajax({
+        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state,
+        dataType: 'json',
+
+   // $.get("http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state, function( data ) {
+        success: function(data){
         var chart = $('#'+chartDiv).highcharts();
         var year = new Date().getFullYear();
         var peakSeries = [
@@ -884,7 +889,7 @@ function addAnnualPeaks(chartDiv,state='ak'){
                 },
                 showInLegend:true
             }];
-
+        //
         var d = new Date()
         var n = d.getTimezoneOffset()/60;
          $.each(data.records,function(){
@@ -906,6 +911,7 @@ function addAnnualPeaks(chartDiv,state='ak'){
         chart.addSeries(peakSeries[0]);
         chart.addSeries(peakSeries[1]);
 
+    }
     })
 }
 
@@ -1873,7 +1879,7 @@ $('#showFloodStagesRating').change(function() {
 function plotRating(usgsSite,ahps){
 
     $.ajax({
-        url: "rdbajax.php?site="+usgsSite+"&type=rating",
+        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating",
         dataType: 'json',
         data: '',
         async: false,

@@ -24,6 +24,9 @@ elseif($type == 'annualPeaks'){
 $my_rdb = new rdb($my_url,false);			// Fetch this RDB file and load it into an object
 
 // Finally, output as JSON to the client
+header("Access-Control-Allow-Origin: *");
+header('Content-Type: application/json');
+
 echo $my_rdb->outputJSON(TRUE,TRUE,FALSE,TRUE,FALSE,TRUE,TRUE); 			// Output the data as JSON
 
 ?>
