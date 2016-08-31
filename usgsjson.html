@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head>
+
   <meta http-equiv="content-type" content="text/html; charset=utf-8" />
   <script type="text/javascript" src="http://code.jquery.com/jquery-latest.js"></script>
   <script src="http://code.highcharts.com/highcharts.js"></script>
@@ -24,17 +24,14 @@
 </style>
 
   <title>NWS JS Graphing Example</title>
-</head>
-<body>
+
+
   <h1>USGS Water Services AJAX Example</h1>
   <table>
     <tr>
           <td>
             <table width="100%" border="0">
-              <tr>
-                   <td><label for="site"><strong>NWS Id No. </strong></label><input type="text" id="site" value ="lirv2" size="8" maxlength="15" /></td>
-
-               </tr>
+  
                <tr>
                   <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
                 </tr>
@@ -46,14 +43,7 @@
         </td>
   </tr>
   </table>
-  <form id="form1" method="post" action="">
-
-      <p>
-            <input type="button" name="query" id="query" value="Get Latest Streamflow" />
-
-      </p>
-  </form>
-
+ 
 
 <table>
     <tr>
@@ -751,6 +741,7 @@ function addPeakFlow(chartDiv,year='2016'){
                         width:2,
                         id: 'ffline'+year,
                         dashStyle: style,
+                        zIndex:2,
                         label:{
                             align: halign,
                             text: '2 Year '+source+' ('+year+')'
@@ -760,6 +751,7 @@ function addPeakFlow(chartDiv,year='2016'){
                         value: json[usgsID][year]['10yr'][source],
                         color: 'orange',
                         width:2,
+                        zIndex:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
@@ -771,6 +763,7 @@ function addPeakFlow(chartDiv,year='2016'){
                         value: json[usgsID][year]['25yr'][source],
                         color: 'red',
                         width:2,
+                        zIndex:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
@@ -782,6 +775,7 @@ function addPeakFlow(chartDiv,year='2016'){
                         value: json[usgsID][year]['100yr'][source],
                         color: 'blue',
                         width:2,
+                        zIndex:2,
                         id: 'ffline'+year,
                         dashStyle: style,
                         label:{
@@ -1747,14 +1741,14 @@ function addNWSRender(graphId){
 
 
     if(nowP > xminP){
-         chart.renderer.path(['M', xminP+10, ymaxP-10, 'L', nowP-10, ymaxP-10])
+         chart.renderer.path(['M', xminP+10, ymaxP-20, 'L', nowP-10, ymaxP-20])
             .attr({
                 'stroke-width': 3,
                 stroke: 'grey',
                 class: 'nwsRender',
                 zIndex: 3
             }).add();
-        textBox = chart.renderer.label('Observed', ((nowP+xminP)/2),ymaxP-23)
+        textBox = chart.renderer.label('Observed', ((nowP+xminP)/2),ymaxP-30)
             .attr({
                 fill: 'white',
                 padding: 1,
@@ -1769,14 +1763,14 @@ function addNWSRender(graphId){
     }
 
     if(nowP < xmaxP){
-         chart.renderer.path(['M',nowP+10,ymaxP-10,'L',xmaxP-10,ymaxP-10])
+         chart.renderer.path(['M',nowP+10,ymaxP-20,'L',xmaxP-10,ymaxP-20])
             .attr({
                 'stroke-width': 3,
                 stroke: 'blue',
                 class: 'nwsRender',
                 zIndex: 3
             }).add()
-        textBox = chart.renderer.label('Forecast', ((nowP+xmaxP)/2),ymaxP-23)
+        textBox = chart.renderer.label('Forecast', ((nowP+xmaxP)/2),ymaxP-30)
             .attr({
                 fill: 'white',
                 padding: 1,
@@ -2923,6 +2917,6 @@ $(function () {
 
 });
 </script>
-</body>
+
 </html>
 
