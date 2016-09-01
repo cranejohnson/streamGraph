@@ -31,7 +31,7 @@
     <tr>
           <td>
             <table width="100%" border="0">
-  
+
                <tr>
                   <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
                 </tr>
@@ -43,7 +43,7 @@
         </td>
   </tr>
   </table>
- 
+
 
 <table>
     <tr>
@@ -404,9 +404,7 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
     var chartAdd = $('#'+chartDiv).highcharts();
 
     var ext = chartAdd.xAxis[0].getExtremes();
-    console.log(ext);
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
-    console.log(graphYear);
     var usgsID = chartAdd.options.usgsID;
     var cD = '00060';
     var start = '1900-01-01';
@@ -440,11 +438,14 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
             if(json.value.timeSeries.length>0){
                 var allData = USGStoHC(json,"00060");
                 var workingYear = moment(allData[Math.round(allData.length/2)][0]).format("YYYY");
-                console.log(workingYear);
                 var yearData = [];
                 var olddate = 0;
+                var years = graphYear - workingYear;
+                console.log(moment.utc(allData[12][0]).add(years, 'years'));
+                console.log(moment.utc(allData[12][0]));
+                var shift = moment.utc(allData[12][0]).add(years, 'years').valueOf() - allData[12][0];
+                console.log("shift ="+shift/(3600*1000*24));
                 for(var i=0;i<allData.length;i++){
-                    var years = graphYear - workingYear;
                     var date = moment(allData[i][0]).add(years, 'years');
                     if(date.valueOf() > olddate){
                         yearData.push([date.valueOf(),allData[i][1]]);
@@ -461,14 +462,14 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
                     timeShift: true,
                     calcVol: true,
                     USGSid:usgsID,
-                    dateShift:0,
+                    dateShift:shift,
                     tooltip: {
                         headerFormat:'<b>{point.x:%Y-%m-%d}</b><br>',
                         pointFormatter: function (){
                             if(this.series.options.dateShift == 0){
                                 return '<b>'+numberWithCommas(this.y) + ' cfs</b>';
                             }else{
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.series.options.dateShift+this.x).format("YYYY-MM-DD H:mm")+')' ;
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.x).add(this.series.options.dateShift,'milliseconds').format("YYYY-MM-DD H:mm")+')' ;
                             }
                         },
                     },
@@ -1458,16 +1459,16 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
 
 function USGStoHC(usgsObj,TSvalue){
     var d = new Date()
-    var n = d.getTimezoneOffset()/60;
+//    var n = d.getTimezoneOffset()/60;
 
     var len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
     var urlSource = usgsObj.value.queryInfo.queryURL;
     var isDaily= urlSource.match(/dv/);
-    var tzoffset = '';
-    if(isDaily){
-        var tzoffset = usgsObj.value.timeSeries[0].sourceInfo.timeZoneInfo.defaultTimeZone.zoneOffset;
-    }
+//    var tzoffset = '';
+//     if(isDaily){
+//         var tzoffset = usgsObj.value.timeSeries[0].sourceInfo.timeZoneInfo.defaultTimeZone.zoneOffset;
+//     }
     var data = new Array();
     var QRarr = 0;
     for (var i = 0; i < len; i++) {
@@ -2898,7 +2899,7 @@ $(function () {
                 if(chart.series[z].options.timeShift != true) continue;
                 if(chart.series[z].visible != true) continue;
                 series = chart.series[z];
-                series.options.dateShift = series.options.dateShift+(hours*3600*1000)
+                series.options.dateShift = series.options.dateShift-(hours*3600*1000)
                 var xData = series.xData;
                 var yData = series.yData;
                 var shiftData = [];
