@@ -9,10 +9,11 @@
   <script src="http://code.highcharts.com/modules/exporting.js"></script>
   <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
   <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
+
   <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
-  <script src="http://www.data.chenabasin.org/nws/streamGraph/underscore.js"></script>
   <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
 
 <style type="text/css">
@@ -69,6 +70,13 @@
         <td>
             <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
             <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
+
+            <div style="float:left;"><label for="months2show">Plot QMeas Between:</label>
+            <input type="text" id="months2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
+            <div id="qmeas-range"  style="width: 200px;"></div></div>
+            <div style="float:left;"><label for="years2show">Plot QMeas Between:</label>
+            <input type="text" id="years2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
+            <div id="qmeas-years"  style="width: 200px;"></div></div>
             <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
         </td>
 
@@ -191,7 +199,10 @@ function round(num, places) {
 //  shef Encode Data
 ///////////////////////////////////
 
-function shefEncode(dataSet,onlyMissing = false){
+function shefEncode(dataSet,onlyMissing){
+    if (onlyMissing === undefined) {
+        onlyMissing = false;
+    }
 
     var nwsLid = dataSet.options.NWSid;
     var data = dataSet.data;
@@ -243,7 +254,14 @@ function lineInterpolate( point1, point2,XorY,value){
 //  Calculate area under the curve
 ///////////////////////////////////
 
-function volumeUnderCurve(flowData,xMin=0,xMax=0){
+function volumeUnderCurve(flowData,xMin,xMax){
+    if (xMin === undefined) {
+        xMin = 0;
+    }
+    if (xMax === undefined) {
+        xMax = 0;
+    }
+
     if((xMin==0)&&(xMax==0)){
         xMin = flowData.xData[0];
         xMax = flowData.xData[flowData.xData.length-1];
@@ -277,7 +295,13 @@ function volumeUnderCurve(flowData,xMin=0,xMax=0){
 }
 
 
-function handleBaseFlow(chart,series,xMin=0,xMax=0){
+function handleBaseFlow(chart,series,xMin,xMax){
+    if (xMin === undefined) {
+        xMin = 0;
+    }
+    if (xMax === undefined) {
+        xMax = 0;
+    }
     if(chart.get('baseFlow')){
         $(".baseFlowLabel").remove();
     }
@@ -400,7 +424,34 @@ function getParameterByName(name, url) {
 }
 
 
-function addAnnualData(chartDiv,dv_iv,year = 'all'){
+function showQmeas(lowMonth,highMonth,lowYear,highYear,chartDiv){
+    if (chartDiv === undefined) {
+        chartDiv = 'ratinggraph';
+    }
+    var chart = $('#'+chartDiv).highcharts();
+
+    var series = chart.get('qMeasured');
+    var newData = [];
+    $.each(series.userOptions.originalData,function(){
+        var month = parseInt(moment(this.date).format("M"));
+        var year =  parseInt(moment(this.date).format("Y"));
+        if((month>=lowMonth) && (month<=highMonth)){
+            if((year>=lowYear) && (year<=highYear)){
+                newData.push(this);
+             }
+        }
+    });
+    chart.get('qMeasured').setData(newData);
+}
+
+
+
+
+function addAnnualData(chartDiv,dv_iv,year){
+    if (year === undefined) {
+        xMin = 'all';
+    }
+
     var chartAdd = $('#'+chartDiv).highcharts();
 
     var ext = chartAdd.xAxis[0].getExtremes();
@@ -485,7 +536,15 @@ function addAnnualData(chartDiv,dv_iv,year = 'all'){
 }
 
 
-function addUSGS(chartDiv,type = 'discharge',dv_iv,USGSsiteID = null){
+function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
+    if (type === undefined) {
+        type = 'discharge';
+    }
+    if (USGSsiteID === undefined) {
+        USGSsiteID = null;
+    }
+
+
     var chartAdd = $('#'+chartDiv).highcharts();
     var style = 'dashed';
     var siteLabel = USGSsiteID;
@@ -573,7 +632,11 @@ function getAhps(site,AHPS){
 }
 
 
-function addAHPS(chartDiv,type = 'discharge'){
+function addAHPS(chartDiv,type){
+    if (type === undefined) {
+        type = 'discharge';
+    }
+
     var chartAdd = $('#'+chartDiv).highcharts();
     var nwsLid = chartAdd.options.nwsLid;
     var issued= '';
@@ -704,7 +767,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         dataType: 'json',
         data: '',
         success: function(json){
-
             var newSeries = qMeasJSON2HC_Rating(json,type);
             for(j = 0;j < newSeries.length;j++){
                 if(json.error_info.error == 0){
@@ -715,7 +777,10 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
     });
 }
 
-function addPeakFlow(chartDiv,year='2016'){
+function addPeakFlow(chartDiv,year){
+    if (year === undefined) {
+        year = '2016';
+    }
     if(year == '2016'){
         halign = 'left';
         style = 'solid';
@@ -793,7 +858,10 @@ function addPeakFlow(chartDiv,year='2016'){
 
 
 
-function addAnnualPeaks(chartDiv,state='ak'){
+function addAnnualPeaks(chartDiv,state){
+    if (state === undefined) {
+        state = 'ak';
+    }
     var chart = $('#'+chartDiv).highcharts();
     var usgsID = chart.options.usgsID;
     $.ajax({
@@ -1235,7 +1303,10 @@ function GetObjectKeyIndex(obj, keyToFind) {
 }
 
 
-function ratingLookup(rating,value,type = 'discharge'){
+function ratingLookup(rating,value,type){
+    if (type === undefined) {
+        type = 'discharge';
+    }
     //Assumes rating is [discharge,stage]
     var lowx;
     var highx;
@@ -1350,25 +1421,29 @@ function dateFromDay(year, day){
 
 
 
-function qMeasJSON2HC_Rating(json,type = 'curve'){
+function qMeasJSON2HC_Rating(json,type){
+    if (type === undefined) {
+         type = 'curve';
+    }
+
     var indepIndex = GetObjectKeyIndex(json.columns,"discharge_va");
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
     var dtIndex = GetObjectKeyIndex(json.columns,"measurement_dt");
     var tzIndex = GetObjectKeyIndex(json.columns,"tz_cd");
     var xVal,yVal;
-    var base = {
+    var series = {
            data: [],
+           originalData: [],
            tooltip: {
                 headerFormat: 'USGS Measured Discharge<br>',
                 pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}'
             },
             name: 'USGS Measured',
             type: 'scatter',
-            zIndex : 1,
+            zIndex : 10,
+            id:'qMeasured',
             marker : {
                 enabled : true,
-                fillColor:'red',
-                symbol: 'diamond'
             },
             lineWidth : 0,
             states:{
@@ -1379,34 +1454,17 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
                 }
              }
         }
-    var allSeries = [base];
-    allSeries.push(jQuery.extend(true, {}, base));
-    allSeries.push(jQuery.extend(true, {}, base));
-    allSeries.push(jQuery.extend(true, {}, base));
-    allSeries.push(jQuery.extend(true, {}, base));
-    allSeries[0].zIndex = 6;
-    allSeries[1].zIndex = 5;
-    allSeries[2].zIndex = 4;
-    allSeries[3].zIndex = 3;
-    allSeries[4].zIndex = 2;
-    allSeries[1].linkedTo = ':previous';
-    allSeries[2].linkedTo = ':previous';
-    allSeries[3].linkedTo = ':previous';
-    allSeries[4].linkedTo = ':previous';
-    allSeries[0].marker.fillColor = 'red';
-    allSeries[1].marker.fillColor = 'orange';
-    allSeries[2].marker.fillColor = 'rgba(0,0,205,0.5)';
-    allSeries[3].marker.fillColor = 'rgba(0,0,205,0.3)';
-    allSeries[4].marker.fillColor = 'rgba(0,0,205,0.1)';
 
-    json.records = json.records.sort(sortNinthCol);
     len = json.records.length;
 
     if(len == 0) return data = null;
 
-
-    var mostRecentDate = 0;
     for (var i = 0; i < len; i++) {
+
+        //Check if stage is included and if discharge is not zero
+        if((json.records[i][depIndex]=== null) && (type != 'curve')) continue;
+        if(Math.abs(json.records[i][indepIndex])=== 0) continue;
+
         var ratingInfo = {}
         var j = 0;
         $.each(json.columns,function(key,value){
@@ -1414,47 +1472,46 @@ function qMeasJSON2HC_Rating(json,type = 'curve'){
             j++;
         });
 
-        //Check if stage is included and if discharge is not zero
-        if((json.records[i][depIndex]=== null) || (Math.abs(json.records[i][indepIndex])=== 0)) continue;
 
-        date = new Date(json.records[i][dtIndex]);
-        date = moment(json.records[i][dtIndex]);
-
-
+        var qDate = moment(json.records[i][dtIndex]);
         if(type == 'curve'){
             xVal = json.records[i][indepIndex];
             yVal = json.records[i][depIndex];
          }else{
-            xVal = date;
+            xVal = parseInt(qDate.format("x"));
             yVal = json.records[i][indepIndex];
-
          }
+
+
+
+        age = moment().diff(qDate,'years',true);
+
+        var color= 'rgba(0,0,205,0.1)';
+        if(age < 10) color= 'rgba(0,0,205,0.3)';
+        if(age < 5) color= 'rgba(0,0,205,0.5)';
+        if(age < 1 ) color = 'orange';
+        if(i+1 == len) color = 'red';
+
 
         ratingInfo = $.extend({
             'x' : xVal,
             'y': yVal,
-            //'name': date.toDateString()
-            'name': date.format('MMMM Do YYYY, h:mm:ss a')
-            },
-            ratingInfo);
+            'date':parseInt(qDate.format("x")),
+            'name': qDate.format('MMMM Do YYYY, h:mm:ss a'),
+            'marker':{
+                'fillColor': color,
+                symbol: 'diamond'
+            }
+        },ratingInfo);
 
-
-        if(date > mostRecentDate) {
-            allSeries[0].data[0] = ratingInfo;
-            mostRecentDate = date;
-        }
-        age = moment().diff(date,'years',true);
-        var index = 4;
-        if(age < 10) index =3 ;
-        if(age < 5) index = 2;
-        if(age < 1 ) index = 1;
-
-        if(type != 'curve') index = 0;
-        allSeries[index].data.push(ratingInfo);
+        series.data.push(ratingInfo);
+        series.originalData.push(ratingInfo);
 
     }
-    return allSeries;
+
+    return [series];
 }
+
 
 
 function USGStoHC(usgsObj,TSvalue){
@@ -1539,7 +1596,17 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  * Add the NWS flood level bands to the chart
  *
  */
-function addNWSBands(graphId,AHPSjson,addTable = true,type = 'band',setTicks = true){
+function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
+    if (addTable === undefined) {
+        addTable = true;
+    }
+    if (type === undefined) {
+        type = 'band';
+    }
+    if (setTicks === undefined) {
+        setTicks = true;
+    }
+
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
     var extremes = chart.yAxis[0].getExtremes();
@@ -2913,10 +2980,38 @@ $(function () {
         }
     });
 
+    $( "#qmeas-range" ).slider({
+        range: true,
+        min: 0,
+        max: 11,
+        step: 1,
+        values: [0,11],
+        slide: function( event, ui ) {
+            $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
+            showQmeas(ui.values[0],ui.values[1],$("#qmeas-years" ).slider( "values", 0 ),$("#qmeas-years" ).slider( "values", 1 ));
+        }
+    });
+    $( "#months2show" ).val( moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 0 ), 01)).format("MMM") +
+      " - " + moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 1 ), 01)).format("MMM") );
 
-
+    $( "#qmeas-years" ).slider({
+        range: true,
+        min: 1950,
+        max: 2016,
+        step: 1,
+        values: [1950,2016],
+        slide: function( event, ui ) {
+            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+            showQmeas($("#qmeas-range").slider("values",0),$("#qmeas-range").slider("values",1),ui.values[0],ui.values[1]);
+        }
+    });
+    $( "#years2show" ).val($("#qmeas-years" ).slider( "values", 0 ) +
+      " - " + $("#qmeas-years" ).slider( "values", 1 ));
 
 });
+
+
+
 </script>
 
 </html>
