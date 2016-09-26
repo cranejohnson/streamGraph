@@ -997,48 +997,34 @@ function addStats(chartDiv){
             {
                 name: 'Daily Statistics',
                 data: [],
-                //visible : true,
-                type: 'scatter',
+                visible : true,
+                type: 'arearange',
                 lineWidth: 1,
                 color: '#ECC5C0',
                 calcVol: false,
                 zIndex: 0,
                 showInLegend:true,
+                fillOpacity: 0.2,
                 point:{
                     events:{
+                        //mouseOver: null,
                         click: function(){
-                            addAnnualData(chartDiv,'iv',this.year);
-                            addAnnualData(chartDiv,'dv',this.year);
+                            addAnnualData(chartDiv,'iv',this.maxYear);
+                            addAnnualData(chartDiv,'dv',this.maxYear);
                         }
                      }
                  },
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
-                        return '<b>'+numberWithCommas(this.y) + ' cfs (year: '+this.year+')</b>';
+                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>Min: '+numberWithCommas(this.low) + ' cfs ('+this.minYear+')<br>Count: '+this.count+'</b>';
                     },
                 }
             },
             {
-                name: 'Max Flows',
-                data: [],
-                //visible : true,
-                type: 'arearange',
-                calcVol: false,
-                lineWidth: 1,
-                color: '#ECC5C0',
-                fillOpacity: 0.1,
-                zIndex: 0,
-                showInLegend:false,
-                linkedTo: ':previous',
-                tooltip:{
-                     headerFormat:'<b>{point.x:%b %e}</b><br>',
-               }
-            },
-            {
                 name: 'P 5% -  95%',
                 data: [],
-                //visible : true,
+                visible : true,
                 trackByArea: true,
                 type: 'arearange',
                 calcVol: false,
@@ -1049,12 +1035,17 @@ function addStats(chartDiv){
                 zIndex: 1,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
+                },
+                point:{
+                    events:{
+                        mouseOver: null
+                    }
                 }
            },
             {
                 name: 'P 25% - 75%',
                 data: [],
-                //visible : true,
+                visible : true,
                 trackByArea: true,
                 type: 'arearange',
                 calcVol: false,
@@ -1065,6 +1056,11 @@ function addStats(chartDiv){
                 zIndex: 2,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
+                },
+                point:{
+                    events:{
+                        mouseOver: null
+                    }
                 }
             },
             {
@@ -1082,19 +1078,6 @@ function addStats(chartDiv){
                 data: [],
                 showInLegend:false,
                 visible : false
-            },
-            {
-                name: 'Min Year',
-                data: [],
-                showInLegend:false,
-                visible : false
-            },
-            {
-                name: 'Max year',
-                data: [],
-                showInLegend:false,
-                visible : false,
-
             }
         ];
         var annualSeries =[
@@ -1108,17 +1091,6 @@ function addStats(chartDiv){
                 data:[]
              },
             {
-                data:[]
-             },
-            {
-                data:[]
-             },
-            {
-                data:[]
-             },
-            {
-                data:[]
-             },{
                 data:[]
              }];
 
@@ -1137,16 +1109,17 @@ function addStats(chartDiv){
             var year = '2016';
             var vdate = Date.UTC(year,month,day,12+n);    //Noon ak standard time
             if(month > 8) tdata[10] = tdata[10]-1;
-            var minData = {x:vdate,y:tdata[13],year:tdata[12]};
-            var maxData = {x:vdate,y:tdata[11],year:tdata[10]};
+
+            var maxData = {x:vdate,high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
+
             annualSeries[0].data[vdate] = maxData;
-            annualSeries[1].data[vdate] = [vdate,tdata[13],tdata[11]];
-            annualSeries[2].data[vdate] = [vdate,tdata[14],tdata[18]];
-            annualSeries[3].data[vdate] = [vdate,tdata[15],tdata[17]];
-            annualSeries[4].data[vdate] = [vdate,tdata[16]];
-            annualSeries[5].data[vdate] = [vdate,tdata[9]];
-            annualSeries[6].data[vdate] = [vdate,tdata[12]];
-            annualSeries[7].data[vdate] = [vdate,tdata[10]];
+            //set 5% -  95% series
+            annualSeries[1].data[vdate] = [vdate,tdata[14],tdata[18]];
+            //set 25% - 75% series
+            annualSeries[2].data[vdate] = [vdate,tdata[15],tdata[17]];
+            //set median
+            annualSeries[3].data[vdate] = [vdate,tdata[16]];
+
         }
 
         });
@@ -1157,8 +1130,8 @@ function addStats(chartDiv){
         var sdate= new Date(extX.min);
         var edate = new Date(extX.max);
 
+        //Make annual stats series match the time period of graph
         while (sdate < edate){
-
             month = sdate.getMonth();
             day = sdate.getDate();
             year= sdate.getFullYear();
@@ -1180,7 +1153,7 @@ function addStats(chartDiv){
                 dat.x = datetime;
                 statsSeries[0].data.push(dat);
             }
-            for(var j=1;j<=7;j++){
+            for(var j=1;j<=3;j++){
                 dat = annualSeries[j].data[annualdate];
                 if(typeof dat !== 'undefined'){
 
@@ -1194,7 +1167,7 @@ function addStats(chartDiv){
 
         }
 
-
+        console.log(statsSeries[0]);
         $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
@@ -1516,16 +1489,11 @@ function qMeasJSON2HC_Rating(json,type){
 
 function USGStoHC(usgsObj,TSvalue){
     var d = new Date()
-//    var n = d.getTimezoneOffset()/60;
 
     var len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
     var urlSource = usgsObj.value.queryInfo.queryURL;
     var isDaily= urlSource.match(/dv/);
-//    var tzoffset = '';
-//     if(isDaily){
-//         var tzoffset = usgsObj.value.timeSeries[0].sourceInfo.timeZoneInfo.defaultTimeZone.zoneOffset;
-//     }
     var data = new Array();
     var QRarr = 0;
     for (var i = 0; i < len; i++) {
@@ -2187,7 +2155,6 @@ function loadPage(site){
     addAHPS('stagegraph','stage');
     if($('#showFloodStages').is(':checked')){
         addNWSBands('stagegraph',AHPSjson,true,'band',true);
- //       addNWSRender('stagegraph');
     }
 
     //Setup Discharge Graph
@@ -2456,10 +2423,16 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                            }
                         },
                         mouseOver: function() {
+                            var val;
+                            if(typeof this.high == 'undefined'){
+                                val = this.y;
+                            }else{
+                                val = this.high;
+                            }
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
                             ratingchart.yAxis[0].removePlotLine('horz_loc');
                             ratingchart.xAxis[0].addPlotLine({
-                                value: this.y,
+                                value: val,
                                 color: 'red',
                                 width: 2,
                                 id: 'vert_loc',
@@ -2467,12 +2440,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
                             });
                             ratingchart.yAxis[0].addPlotLine({
-                                value: ratingLookup(ratingchart.get('curve').data,this.y),
+                                value: ratingLookup(ratingchart.get('curve').data,val),
                                 color: 'red',
                                 width: 2,
                                 id: 'horz_loc',
                                 label: {
-                                    text: ratingLookup(ratingchart.get('curve').data,this.y),
+                                    text: ratingLookup(ratingchart.get('curve').data,val),
                                     align: 'center',
                                     style: {
                                         fontWeight: 'bold',
