@@ -448,16 +448,28 @@ function showQmeas(lowMonth,highMonth,lowYear,highYear,chartDiv){
 
 
 
-function addAnnualData(chartDiv,dv_iv,year){
+function addAnnualData(chartDiv,dv_iv,year,site){
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var usgsID;
+    var nwsID;
+
     if (year === undefined) {
         xMin = 'all';
     }
+    if (site === undefined) {
+        usgsID = chartAdd.options.usgsID;
+        nwsID = chartAdd.options.nwsLid;
+    }
+    else{
+        usgsID = site.usgs;
+        nwsID = site.nws;
+    }
 
-    var chartAdd = $('#'+chartDiv).highcharts();
+
+
 
     var ext = chartAdd.xAxis[0].getExtremes();
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
-    var usgsID = chartAdd.options.usgsID;
     var cD = '00060';
     var start = '1900-01-01';
     var end = '2020-01-01';
@@ -508,7 +520,7 @@ function addAnnualData(chartDiv,dv_iv,year){
 
                 newSeries ={
                     data: yearData,
-                    name:workingYear+'-'+dv_iv,
+                    name: nwsID.toUpperCase()+' '+workingYear+'-'+dv_iv,
                     param: 'stage',
                     source: 'USGS',
                     timeShift: true,
@@ -548,12 +560,12 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
 
     var chartAdd = $('#'+chartDiv).highcharts();
     var style = 'dashed';
-    var siteLabel = USGSsiteID;
 
     if(USGSsiteID == null){
         USGSsiteID = chartAdd.options.usgsID;
+        nwsID = chartAdd.options.nwsLid.toUpperCase();
         style = 'solid';
-        siteLabel = '';
+
     }
 
     var extX = chartAdd.xAxis[0].getExtremes();
@@ -569,11 +581,11 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
     var end = Highcharts.dateFormat('%Y-%m-%d',extX.max);
 
     usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
-    var durLabel = 'Instantaneous';
+    var durLabel = 'Iv';
     var lineColor = 'royalblue';
     var lineIndex = 2;
     if(dv_iv == 'dv'){
-        durLabel = 'Daily';
+        durLabel = 'Dv';
         lineColor = 'darkgreen';
         seriesId = 'USGSdv';
         lineIndex = 3;
@@ -589,7 +601,7 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
             if(json.value.timeSeries.length>0){
                 newSeries ={
                     data: USGStoHC(json,"00060"),
-                    name:'USGS '+durLabel+' '+siteLabel,
+                    name: nwsID+' '+durLabel,
                     zIndex:lineIndex,
                     color: lineColor,
                     dashStyle:style,
@@ -1075,10 +1087,31 @@ function addStats(chartDiv){
                 }
             },
             {
-                name: 'Count',
+                name: 'Max - Min',
+                linkedTo: ':previous',
                 data: [],
+                visible : true,
+                type: 'line',
+                lineWidth: 1,
+                color: '#ECC5C0',
+                calcVol: false,
+                zIndex: 2,
                 showInLegend:false,
-                visible : false
+                point:{
+                    events:{
+                        //mouseOver: null,
+                        click: function(){
+                            addAnnualData(chartDiv,'iv',this.maxYear);
+                            addAnnualData(chartDiv,'dv',this.maxYear);
+                        }
+                     }
+                 },
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                    pointFormatter: function (){
+                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>Min: '+numberWithCommas(this.low) + ' cfs ('+this.minYear+')<br>Count: '+this.count+'</b>';
+                    },
+                }
             }
         ];
         var annualSeries =[
@@ -1093,7 +1126,11 @@ function addStats(chartDiv){
              },
             {
                 data:[]
-             }];
+             },
+             {
+                data:[]
+             }
+             ];
 
         $.each(lines, function(){
         if (this.substring(0, 4) == "USGS") {
@@ -1111,15 +1148,18 @@ function addStats(chartDiv){
             var vdate = Date.UTC(year,month,day,12+n);    //Noon ak standard time
             if(month > 8) tdata[10] = tdata[10]-1;
 
-            var maxData = {x:vdate,high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
+            var maxData = {x:vdate,y:tdata[11],high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
 
             annualSeries[0].data[vdate] = maxData;
+
             //set 5% -  95% series
             annualSeries[1].data[vdate] = [vdate,tdata[14],tdata[18]];
             //set 25% - 75% series
             annualSeries[2].data[vdate] = [vdate,tdata[15],tdata[17]];
             //set median
             annualSeries[3].data[vdate] = [vdate,tdata[16]];
+
+
 
         }
 
@@ -1153,6 +1193,8 @@ function addStats(chartDiv){
             if(typeof dat !== 'undefined'){
                 dat.x = datetime;
                 statsSeries[0].data.push(dat);
+                statsSeries[4].data.push(dat);
+
             }
             for(var j=1;j<=3;j++){
                 dat = annualSeries[j].data[annualdate];
@@ -2109,16 +2151,26 @@ function isInteger(x) {
     }
 
 $('#loadComparison').click(function(){
-    var text  = $('#comparisonSite').val();
 
-    if (isInteger(text)){
-        addAnnualData('dischargegraph','iv',text);
-        addAnnualData('dischargegraph','dv',text);
+    var arr = $('#comparisonSite').val().split("-");
+    var year = 0;
+    var site;
+    $.each(arr, function( index, value ) {
+        if(isInteger(value)){
+             year = value;
+        }
+        else{
+            site = getBothIds(value);
+        }
+    });
+
+    if (year > 0){
+        addAnnualData('dischargegraph','iv',year,site);
+        addAnnualData('dischargegraph','dv',year,site);
     }
     else{
-        var id = getBothIds($('#comparisonSite').val());
-        if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',id.usgs);
-        if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',id.usgs);
+        if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',site.usgs);
+        if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',site.usgs);
     }
 });
 
