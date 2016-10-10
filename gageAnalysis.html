@@ -54,7 +54,7 @@
             <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
             <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
             Graph Functions:
-            <input type="radio" name="Qfunction" value = "base">Base Flow Calc
+            <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
             <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
 
             USGS Data:  <input type="checkbox" id ="getDv"> Daily
@@ -294,6 +294,39 @@ function volumeUnderCurve(flowData,xMin,xMax){
     return acreFeet;
 }
 
+function getPeakInfo(flowData,xMin,xMax){
+if (xMin === undefined) {
+        xMin = 0;
+    }
+    if (xMax === undefined) {
+        xMax = 0;
+    }
+
+    if((xMin==0)&&(xMax==0)){
+        xMin = flowData.xData[0];
+        xMax = flowData.xData[flowData.xData.length-1];
+    }
+    if(xMin>xMax){
+        var temp = xMin;
+        xMin = xMax;
+        xMax = temp;
+    }
+    var peak ={
+         value : 0,
+         date : ''};
+    console.log(flowData);
+    for(i=0;i<flowData.data.length;i++){
+        if(typeof flowData.data[i] == 'undefined') continue;
+        if((flowData.data[i].x <= xMax) && (flowData.data[i+1].x > xMin)){
+            if(flowData.data[i].y > peak.value){
+                peak.value = flowData.data[i].y;
+                peak.date = flowData.data[i].x;
+            }
+        }
+    }
+    return peak;
+}
+
 
 function handleBaseFlow(chart,series,xMin,xMax){
     if (xMin === undefined) {
@@ -310,16 +343,20 @@ function handleBaseFlow(chart,series,xMin,xMax){
         xMin = baseFlow.data[0].x;
         xMax = baseFlow.data[baseFlow.data.length-1].x;
     }
+    var startDate = Highcharts.dateFormat('%l %P %b %e', xMin);
+    var endDate = Highcharts.dateFormat('%l %P %b %e', xMax);
     var totalVolume = volumeUnderCurve(series,xMin,xMax);
     var baseVolume = volumeUnderCurve(chart.get('baseFlow'));
+    var peak = getPeakInfo(series,xMin,xMax);
     var baseVolumeIn = baseVolume/(Area*640)*12;
     var totalVolumeIn =totalVolume/(Area*640)*12;
+    var qIncrease = peak.value - baseFlow.data[0].y;
     series = chart.get('baseFlow');
     var slope = (baseFlow.data[1].y-baseFlow.data[0].y)/((baseFlow.data[1].x-baseFlow.data[0].x)/1000)*3600*24;
     var len = ((xMax-xMin)/1000)/(3600*24);
     var diff = (baseFlow.data[baseFlow.data.length-1].y-baseFlow.data[0].y);
 
-    labelText = '<br>Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Duration: '+len.toFixed(1)+' days<br>Delta: '+Math.round(diff)+' cfs'
+    labelText = '<br>Total  Volume: '+totalVolumeIn.toFixed(2)+'in   '+totalVolume.toFixed(0)+' ac-ft<br>'+'Baseflow Volume: '+baseVolumeIn.toFixed(2)+'in   '+baseVolume.toFixed(0)+' ac-ft<br>Peak Vol: '+(totalVolumeIn-baseVolumeIn).toFixed(2)+'in   '+(totalVolume-baseVolume).toFixed(2)+' ac-ft<br>Slope: '+Math.round(slope)+' cfs change per day<br>Start: '+startDate+'<br>Peak: '+Highcharts.dateFormat('%l %P %b %e', peak.date)+'<br>End: '+endDate+'<br>Duration: '+len.toFixed(1)+'days<br>Q increase: '+qIncrease+' cfs<br>Delta: '+Math.round(diff)+' cfs'
     textBox = chart.renderer.label(labelText, 10, 80)
     .attr({
             fill: 'rgba(255, 255, 255,1)',
