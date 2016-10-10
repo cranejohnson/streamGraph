@@ -465,6 +465,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         nwsID = site.nws;
     }
 
+    console.log(site);
 
 
 
@@ -549,24 +550,27 @@ function addAnnualData(chartDiv,dv_iv,year,site){
 }
 
 
-function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
+function addUSGS(chartDiv,type,dv_iv,site){
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var usgsID;
+    var nwsID;
+
     if (type === undefined) {
         type = 'discharge';
     }
-    if (USGSsiteID === undefined) {
-        USGSsiteID = null;
+    if (site === undefined) {
+        usgsID = chartAdd.options.usgsID;
+        nwsID = chartAdd.options.nwsLid;
+    }
+    else{
+        usgsID = site.usgs;
+        nwsID = site.nws;
     }
 
+    console.log(site);
 
-    var chartAdd = $('#'+chartDiv).highcharts();
-    var style = 'dashed';
 
-    if(USGSsiteID == null){
-        USGSsiteID = chartAdd.options.usgsID;
-        nwsID = chartAdd.options.nwsLid.toUpperCase();
-        style = 'solid';
-
-    }
+    var style = 'solid';
 
     var extX = chartAdd.xAxis[0].getExtremes();
     var cD = '00060';
@@ -580,7 +584,7 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
     var start = Highcharts.dateFormat('%Y-%m-%d',extX.min-3600*1000*24);
     var end = Highcharts.dateFormat('%Y-%m-%d',extX.max);
 
-    usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     var durLabel = 'Iv';
     var lineColor = 'royalblue';
     var lineIndex = 2;
@@ -589,7 +593,7 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
         lineColor = 'darkgreen';
         seriesId = 'USGSdv';
         lineIndex = 3;
-        usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+USGSsiteID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+        usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
     if(style == 'dashed')lineColor = '';
     $.ajax({
@@ -610,7 +614,7 @@ function addUSGS(chartDiv,type,dv_iv,USGSsiteID){
                     param: 'stage',
                     source: 'USGS',
                     calcVol: true,
-                    USGSid:USGSsiteID,
+                    USGSid:usgsID,
 
                 };
                 chartAdd.addSeries(newSeries);
@@ -2169,8 +2173,8 @@ $('#loadComparison').click(function(){
         addAnnualData('dischargegraph','dv',year,site);
     }
     else{
-        if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',site.usgs);
-        if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',site.usgs);
+        if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',site);
+        if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv',site);
     }
 });
 
