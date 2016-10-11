@@ -545,7 +545,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                 var years = graphYear - workingYear;
                 console.log(moment.utc(allData[12][0]).add(years, 'years'));
                 console.log(moment.utc(allData[12][0]));
-                var shift = moment.utc(allData[12][0]).add(years, 'years').valueOf() - allData[12][0];
+                var shift = -moment.utc(allData[12][0]).add(years, 'years').valueOf() + allData[12][0];
                 console.log("shift ="+shift/(3600*1000*24));
                 for(var i=0;i<allData.length;i++){
                     var date = moment(allData[i][0]).add(years, 'years');
