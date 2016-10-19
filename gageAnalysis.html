@@ -1173,6 +1173,10 @@ function addStats(chartDiv){
              }
              ];
 
+
+
+
+
         $.each(lines, function(){
         if (this.substring(0, 4) == "USGS") {
             var tdata = this.split('\t');
@@ -1183,22 +1187,22 @@ function addStats(chartDiv){
                 if(tdata[i].length == 0) tdata[i] = null;
             }
 
-            var month = tdata[5]-1;
-            var day = tdata[6];
-            var year = '2016';
-            var vdate = Date.UTC(year,month,day,12+n);    //Noon ak standard time
-            if(month > 8) tdata[10] = tdata[10]-1;
+            var vdate = moment("2016-"+tdata[5]+"-"+tdata[6],"YYYY-MM-DD");
+            var doy = vdate.format('MDD');
 
-            var maxData = {x:vdate,y:tdata[11],high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
+            //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
+            if(tdata[5] > 8) tdata[10] = tdata[10]-1;
+            var maxData = {y:tdata[11],high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
 
-            annualSeries[0].data[vdate] = maxData;
+
+            annualSeries[0].data[doy] = maxData;
 
             //set 5% -  95% series
-            annualSeries[1].data[vdate] = [vdate,tdata[14],tdata[18]];
+            annualSeries[1].data[doy] = [tdata[14],tdata[18]];
             //set 25% - 75% series
-            annualSeries[2].data[vdate] = [vdate,tdata[15],tdata[17]];
+            annualSeries[2].data[doy] = [tdata[15],tdata[17]];
             //set median
-            annualSeries[3].data[vdate] = [vdate,tdata[16]];
+            annualSeries[3].data[doy] = [tdata[16]];
 
 
 
@@ -1208,47 +1212,40 @@ function addStats(chartDiv){
 
         var extX = chartAdd.xAxis[0].getExtremes();
 
-        var days= 1;
         var sdate= new Date(extX.min);
         var edate = new Date(extX.max);
 
         //Make annual stats series match the time period of graph
         while (sdate < edate){
-            month = sdate.getMonth();
-            day = sdate.getDate();
-            year= sdate.getFullYear();
-            var plotDate = sdate;
-            plotDate.setHours(12);
-            datetime = plotDate.getTime();
-            var annualdate =Date.UTC('2016',month,day,12+n);
 
-            var newDate = sdate.setDate(sdate.getDate() + 1);
-            sdate = new Date(newDate);
-            days++;
-
-            //Skip Feb 29th - it tends to through off the plot
-            if(month ==1 && day == 29) continue;
+            var plotDate = moment(sdate).add(12, 'hours');
+            var doy = plotDate.format("MDD");
 
             //Push max and min data into series
-            var dat = annualSeries[0].data[annualdate];
+            var dat = annualSeries[0].data[doy];
+
             if(typeof dat !== 'undefined'){
-                dat.x = datetime;
+                console.log(doy);
+                console.log(plotDate);
+                dat.x = parseInt(plotDate.format("x"));
                 statsSeries[0].data.push(dat);
                 statsSeries[4].data.push(dat);
-
             }
+
             for(var j=1;j<=3;j++){
-                dat = annualSeries[j].data[annualdate];
+                dat = annualSeries[j].data[doy];
                 if(typeof dat !== 'undefined'){
 
-                    if(dat.length ==3){
-                        statsSeries[j].data.push([datetime,dat[1],dat[2]]);
+                    if(dat.length ==2){
+                        statsSeries[j].data.push([parseInt(plotDate.format("x")),dat[0],dat[1]]);
                      }else{
-                        statsSeries[j].data.push([datetime,dat[1],dat[2]]);
+                        statsSeries[j].data.push([parseInt(plotDate.format("x")),dat[0]]);
                      }
                 }
             }
 
+        var newDate = sdate.setDate(sdate.getDate() + 1);
+        sdate = new Date(newDate);
         }
 
         console.log(statsSeries[0]);
