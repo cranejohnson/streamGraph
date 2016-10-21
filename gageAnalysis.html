@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
+   <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
 
   <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
   <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
@@ -483,6 +484,103 @@ function showQmeas(lowMonth,highMonth,lowYear,highYear,chartDiv){
 }
 
 
+///////////////////////////////////
+//  Load National Water Model Results
+///////////////////////////////////
+
+
+
+function addNWM(chartDiv,lat,lon,forecastType){
+    var chartAdd = $('#'+chartDiv).highcharts();
+
+    var esriProj = new OpenLayers.Projection("EPSG:3857");
+    var wgs84 = new OpenLayers.Projection("EPSG:4326");
+    var point = new OpenLayers.LonLat(lon, lat);
+    var point2 =  point.transform(wgs84, esriProj);
+
+    var ht = 315*100;     //imageDisplay x 100 = each pixel 100 meters
+    var wd = 1370*100;    //imageDisplay x 100 = each pixel 100 meters
+
+
+    var params = {
+        tolerance : 10,
+        returnGeometry : false,
+        geometryType : 'esriGeometryPoint',
+        mapExtent : (point2.lon-wd)+','+(point2.lat-ht)+','+(point2.lon+wd)+','+(point2.lat+ht),
+        imageDisplay : '1370,315,1',
+        f : 'json',
+        sr : 102100,
+        layers: 'top',
+        geometry: '{ "x" : '+point2.lon+', "y" : '+point2.lat+' }'
+    };
+
+    var reachID = 0;
+
+     $.ajax({
+            type: "GET",
+            url: "http://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
+            data: params,
+            contentType: "application/json; charset=utf-8",
+            headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
+            dataType: "json",
+            success: function (data) {
+                if (data.length == 0) {
+                    console.log('No National Water Model Stream Segments');
+
+                }
+                var stream = data.results[0];
+                $.each( data.results, function( key, value ) {
+                    if(value.attributes.streamorder > stream.attributes.streamorder){
+                        stream = value;
+                    }
+
+                });
+                if(typeof stream == 'undefined') return false;
+                reachID = stream.attributes.reach_id;
+                var newSeries = getNWM(reachID,forecastType);
+                chartAdd.addSeries(newSeries);
+            },
+            error: function (request, status, errorThrown) {
+                console.log(status);
+            }
+    });
+}
+
+
+function getNWM(reachID,forecastType){
+    if (forecastType === undefined) {
+        forecastType = 'short_range';
+    }
+    var typeName = forecastType.split("_");
+
+    var params = {station_id:reachID};
+    var series = {data: [],
+                  param: 'discharge',
+                  zIndex:3,
+                  source: 'NWS-NWM',};
+    $.ajax({
+            type: "GET",
+            url: "http://nwmdata.nohrsc.noaa.gov/0.2/forecasts/"+forecastType+"/streamflow",
+            data: params,
+            contentType: "application/json; charset=utf-8",
+            async: false,
+            headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
+            dataType: "json",
+            success: function (forecast) {
+                series.name = "NWM "+typeName[0]+" term issued:"+forecast[0]["valid-time"];
+                $.each( forecast[0].data, function( key,point ) {
+                    xVal = parseInt(moment(point["forecast-time"]).format("x"));
+                    series.data.push([xVal,point.value]);
+                })
+
+            },
+            error: function (request, status, errorThrown) {
+                console.log(status);
+            }
+        });
+    return series;
+
+}
 
 
 function addAnnualData(chartDiv,dv_iv,year,site){
@@ -578,7 +676,6 @@ function addAnnualData(chartDiv,dv_iv,year,site){
 
                 };
                 chartAdd.addSeries(newSeries);
-                //console.log(newSeries);
                 }
             }
 
@@ -604,7 +701,6 @@ function addUSGS(chartDiv,type,dv_iv,site){
         nwsID = site.nws;
     }
 
-    console.log(site);
 
 
     var style = 'solid';
@@ -1009,7 +1105,8 @@ function addAnnualPeaks(chartDiv,state){
         //
         var d = new Date()
         var n = d.getTimezoneOffset()/60;
-         $.each(data.records,function(){
+        if(typeof data.records == 'undefined') return false;
+        $.each(data.records,function(){
             var newD = this[2].split('-');
             var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
 
@@ -1190,19 +1287,32 @@ function addStats(chartDiv){
             var vdate = moment("2016-"+tdata[5]+"-"+tdata[6],"YYYY-MM-DD");
             var doy = vdate.format('MDD');
 
+
+            var min = (tdata[13] < 0 ) ? null: tdata[13];
+            var max = (tdata[11] < 0 ) ? null: tdata[11];
+            var yearMin = (tdata[12] < 0 ) ? null: tdata[12];
+            var yearMax = (tdata[10] < 0 ) ? null: tdata[10];
+            var per5 = (tdata[14] < 0 ) ? null: tdata[14];
+            var per95 = (tdata[18] < 0 ) ? null: tdata[18];
+            var per25 = (tdata[15] < 0 ) ? null: tdata[15];
+            var per75 = (tdata[17] < 0 ) ? null: tdata[17];
+            var median =  (tdata[16] < 0 ) ? null: tdata[16];
+
+
+
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
             if(tdata[5] > 8) tdata[10] = tdata[10]-1;
-            var maxData = {y:tdata[11],high:tdata[11],low:tdata[13],maxYear:tdata[10],minYear:tdata[12],count:tdata[9]};
+            var maxData = {y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
             annualSeries[0].data[doy] = maxData;
 
             //set 5% -  95% series
-            annualSeries[1].data[doy] = [tdata[14],tdata[18]];
+            annualSeries[1].data[doy] = [per5,per95];
             //set 25% - 75% series
-            annualSeries[2].data[doy] = [tdata[15],tdata[17]];
+            annualSeries[2].data[doy] = [per5,per75];
             //set median
-            annualSeries[3].data[doy] = [tdata[16]];
+            annualSeries[3].data[doy] = [median];
 
 
 
@@ -1509,6 +1619,9 @@ function qMeasJSON2HC_Rating(json,type){
              }
         }
 
+    if(typeof json.records == 'undefined'){
+       return [series];
+    }
     len = json.records.length;
 
     if(len == 0) return data = null;
@@ -2223,6 +2336,7 @@ function loadPage(site){
     $('#dischargeEnd').val(year+'-12-31');
     initializeNWS();
     var siteId = getBothIds(site);
+    var siteInfo;
     //Load USGS Site Information
     $.ajax({
         url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
@@ -2230,7 +2344,7 @@ function loadPage(site){
         data: '',
         async: false,
         success: function(data){
-            var siteInfo = getRDBSiteInfo(data);
+            siteInfo = getRDBSiteInfo(data);
             state = FIPSCODES[siteInfo.state_cd].toLowerCase();
             $('#watershedArea').val(siteInfo.drain_area_va);
             Area = siteInfo.drain_area_va;
@@ -2241,6 +2355,7 @@ function loadPage(site){
             });
         }
     });
+    console.log(siteInfo);
     //Setup Stage and Discharge Graphs with AHPS data
     graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
     addAHPS('stagegraph','stage');
@@ -2251,6 +2366,13 @@ function loadPage(site){
     //Setup Discharge Graph
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
     addAHPS('dischargegraph','discharge');
+
+    var usgsLat = parseFloat(siteInfo.dec_lat_va);
+    var usgsLon = parseFloat(siteInfo.dec_long_va);
+
+    addNWM('dischargegraph',usgsLat,usgsLon,'short_range');
+    addNWM('dischargegraph',usgsLat,usgsLon,'medium_range');
+    addNWM('dischargegraph',usgsLat,usgsLon,'long_range');
 
     if(siteId.usgs == '') return;
     plotHeatQ(siteId.usgs);
