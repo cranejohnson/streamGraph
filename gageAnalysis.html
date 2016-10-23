@@ -16,16 +16,22 @@
 
   <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
   <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
+  <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
 
 <style type="text/css">
 
       .success {
         color: #228B22;
       }
+      .map {
+      height: 300px;
+      width: 400px;
+    }
 
 </style>
+<link rel="stylesheet" href="https://openlayers.org/en/v3.19.0/css/ol.css" type="text/css">
 
-  <title>NWS Gage Analysis</title>
+<title>NWS Gage Analysis</title>
 
 
   <h1>NWS Gage Analysis</h1>
@@ -40,8 +46,11 @@
             </table>
         </td>
         <td>
-            Download Log:
-            <div id="log" style="overflow-y: scroll; height:175px; font-size:x-small;"><br></div>
+            Data Ingest Log:
+            <div id="log" style="overflow-y: scroll; height:300px; font-size:x-small;"><br></div>
+        </td>
+        <td>
+             <div id="map" class="map"></div>
         </td>
   </tr>
   </table>
@@ -65,7 +74,7 @@
             <input type="button" id="loadQ" value="Load Custom Range"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
             Comparison:<input type="text" id="comparisonSite" length=20>
             <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
-            <input type="button" id="zoomToStage" value="Zoom to Stage Graph">
+            <input type="button" id="zoomToStage" value="Quick Zoom">
             <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
         </td>
         <td>
@@ -103,7 +112,49 @@
 
 <script type="text/javascript">
 
-//Global Vars
+
+///////////////////////////////////
+//  Set up Thumbnail Map for USGS gage location and NWM Reach
+///////////////////////////////////
+
+if (ol.Map.prototype.getLayer === undefined) {
+    ol.Map.prototype.getLayer = function (id) {
+        var layer;
+        this.getLayers().forEach(function (lyr) {
+            if (id == lyr.get('id')) {
+                layer = lyr;
+            }
+        });
+        return layer;
+    }
+}
+
+
+var osm_default = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        //attributions: [attribution],
+        url: 'http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+      })
+    });
+
+var map = new ol.Map({
+    layers: [osm_default],
+    target: 'map',
+    view: new ol.View({
+        center: ol.proj.transform([-1.8118500054456526, 52.4431409750608], 'EPSG:4326', 'EPSG:3857'),
+        zoom: 10
+    })
+});
+
+var mousePosition = new ol.control.ScaleLine({
+    units: 'us',
+    minWidth: 100
+});
+
+map.addControl(mousePosition);
+
+
+
 
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
@@ -156,7 +207,23 @@ var AJAXLOOKUPTABLE = [{
                 {
                 match:'\/nwis\/iv.+00065',
                 name: "USGS Inst. Stage Data"
-                },]
+                },
+                {
+                match:'Mapserver\/identify',
+                name: "NWM Reach Informaton"
+                },
+                {
+                match:'forecasts\/short_range',
+                name: "NWM Short Range"
+                },
+                {
+                match:'forecasts\/medium_range',
+                name: "NWM Medium Range"
+                },
+                {
+                match:'forecasts\/long_range',
+                name: "NWM Long Range"
+                }]
 
 $( document ).ajaxSuccess(function( event, xhr, settings ) {
         for(i=0;i<AJAXLOOKUPTABLE.length;i++){
@@ -195,6 +262,69 @@ function round(num, places) {
     var multiplier = Math.pow(10, places);
     return Math.round(num * multiplier) / multiplier;
 }
+
+
+function addReach2Map(map,reach){
+     var styles = {
+        'LineString': new ol.style.Style({
+          stroke: new ol.style.Stroke({
+            color: 'blue',
+            width: 3
+          })
+        })
+       };
+
+       var styleFunction = function(feature) {
+        return styles[feature.getGeometry().getType()];
+      };
+
+    var geojsonObjects = {
+        'type': 'FeatureCollection',
+        'crs': {
+            'type': 'name',
+            'properties': {
+                'name': 'EPSG:3857'
+            }
+        },
+        'features': [ {
+            'type': 'Feature',
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': reach
+            }
+        }]
+    };
+    var geojsonObject = {
+        'crs': {
+            'type': 'name',
+            'properties': {
+                'name': 'EPSG:3857'
+            }
+        },
+        'type': 'Feature',
+        'geometry': {
+            'type': 'LineString',
+            'coordinates': reach
+        }
+    };
+
+
+    map.removeLayer(map.getLayer('NWMreach'));
+    var reachFeature = new ol.format.GeoJSON().readFeature(geojsonObject);
+
+    console.log(geojsonObject);
+    var vectorSource = new ol.source.Vector({
+        features: [reachFeature]
+    });
+
+    var vectorLayer = new ol.layer.Vector({
+        source: vectorSource,
+        style: styleFunction,
+        id: 'NWMreach'
+    });
+    map.addLayer(vectorLayer);
+}
+
 
 ///////////////////////////////////
 //  shef Encode Data
@@ -490,21 +620,27 @@ function showQmeas(lowMonth,highMonth,lowYear,highYear,chartDiv){
 
 
 
-function addNWM(chartDiv,lat,lon,forecastType){
+function addNWM(chartDiv,lat,lon,forecastType,dir){
     var chartAdd = $('#'+chartDiv).highcharts();
+    var point2 = {};
 
-    var esriProj = new OpenLayers.Projection("EPSG:3857");
-    var wgs84 = new OpenLayers.Projection("EPSG:4326");
-    var point = new OpenLayers.LonLat(lon, lat);
-    var point2 =  point.transform(wgs84, esriProj);
-
+    if(lat > 90){
+        point2.lat = lat;
+        point2.lon = lon;
+    }
+    else{
+        var esriProj = new OpenLayers.Projection("EPSG:3857");
+        var wgs84 = new OpenLayers.Projection("EPSG:4326");
+        var point = new OpenLayers.LonLat(lon, lat);
+        point2 =  point.transform(wgs84, esriProj);
+    }
     var ht = 315*100;     //imageDisplay x 100 = each pixel 100 meters
     var wd = 1370*100;    //imageDisplay x 100 = each pixel 100 meters
 
 
     var params = {
-        tolerance : 10,
-        returnGeometry : false,
+        tolerance : 1,
+        returnGeometry : true,
         geometryType : 'esriGeometryPoint',
         mapExtent : (point2.lon-wd)+','+(point2.lat-ht)+','+(point2.lon+wd)+','+(point2.lat+ht),
         imageDisplay : '1370,315,1',
@@ -533,11 +669,24 @@ function addNWM(chartDiv,lat,lon,forecastType){
                     if(value.attributes.streamorder > stream.attributes.streamorder){
                         stream = value;
                     }
-
+                    if(value.attributes.streamorder == stream.attributes.streamorder){
+                        if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
+                            stream = value;
+                        }
+                        if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
+                            stream = value;
+                        }
+                    }
                 });
                 if(typeof stream == 'undefined') return false;
                 reachID = stream.attributes.reach_id;
+                if(forecastType == 'short_range'){
+                    addReach2Map(map,stream.geometry.paths[0]);
+                };
+                console.log(reachID);
+                console.log(stream.attributes.streamorder,stream.attributes['st_length(shape)']);
                 var newSeries = getNWM(reachID,forecastType);
+                newSeries.nwmJSON = stream;
                 chartAdd.addSeries(newSeries);
             },
             error: function (request, status, errorThrown) {
@@ -556,6 +705,7 @@ function getNWM(reachID,forecastType){
     var params = {station_id:reachID};
     var series = {data: [],
                   param: 'discharge',
+                  id: "NWM"+typeName[0],
                   zIndex:3,
                   source: 'NWS-NWM',};
     $.ajax({
@@ -569,7 +719,7 @@ function getNWM(reachID,forecastType){
             success: function (forecast) {
                 series.name = "NWM "+typeName[0]+" term issued:"+forecast[0]["valid-time"];
                 $.each( forecast[0].data, function( key,point ) {
-                    xVal = parseInt(moment(point["forecast-time"]).format("x"));
+                    xVal = parseInt(moment.utc(point["forecast-time"]).format("x"));
                     series.data.push([xVal,point.value]);
                 })
 
@@ -815,7 +965,9 @@ function addAHPS(chartDiv,type){
                 stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
                 if(typeof this.secondary != 'undefined'){
                     if(this.secondary._units == 'kcfs') mult = 1000;
-                    dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                    if(this.secondary.value > 0){
+                        dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                    }
                 }
             });
 
@@ -860,7 +1012,9 @@ function addAHPS(chartDiv,type){
             stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
             if(typeof this.secondary != 'undefined'){
                 if(this.secondary._units == 'kcfs') mult = 1000;
-                dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                if(this.secondary.value > 0){
+                    dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                }
             }
 
         });
@@ -1149,6 +1303,7 @@ function addStats(chartDiv){
                 name: 'Daily Statistics',
                 data: [],
                 visible : true,
+                id: 'dailyStats',
                 type: 'arearange',
                 lineWidth: 1,
                 color: '#ECC5C0',
@@ -1301,7 +1456,7 @@ function addStats(chartDiv){
 
 
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
-            if(tdata[5] > 8) tdata[10] = tdata[10]-1;
+            if(tdata[5] > 8) yearMax = yearMax-1;
             var maxData = {y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
@@ -1335,8 +1490,6 @@ function addStats(chartDiv){
             var dat = annualSeries[0].data[doy];
 
             if(typeof dat !== 'undefined'){
-                console.log(doy);
-                console.log(plotDate);
                 dat.x = parseInt(plotDate.format("x"));
                 statsSeries[0].data.push(dat);
                 statsSeries[4].data.push(dat);
@@ -1358,7 +1511,6 @@ function addStats(chartDiv){
         sdate = new Date(newDate);
         }
 
-        console.log(statsSeries[0]);
         $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
@@ -2238,6 +2390,8 @@ $('#zoomToStage').click(function(){
     var stageChart = $('#stagegraph').highcharts();
     var extremes = stageChart.xAxis[0].getExtremes();
     var dischargeChart = $('#dischargegraph').highcharts();
+    dischargeChart.get('dailyStats').hide();
+    dischargeChart.get('annualPeakYear').hide();
     dischargeChart.xAxis[0].setExtremes(extremes.min, extremes.max);
     dischargeChart.showResetZoom();
 });
@@ -2369,10 +2523,43 @@ function loadPage(site){
 
     var usgsLat = parseFloat(siteInfo.dec_lat_va);
     var usgsLon = parseFloat(siteInfo.dec_long_va);
+    console.log(usgsLat,usgsLon);
+    map.getView().setCenter(ol.proj.transform([usgsLon, usgsLat], 'EPSG:4326', 'EPSG:3857'));
+    var iconFeature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.transform([usgsLon, usgsLat], 'EPSG:4326', 'EPSG:3857')),
+    });
+    var fill = new ol.style.Fill({
+        color: 'rgba(255,51,255,0.4)'
+    });
+    var stroke = new ol.style.Stroke({
+        color: '#FF0000',
+        width: 1.25
+    });
+    var styles = [
+        new ol.style.Style({
+            image: new ol.style.Circle({
+                fill: fill,
+                stroke: stroke,
+                radius: 7
+            }),
+            fill: fill,
+            stroke: stroke
+        })
+    ];
 
-    addNWM('dischargegraph',usgsLat,usgsLon,'short_range');
-    addNWM('dischargegraph',usgsLat,usgsLon,'medium_range');
-    addNWM('dischargegraph',usgsLat,usgsLon,'long_range');
+    iconFeature.setStyle(styles);
+    var vSource = new ol.source.Vector({
+        features: [iconFeature]
+    });
+
+    var vLayer = new ol.layer.Vector({
+        source: vSource
+    });
+    map.addLayer(vLayer);
+
+    addNWM('dischargegraph',usgsLat,usgsLon,'short_range','down');
+    addNWM('dischargegraph',usgsLat,usgsLon,'medium_range','down');
+    addNWM('dischargegraph',usgsLat,usgsLon,'long_range','down');
 
     if(siteId.usgs == '') return;
     plotHeatQ(siteId.usgs);
@@ -2825,9 +3012,6 @@ function graphRating(container,NWS,usgs,nws){
             borderWidth: 0,
             x:10
         },
-//         series : [{data:[null,null],
-//                     visible:false,
-//                     showInLegend:false}]
         series: NWS.ratingsSeries
     }
     ratingchart = new Highcharts.Chart(ratingchartobj);
@@ -3132,6 +3316,42 @@ $(function () {
 
         var hours = 24;
         var shift = false;
+        if(e.keyCode == 40 && e.shiftKey){
+            var chart = $('#dischargegraph').highcharts();
+            var nwmReach = chart.get("NWMshort").userOptions.nwmJSON;
+            var length = nwmReach.geometry.paths[0].length - 1
+            var x = nwmReach.geometry.paths[0][length][0];
+            var y = nwmReach.geometry.paths[0][length][1];
+            console.log(x,y);
+            chart.get('NWMshort').remove();
+            chart.get('NWMmedium').remove();
+            chart.get('NWMlong').remove();
+            addNWM('dischargegraph',y,x,'short_range','down');
+            addNWM('dischargegraph',y,x,'medium_range','down');
+            addNWM('dischargegraph',y,x,'long_range','down');
+
+
+
+        }
+        if(e.keyCode == 38 && e.shiftKey){
+            var chart = $('#dischargegraph').highcharts();
+            var nwmReach = chart.get("NWMshort").userOptions.nwmJSON;
+            var x = nwmReach.geometry.paths[0][0][0];
+            var y = nwmReach.geometry.paths[0][0][1];
+
+            console.log('up');
+            chart.get('NWMshort').remove();
+            chart.get('NWMmedium').remove();
+            chart.get('NWMlong').remove();
+            console.log(x,y);
+            addNWM('dischargegraph',y,x,'short_range','up');
+            addNWM('dischargegraph',y,x,'medium_range','up');
+            addNWM('dischargegraph',y,x,'long_range','up');
+
+
+
+        }
+
         if(e.keyCode == 39 && e.shiftKey){
             e.preventDefault();
             hours = 24
