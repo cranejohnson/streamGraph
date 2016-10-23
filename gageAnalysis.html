@@ -1,112 +1,107 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 
-  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-  <script type="text/javascript" src="http://code.jquery.com/jquery-latest.js"></script>
-  <script src="http://code.highcharts.com/highcharts.js"></script>
-  <script src="https://code.highcharts.com/modules/heatmap.js"></script>
-  <script src="https://code.highcharts.com/highcharts-more.js"></script>
-  <script src="http://code.highcharts.com/modules/exporting.js"></script>
-  <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
-  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
-  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-  <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
-
-   <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
-
-  <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
-  <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
-  <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
-
-<style type="text/css">
-
-      .success {
-        color: #228B22;
-      }
-      .map {
-      height: 300px;
-      width: 400px;
-    }
-
-</style>
-<link rel="stylesheet" href="https://openlayers.org/en/v3.19.0/css/ol.css" type="text/css">
-
-<title>NWS Gage Analysis</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <script type="text/javascript" src="http://code.jquery.com/jquery-latest.js"></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/heatmap.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+    <script src="http://code.highcharts.com/modules/exporting.js"></script>
+    <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
+    <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
 
-  <h1>NWS Gage Analysis</h1>
-  <table>
-    <tr>
-          <td>
-            <table width="100%" border="0">
+    <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
+    <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
 
-               <tr>
-                  <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
-                </tr>
-            </table>
-        </td>
-        <td>
-            Data Ingest Log:
-            <div id="log" style="overflow-y: scroll; height:300px; font-size:x-small;"><br></div>
-        </td>
-        <td>
-             <div id="map" class="map"></div>
-        </td>
-  </tr>
-  </table>
+    <style type="text/css">
+          .success {
+            color: #228B22;
+          }
+          .map {
+          height: 300px;
+          width: 400px;
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/3.18/esri/css/esri.css">
+    <script src="https://js.arcgis.com/3.18/"></script>
 
 
-<table>
-    <tr>
-        <td>
-            Graph Options:
-            <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
-            <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
-            <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
-            Graph Functions:
-            <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
-            <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
+    <title>NWS Gage Analysis</title>
 
-            USGS Data:  <input type="checkbox" id ="getDv"> Daily
-            <input type="checkbox" id="getIv" checked> Instantaneous<br>
-            Start Date:<input type="text" id="dischargeStart" length=10>
-            End Date:<input type="text" id="dischargeEnd" length=10>
-            <input type="button" id="loadQ" value="Load Custom Range"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
-            Comparison:<input type="text" id="comparisonSite" length=20>
-            <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
-            <input type="button" id="zoomToStage" value="Quick Zoom">
-            <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
-        </td>
-        <td>
-            <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
-            <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
 
-            <div style="float:left;"><label for="months2show">Plot QMeas Between:</label>
-            <input type="text" id="months2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
-            <div id="qmeas-range"  style="width: 200px;"></div></div>
-            <div style="float:left;"><label for="years2show">Plot QMeas Between:</label>
-            <input type="text" id="years2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
-            <div id="qmeas-years"  style="width: 200px;"></div></div>
-            <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
-        </td>
+    <h1>NWS Gage Analysis</h1>
+    <table>
+        <tr>
+            <td>
+                <table width="100%" border="0">
+                    <tr>
+                        <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
+                    </tr>
+                </table>
+            </td>
+            <td>
+                Data Ingest Log:
+                <div id="log" style="overflow-y: scroll; height:300px; font-size:x-small;"><br></div>
+            </td>
+            <td>
+                <div id="map" class="map"></div>
+            </td>
+        </tr>
+    </table>
 
-    </tr>
-    <tr>
-        <td>
-            Drag Box:<input type="radio" name="stageDrag" value="zoom" checked>Zoom
-            <input type="radio" name="stageDrag" value="missing" >Set Missing</br>
-            <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
-            <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
-            <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
-            <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
-            <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
-            <div id='shefText'></div>
-        </td>
-        <td style="vertical-align: top;">
-            <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto;"></div>
-        </td>
-    </tr>
-</table>
+
+    <table>
+        <tr>
+            <td>
+                Graph Options:
+                <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
+                <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
+                <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
+                Graph Functions:
+                <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
+                <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
+                USGS Data:  <input type="checkbox" id ="getDv"> Daily
+                <input type="checkbox" id="getIv" checked> Instantaneous<br>
+                Start Date:<input type="text" id="dischargeStart" length=10>
+                End Date:<input type="text" id="dischargeEnd" length=10>
+                <input type="button" id="loadQ" value="Load Custom Range"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
+                Comparison:<input type="text" id="comparisonSite" length=20>
+                <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
+                <input type="button" id="zoomToStage" value="Quick Zoom">
+                <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
+            </td>
+            <td>
+                <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
+                <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
+                <div style="float:left;"><label for="months2show">Plot QMeas Between:</label>
+                <input type="text" id="months2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
+                <div id="qmeas-range"  style="width: 200px;"></div></div>
+                <div style="float:left;"><label for="years2show">Plot QMeas Between:</label>
+                <input type="text" id="years2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
+                <div id="qmeas-years"  style="width: 200px;"></div></div>
+                <div id="ratinggraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                Drag Box:<input type="radio" name="stageDrag" value="zoom" checked>Zoom
+                <input type="radio" name="stageDrag" value="missing" >Set Missing</br>
+                <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
+                <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
+                <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
+                <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
+                <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
+                <div id='shefText'></div>
+            </td>
+            <td style="vertical-align: top;">
+                <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto;"></div>
+            </td>
+        </tr>
+    </table>
 <hr>
 
 
