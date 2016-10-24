@@ -128,12 +128,20 @@ if (ol.Map.prototype.getLayer === undefined) {
 var osm_default = new ol.layer.Tile({
       source: new ol.source.XYZ({
         //attributions: [attribution],
-        url: 'http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+        url: 'https://txpub.usgs.gov/arcgis/rest/services/Mapping/HydroBaseMapForTerrain/MapServer/tile/{z}/{y}/{x}'
+//        url: 'http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
+      })
+    });
+
+var osm_default2 = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        //attributions: [attribution],
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}'
       })
     });
 
 var map = new ol.Map({
-    layers: [osm_default],
+    layers: [osm_default2,osm_default],
     target: 'map',
     view: new ol.View({
         center: ol.proj.transform([-1.8118500054456526, 52.4431409750608], 'EPSG:4326', 'EPSG:3857'),
@@ -307,7 +315,6 @@ function addReach2Map(map,reach){
     map.removeLayer(map.getLayer('NWMreach'));
     var reachFeature = new ol.format.GeoJSON().readFeature(geojsonObject);
 
-    console.log(geojsonObject);
     var vectorSource = new ol.source.Vector({
         features: [reachFeature]
     });
@@ -3333,12 +3340,9 @@ $(function () {
             var nwmReach = chart.get("NWMshort").userOptions.nwmJSON;
             var x = nwmReach.geometry.paths[0][0][0];
             var y = nwmReach.geometry.paths[0][0][1];
-
-            console.log('up');
             chart.get('NWMshort').remove();
             chart.get('NWMmedium').remove();
             chart.get('NWMlong').remove();
-            console.log(x,y);
             addNWM('dischargegraph',y,x,'short_range','up');
             addNWM('dischargegraph',y,x,'medium_range','up');
             addNWM('dischargegraph',y,x,'long_range','up');
