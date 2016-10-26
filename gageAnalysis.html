@@ -45,7 +45,7 @@
             </td>
             <td>
                 Data Ingest Log:
-                <div id="log" style="overflow-y: scroll; height:300px; font-size:x-small;"><br></div>
+                <div id="log" style="overflow-y: scroll;width:300px; height:300px; font-size:x-small;"><br></div>
             </td>
             <td>
                 <div id="map" class="map"></div>
@@ -689,8 +689,10 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                         addReach2Map(map,stream.geometry.paths[0]);
                     };
                     var newSeries = getNWM(reachID,forecastType);
-                    newSeries.nwmJSON = stream;
-                    chartAdd.addSeries(newSeries);
+                    if(newSeries){
+                        newSeries.nwmJSON = stream;
+                       chartAdd.addSeries(newSeries);
+                    }
                 },
                 error: function (request, status, errorThrown) {
                     console.log(status);
@@ -699,8 +701,9 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
      }
      else{
         var newSeries = getNWM(reachID,forecastType);
+
         //newSeries.nwmJSON = stream;
-        chartAdd.addSeries(newSeries);
+        if(newSeries) chartAdd.addSeries(newSeries);
      }
     return reachID;
 }
@@ -736,6 +739,7 @@ function getNWM(reachID,forecastType){
             },
             error: function (request, status, errorThrown) {
                 console.log(status);
+                return false;
             }
         });
     return series;
@@ -1075,11 +1079,29 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         data: '',
         success: function(json){
             var newSeries = qMeasJSON2HC_Rating(json,type);
-            for(j = 0;j < newSeries.length;j++){
                 if(json.error_info.error == 0){
-                    chart.addSeries(newSeries[j]);
+                    chart.addSeries(newSeries[0]);
+                    var minYear = 2100;
+                    var maxYear = 1900;
+                    $.each(newSeries[0]['data'], function( index, value ) {
+                        if(moment(value.date).format('Y')<minYear) minYear = moment(value.x).format('Y');
+                        if(moment(value.date).format('Y')>maxYear) maxYear = moment(value.x).format('Y');
+                    });
+
+                    $( "#qmeas-years" ).slider({
+                        range: true,
+                        min: parseInt(minYear),
+                        max: parseInt(maxYear),
+                        step: 1,
+                        values: [parseInt(minYear),parseInt(maxYear)],
+                        slide: function( event, ui ) {
+                            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+                            showQmeas($("#qmeas-range").slider("values",0),$("#qmeas-range").slider("values",1),ui.values[0],ui.values[1]);
+                        }
+                    });
+                    $( "#years2show" ).val($("#qmeas-years" ).slider( "values", 0 ) +
+                       " - " + $("#qmeas-years" ).slider( "values", 1 ));
                 }
-            }
         }
     });
 }
@@ -2267,7 +2289,7 @@ function plotRating(usgsSite,ahps){
             if(json.error_info.error == 0){
                 NWS.ratingsSeries.push(ratingJSON2HC(json));
                 graphRating('ratinggraph',NWS,usgsSite,ahps);
-                addMeasureQ_Rating('ratinggraph',usgsSite);
+                addMeasureQ_Rating('ratinggraph',usgsSite,"curve");
             }
         },
     });
@@ -3399,19 +3421,7 @@ $(function () {
     $( "#months2show" ).val( moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 0 ), 01)).format("MMM") +
       " - " + moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 1 ), 01)).format("MMM") );
 
-    $( "#qmeas-years" ).slider({
-        range: true,
-        min: 1950,
-        max: 2016,
-        step: 1,
-        values: [1950,2016],
-        slide: function( event, ui ) {
-            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-            showQmeas($("#qmeas-range").slider("values",0),$("#qmeas-range").slider("values",1),ui.values[0],ui.values[1]);
-        }
-    });
-    $( "#years2show" ).val($("#qmeas-years" ).slider( "values", 0 ) +
-      " - " + $("#qmeas-years" ).slider( "values", 1 ));
+
 
 });
 
