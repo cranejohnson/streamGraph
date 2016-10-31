@@ -72,6 +72,7 @@
                 Comparison:<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
                 <input type="button" id="zoomToStage" value="Quick Zoom">
+                <input type="button" id="getGDLhydro" value="Plot GDL Hydrograph">
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
@@ -93,6 +94,7 @@
                 <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
                 <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
                 <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
+                <input type="button" id="addNWM2Stage" value="Add NWM to Stage Plot">
                 <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
                 <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
                 <div id='shefText'></div>
@@ -483,7 +485,7 @@ function handleBaseFlow(chart,series,xMin,xMax){
     var baseVolumeIn = baseVolume/(Area*640)*12;
     var totalVolumeIn =totalVolume/(Area*640)*12;
     var qIncrease = peak.value - baseFlow.data[0].y;
-    series = chart.get('baseFlow');
+    //series = chart.get('baseFlow');
     var slope = (baseFlow.data[1].y-baseFlow.data[0].y)/((baseFlow.data[1].x-baseFlow.data[0].x)/1000)*3600*24;
     var len = ((xMax-xMin)/1000)/(3600*24);
     var diff = (baseFlow.data[baseFlow.data.length-1].y-baseFlow.data[0].y);
@@ -514,6 +516,7 @@ function handleBaseFlow(chart,series,xMin,xMax){
             textBox.destroy();
             removeBox.destroy();
             if(chart.get('baseFlow')) chart.get('baseFlow').remove();
+            if(chart.get('peakHydroGraph')) chart.get('peakHydroGraph').remove();
          })
         .add();
 }
@@ -526,7 +529,6 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
     var volArray = [];
     var pt1;
     var pt2;
-
     for(var i=0;i<flowData.data.length-1;i++){
         if(typeof flowData.data[i] == 'undefined') continue;
         if((flowData.data[i].x <= xMin) && (flowData.data[i+1].x > xMin)){
@@ -563,6 +565,7 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
         fillColor: 'rgba(200,200,200,0.5)',
         id: 'baseFlow',
         draggableY: true,
+        peakDataId:flowData.options.id,
         zIndex:4,
         draggableX: true,
         dataGrouping: {
@@ -581,6 +584,42 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
     chart.addSeries(newSeries);
     return;
 }
+
+
+function getPeakHydroGraph(chart,curve,baseflow,interval){
+    if (interval === undefined) {
+        interval = 1;
+    }
+    var newData = [];
+    var x = baseflow.data[0]['x'];
+    var y = parseInt(curveLookup(curve.data,x));
+    var endX = parseInt(baseflow.data[baseflow.data.length-1]['x']);
+    newData.push([x,0]);
+    var workingTime = moment(x).minutes(0).add(interval,'hours');
+    while(parseInt(workingTime.format('x')) < endX){
+        y = curveLookup(curve.data,workingTime)-curveLookup(baseflow.data,workingTime);
+        newData.push([parseInt(workingTime.format('x')),parseInt(y)]);
+        workingTime.add(interval,'hours');
+    }
+    newData.push([endX,0]);
+
+    newSeries ={
+        data: newData,
+        name:'Event Hydrograph',
+        color: 'red',
+
+        id: 'peakHydroGraph',
+
+        zIndex:4,
+    };
+    chart.addSeries(newSeries);
+}
+
+
+
+
+
+
 
 
 function getParameterByName(name, url) {
@@ -715,11 +754,27 @@ function getNWM(reachID,forecastType){
     }
     var typeName = forecastType.split("_");
 
+    var zVal,seriesColor;
+    switch (forecastType) {
+    case 'short_range':
+        seriesColor = "red";
+        zVal = 5;
+        break;
+    case 'medium_range':
+        seriesColor = "blue";
+        zVal = 4;
+        break;
+    case 'long_range':
+        seriesColor = "orange";
+        zVal = 3;
+        break;
+    }
     var params = {station_id:reachID};
     var series = {data: [],
                   param: 'discharge',
                   id: "NWM"+typeName[0],
-                  zIndex:3,
+                  color:seriesColor,
+                  zIndex:zVal,
                   source: 'NWS-NWM',};
     $.ajax({
             type: "GET",
@@ -745,6 +800,39 @@ function getNWM(reachID,forecastType){
     return series;
 
 }
+
+function addNWM2Stage(dischargeGraph,stageGraph){
+    var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
+    var stagePlt = $(stageGraph).highcharts();
+    var dischargePlt = $(dischargeGraph).highcharts();
+    stagePlt.addSeries({data:null,name:'NWM Output'});
+    $.each( NWMseries, function( index, item ) {
+
+        var oldSeries = dischargePlt.get(item);
+
+        if(stagePlt.get(item)) stagePlt.get(item).remove();
+        var newSeries = {data: [],
+                  param: 'stage',
+                  name: oldSeries.name,
+                  linkedTo: ':previous',
+                  showInLegend: false,
+                  id: item,
+                  color:oldSeries.color,
+                  zIndex:oldSeries.zIndex,
+                  source: 'NWS-NWM',};
+
+        for(var y =0; y< oldSeries.data.length;y++){
+                var stage = curveLookup(ratingchart.get('curve').data,parseInt(oldSeries.data[y].y));
+                newSeries.data.push([oldSeries.data[y].x,parseFloat(stage)]);
+        }
+        stagePlt.addSeries(newSeries);
+    });
+
+}
+
+
+
+
 
 
 function addAnnualData(chartDiv,dv_iv,year,site){
@@ -858,14 +946,12 @@ function addUSGS(chartDiv,type,dv_iv,site){
         nwsID = site.nws;
     }
 
-
-
     var style = 'solid';
 
     var extX = chartAdd.xAxis[0].getExtremes();
     var cD = '00060';
     var unit = 'cfs';
-    var seriesId = 'USGSiv';
+    var seriesId = 'USGSiv'+usgsID;
     if(type == 'stage') {
         cD = '00065';
         unit = 'ft';
@@ -881,7 +967,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
     if(dv_iv == 'dv'){
         durLabel = 'Dv';
         lineColor = 'darkgreen';
-        seriesId = 'USGSdv';
+        seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
@@ -1080,7 +1166,9 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         success: function(json){
             var newSeries = qMeasJSON2HC_Rating(json,type);
                 if(json.error_info.error == 0){
+                    newSeries[0].turboThreshold = 2000;
                     chart.addSeries(newSeries[0]);
+
                     var minYear = 2100;
                     var maxYear = 1900;
                     $.each(newSeries[0]['data'], function( index, value ) {
@@ -1548,42 +1636,6 @@ function addStats(chartDiv){
 
 function initializeNWS() {
   NWS = {
-            stage :{
-              low : {
-                text: 'Low Flow Stage',
-                   value: 9999,
-                   def:''
-                 },
-            bankfull : {
-                text: 'Bankfull Stage',
-                   value: 9999
-                },
-            action : {
-                text: 'Action Stage',
-                   value: 9999,
-                   def:'A stream, lake or reservoir has risen to a level where you should prepare for possible significant flooding'
-                },
-            flood : {
-                text: 'Flood Stage',
-                   value: 9999,
-                   def:'Minimal or no property damage, but possibly some public threat'
-                },
-            moderate : {
-                text: 'Moderate Flood Stage',
-                   value: 9999,
-                   def: 'Some inundation of structures and roads near streams. Some evacuations of people and/or transfer of property to higher elevations are necessary'
-                 },
-            major : {
-                text: 'Major Flood Stage',
-                   value: 9999,
-                   def:'Extensive inundation of structures and roads. Significant evacuations of people and/or transfer of property to higher elevations'
-                 },
-            record: {
-                text: 'Record Stage',
-                   value: 9999,
-                   def:'Highest stage at a given site during the period of record'
-                 }
-            },
             maxY : -9999,
             nwsTitle: '',
             usgsTitle:'',
@@ -1644,7 +1696,7 @@ function GetObjectKeyIndex(obj, keyToFind) {
 }
 
 
-function ratingLookup(rating,value,type){
+function curveLookup(curve,value,type){
     if (type === undefined) {
         type = 'discharge';
     }
@@ -1656,33 +1708,39 @@ function ratingLookup(rating,value,type){
     var lookupValue;
 
     if(type == 'discharge'){
-        $.each(rating,function(key,val){
-           if(value == val.x){
+        $.each(curve,function(key,val){
+            if(typeof(val) == 'undefined') return true;
+            if(value == val.x){
                 lookupValue = val.y;
                 return false;
-           }
-           if(value < val.x) {
+            }
+            if(value < val.x) {
+                if(key == 0){
+                    lookupValue = val.y;
+                    return false;
+                }
                 highx = val.x;
                 highy = val.y;
-                lowx = rating[key-1].x;
-                lowy =  rating[key-1].y;
-                lookupValue = ((highx-value)/(value-lowx))*(highy-lowy)+lowy
+                lowx = curve[key-1].x;
+                lowy =  curve[key-1].y;
+                lookupValue = (((value-lowx)/(highx-lowx))*(highy-lowy)+lowy).toFixed(2);
                 return false;
             }
         });
     }
     if(type == 'stage'){
-        $.each(rating,function(key,val){
-           if(value == val.y){
+        $.each(curve,function(key,val){
+            if(typeof(val) == 'undefined') return true;
+            if(value == val.y){
                 lookupValue = val.x;
                 return false;
-           }
-           if(value < val.y) {
+            }
+            if(value < val.y) {
                 highx = val.x;
                 highy = val.y;
-                lowx = rating[key-1].x;
-                lowy =  rating[key-1].y;
-                lookupValue = ((highy-value)/(value-lowy))*(highx-lowx)+lowx
+                lowx = curve[key-1].x;
+                lowy =  curve[key-1].y;
+                lookupValue = (((value - lowy)/(highy-lowy))*(highx-lowx)+lowx).toFixed(0);
                 return false;
             }
         });
@@ -1761,8 +1819,23 @@ function dateFromDay(year, day){
 }
 
 
-
+//Convert USGS measured Q json object to highcharts series (UTC)
+//and convert from local to UTC time
 function qMeasJSON2HC_Rating(json,type){
+
+    var usgsTZ = {
+        'AKST' : 9,
+        'AKDT' : 8,
+        'MST' : 7,
+        'PST' : 8,
+        'PDT' : 8,
+        'CST' : 6,
+        'CDT' : 5,
+        'EST' : 5,
+        'EDT' : 4
+        }
+
+
     if (type === undefined) {
          type = 'curve';
     }
@@ -1816,8 +1889,14 @@ function qMeasJSON2HC_Rating(json,type){
             j++;
         });
 
+        var qDate = moment.utc(json.records[i][dtIndex]);
 
-        var qDate = moment(json.records[i][dtIndex]);
+        qDate.add(usgsTZ[json.records[i][tzIndex]],'hours');
+        var localeDate = moment(json.records[i][dtIndex]);
+
+
+
+
         if(type == 'curve'){
             xVal = json.records[i][indepIndex];
             yVal = json.records[i][depIndex];
@@ -1825,6 +1904,7 @@ function qMeasJSON2HC_Rating(json,type){
             xVal = parseInt(qDate.format("x"));
             yVal = json.records[i][indepIndex];
          }
+
 
 
 
@@ -1841,7 +1921,7 @@ function qMeasJSON2HC_Rating(json,type){
             'x' : xVal,
             'y': yVal,
             'date':parseInt(qDate.format("x")),
-            'name': qDate.format('MMMM Do YYYY, h:mm:ss a'),
+            'name': localeDate.format('MMMM Do YYYY, h:mm:ss a')+' '+json.records[i][tzIndex],
             'marker':{
                 'fillColor': color,
                 symbol: 'diamond'
@@ -1964,6 +2044,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         moderate : 'rgba(255,0,0,0.7)',
         flood : 'rgba(255,153,0,0.7)',
         action : 'rgba(255,255,0,0.7)',
+        record: 'rgba(102,178,255,0.7)',
     };
     stage ={
         low : {
@@ -1997,8 +2078,8 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         },
         record: {
             text: 'Record Stage',
-            value: extremes.max,
-            def:'Highest stage at a given site during the period of record'
+
+            def:' Highest stage at a given site during the period of record'
         }
     };
 
@@ -2008,43 +2089,48 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
             if(AHPSjson[nwsLid].sigstages[key].value > maxY){
                 maxY = parseInt(AHPSjson[nwsLid].sigstages[key].value);
             }
-            if(type == 'band'){
-                chart.yAxis[0].addPlotBand({
-                    from: AHPSjson[nwsLid].sigstages[key].value,
-                    to: upperEnd,
-                    color: value,
-                    id : 'plotBand',
-                    zIndex:0
-                })
-            }
-            else{
-                chart.yAxis[0].addPlotLine({
-                    value: AHPSjson[nwsLid].sigstages[key].value,
-                    color: value,
-                    id : 'plotLine',
-                    zIndex:1,
-                    width:2,
-
-                })
-            }
-
-            chart.yAxis[0].addPlotLine({
-                color: 'black',
-                width: 1,
-                zIndex:6,
-                id: 'plotLine',
-                value: AHPSjson[nwsLid].sigstages[key].value,
-                label: {
-                    text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,
-                    textAlign: 'left',
-                    fontWeight: 'bold',
-                    y:-2
+            if(key != 'record'){
+                //Add flood stage plot band for each flood stage
+                if(type == 'band'){
+                    chart.yAxis[0].addPlotBand({
+                        from: AHPSjson[nwsLid].sigstages[key].value,
+                        to: upperEnd,
+                        color: value,
+                        id : 'plotBand',
+                        zIndex:0
+                    })
                 }
-            })
+                //Or just add plot lines for each flood stage
+                else{
+                    chart.yAxis[0].addPlotLine({
+                        value: AHPSjson[nwsLid].sigstages[key].value,
+                        color: value,
+                        id : 'plotLine',
+                        zIndex:1,
+                        width:2,
 
+                    })
+                }
+                //Add a black contrast line
+                chart.yAxis[0].addPlotLine({
+                    color: 'black',
+                    width: 1,
+                    zIndex:6,
+                    id: 'plotLine',
+                    value: AHPSjson[nwsLid].sigstages[key].value,
+                    label: {
+                        text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,
+                        textAlign: 'left',
+                        fontWeight: 'bold',
+                        y:-2
+                    }
+                })
+            }
             upperEnd = AHPSjson[nwsLid].sigstages[key].value
 
             if(addTable == false) return;
+
+
             text = chart.renderer.text(stage[key].text,legendx,legendy)
                 .attr({
                     zIndex:6,
@@ -2056,7 +2142,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
                         width:  col1Width,
                         fontSize: legTextHeight+'px'
                 }).add();
-            text = chart.renderer.text(AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,legendx+col1Width-40,legendy)
+            text = chart.renderer.text(AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,legendx+col1Width-50,legendy)
                 .attr({
                     zIndex:6,
                 class:'nwsLegend'})
@@ -2087,6 +2173,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
             legendy = legendy+2*legTextHeight+5*cellPadding
         }
     });
+
     if(typeof AHPSjson[nwsLid].sigstages.record === 'object'){
         if(AHPSjson[nwsLid].sigstages.record.value > maxY){
             maxY = parseInt(AHPSjson[nwsLid].sigstages.record.value);
@@ -2357,6 +2444,14 @@ $('#query').click(function() {
     loadPage($('#site').val());
 });
 
+
+
+
+$('#addNWM2Stage').click(function() {
+    addNWM2Stage('#dischargegraph','#stagegraph');
+});
+
+
 $('#togglePeakLabels').click(function(){
     // Toggle data labels
     var chart = $('#dischargegraph').highcharts();
@@ -2410,14 +2505,25 @@ $('#loadAnnual').click(function(){
 
 });
 
+$('#getGDLhydro').click(function(){
+
+    var dischargeChart = $('#dischargegraph').highcharts();
+    if(chart.get('peakHydroGraph')) chart.get('peakHydroGraph').remove();
+    var base = dischargeChart.get('baseFlow');
+    var compareHydro = dischargeChart.get(base.userOptions.peakDataId);
+    getPeakHydroGraph(dischargeChart,compareHydro,base);
+});
+
+
+
+
+
 
 $('#zoomToStage').click(function(){
-    var stageChart = $('#stagegraph').highcharts();
-    var extremes = stageChart.xAxis[0].getExtremes();
     var dischargeChart = $('#dischargegraph').highcharts();
     dischargeChart.get('dailyStats').hide();
     dischargeChart.get('annualPeakYear').hide();
-    dischargeChart.xAxis[0].setExtremes(extremes.min, extremes.max);
+    dischargeChart.xAxis[0].setExtremes(new Date().getTime()-3600000*24*7, new Date().getTime()+3600000*24*4);
     dischargeChart.showResetZoom();
 });
 
@@ -2714,7 +2820,7 @@ function graphStage(container,minDate,maxDate,usgs,nws){
                                 var forecast = dischargeChart.get('nwsDischargeForecast').points;
                                 for(var y = 0;y< this.series.data.length; y++){
                                     var newY = this.series.data[y].y;
-                                    var newDischarge = ratingLookup(ratingchart.get('curve').data,newY,'stage');
+                                    var newDischarge = parseInt(curveLookup(ratingchart.get('curve').data,newY,'stage'));
                                     for (var i = 0; i < forecast.length; i++) {
                                         if (forecast[i].x == this.series.data[y].x){
                                             forecast[i].update({y:parseInt(newDischarge)});
@@ -2865,12 +2971,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
                             });
                             ratingchart.yAxis[0].addPlotLine({
-                                value: ratingLookup(ratingchart.get('curve').data,val),
+                                value: curveLookup(ratingchart.get('curve').data,val),
                                 color: 'red',
                                 width: 2,
                                 id: 'horz_loc',
                                 label: {
-                                    text: ratingLookup(ratingchart.get('curve').data,val),
+                                    text: curveLookup(ratingchart.get('curve').data,val),
                                     align: 'center',
                                     style: {
                                         fontWeight: 'bold',
@@ -2892,11 +2998,11 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                                 var forecast = stageChart.get('nwsStageForecast').points;
                                 for(var y =0; y< this.series.data.length;y++){
                                     var newY = parseInt(this.series.data[y].y);
-                                    var stage = ratingLookup(ratingchart.get('curve').data,newY);
+                                    var stage = curveLookup(ratingchart.get('curve').data,newY);
                                     this.series.data[y].update({y:newY});
                                     for (var i = 0; i < forecast.length; i++) {
                                         if (forecast[i].x == this.series.data[y].x){
-                                            forecast[i].update({y:parseFloat(stage.toFixed(2))});
+                                            forecast[i].update({y:parseFloat(stage)});
                                             break;
                                         }
                                     }
@@ -3137,7 +3243,7 @@ function graphHeatQ(NWS){
                                 id: 'vert_loc'
                             });
                             ratingchart.yAxis[0].addPlotLine({
-                                value: ratingLookup(ratingchart.get('curve').data,this.value),
+                                value: curveLookup(ratingchart.get('curve').data,this.value),
                                 color: 'red',
                                 width: 1,
                                 id: 'horz_loc'
