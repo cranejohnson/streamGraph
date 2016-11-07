@@ -15,16 +15,20 @@
     <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
+    <script src="json-to-table.js"></script>
+    <script src="USGS_CODE.js"></script>
+
     <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
 
     <style type="text/css">
-          .success {
+        .success {
             color: #228B22;
-          }
-          .map {
+        }
+        .map {
           height: 300px;
           width: 400px;
         }
+        .box-table-a{font-family:"Lucida Sans Unicode", "Lucida Grande", Sans-Serif;font-size:12px;width:480px;text-align:left;border-collapse:collapse;margin:20px;}.box-table-a th{font-size:13px;font-weight:normal;background:#b9c9fe;border-top:4px solid #aabcfe;border-bottom:1px solid #fff;color:#039;padding:8px;}.box-table-a td{background:#e8edff;border-bottom:1px solid #fff;color:#669;border-top:1px solid transparent;padding:8px;}.box-table-a tr:hover td{background:#d0dafd;color:#339;}
     </style>
 
     <link rel="stylesheet" href="https://openlayers.org/en/v3.19.0/css/ol.css" type="text/css">
@@ -37,18 +41,14 @@
     <table>
         <tr>
             <td>
-                <table width="100%" border="0">
-                    <tr>
-                        <td><label for="watershedArea"><strong>Area </strong></label><input id="watershedArea" size="7" readonly="readonly" />mi<sup>2</sup></td>
-                    </tr>
-                </table>
-            </td>
-            <td>
                 Data Ingest Log:
                 <div id="log" style="overflow-y: scroll;width:300px; height:300px; font-size:x-small;"><br></div>
             </td>
             <td>
                 <div id="map" class="map"></div>
+            </td>
+            <td>
+                <div id='usgsSiteInfo'></div>
             </td>
         </tr>
     </table>
@@ -167,7 +167,7 @@ var NWS;
 var state;   //need to get rid of this one.
 new Clipboard('.btn');
 var CROSSWALKTABLE;
-var FIPSCODES = {"02":"AK","01":"AL","05":"AR","60":"AS","04":"AZ","06":"CA","08":"CO","09":"CT","11":"DC","10":"DE","12":"FL","13":"GA","66":"GU","15":"HI","19":"IA","16":"ID","17":"IL","18":"IN","20":"KS","21":"KY","22":"LA","25":"MA","24":"MD","23":"ME","26":"MI","27":"MN","29":"MO","28":"MS","30":"MT","37":"NC","38":"ND","31":"NE","33":"NH","34":"NJ","35":"NM","32":"NV","36":"NY","39":"OH","40":"OK","41":"OR","42":"PA","72":"PR","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","51":"VA","78":"VI","50":"VT","53":"WA","55":"WI","54":"WV","56":"WY"  };
+//var FIPSCODES = {"02":"AK","01":"AL","05":"AR","60":"AS","04":"AZ","06":"CA","08":"CO","09":"CT","11":"DC","10":"DE","12":"FL","13":"GA","66":"GU","15":"HI","19":"IA","16":"ID","17":"IL","18":"IN","20":"KS","21":"KY","22":"LA","25":"MA","24":"MD","23":"ME","26":"MI","27":"MN","29":"MO","28":"MS","30":"MT","37":"NC","38":"ND","31":"NE","33":"NH","34":"NJ","35":"NM","32":"NV","36":"NY","39":"OH","40":"OK","41":"OR","42":"PA","72":"PR","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","51":"VA","78":"VI","50":"VT","53":"WA","55":"WI","54":"WV","56":"WY"  };
 var AJAXLOOKUPTABLE = [{
                 match:"crossWalk.json",
                 name:"USGS-NWS CrossWalk Table",
@@ -329,6 +329,16 @@ function addReach2Map(map,reach){
     map.addLayer(vectorLayer);
 }
 
+
+
+function showUSGSinfo(jsonData){
+    var html = "<table class = \"box-table-a\"><thead><tr><th colspan = \"2\">Site Information</th></tr>";
+    html = html + "<tr><td>USGS Site Name</td><td>"+jsonData.station_nm+"</td></tr>";
+    html = html + "<tr><td>USGS Site Number</td><td>"+jsonData.site_no+"</td></tr>";
+    html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.</td></tr>";
+    html = html + "<tr><td>USGS Gage Datum</td><td>"+jsonData.alt_va+" ft ("+jsonData.alt_datum_cd+")</br>"+USGS_alt_meth_cd[jsonData.alt_meth_cd]+" (+- "+jsonData.alt_acy_va+" ft)</td></tr>";
+    $('#usgsSiteInfo').html(html);
+}
 
 ///////////////////////////////////
 //  shef Encode Data
@@ -586,18 +596,51 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
 }
 
 
+function simple_moving_averager(period) {
+    var nums = [];
+    return function(num) {
+        nums.push(num);
+        if (nums.length > period)
+            nums.splice(0,1);  // remove the first element of the array
+
+        var sum = 0;
+        for (var i in nums)
+            sum += nums[i];
+        var n = period;
+        if (nums.length < period)
+            n = nums.length;
+        return(sum/n);
+    }
+}
+
+
 function getPeakHydroGraph(chart,curve,baseflow,interval){
+    var period = 12;
+    var sma = simple_moving_averager(period);
+    var newsma = 0;
+    var oldsma = 0;
     if (interval === undefined) {
         interval = 1;
     }
     var newData = [];
+
     var x = baseflow.data[0]['x'];
     var y = parseInt(curveLookup(curve.data,x));
     var endX = parseInt(baseflow.data[baseflow.data.length-1]['x']);
     newData.push([x,0]);
     var workingTime = moment(x).minutes(0).add(interval,'hours');
+    var peakTime = workingTime;
     while(parseInt(workingTime.format('x')) < endX){
         y = curveLookup(curve.data,workingTime)-curveLookup(baseflow.data,workingTime);
+        newsma = sma(parseInt(y));
+        if(newsma > oldsma){
+            oldsma = newsma;
+            peakTime = workingTime.clone();
+            peakTime.add(-(period/2),'hours');
+        }
+        //console.log(y,oldsma,newsma,peakTime.format());
+        var val = parseInt(y);
+        if(val < 0) val =0;
         newData.push([parseInt(workingTime.format('x')),parseInt(y)]);
         workingTime.add(interval,'hours');
     }
@@ -613,6 +656,27 @@ function getPeakHydroGraph(chart,curve,baseflow,interval){
         zIndex:4,
     };
     chart.addSeries(newSeries);
+
+    var alignDate = moment("2000-06-01");
+    var startDate = moment("2000-05-01");
+    var shift = Math.round(moment.duration(peakTime.diff(moment(x))).asHours());
+    var hours = moment.duration(alignDate.diff(moment("2000-05-01"))).asHours();
+    var data = [];
+    for(var i = 0; i < (hours-shift) ; i++){
+        data.push([startDate.format('MM/DD/YY HH:mm'),"",0]);
+        startDate.add(1,'hours');
+    }
+    for(var i=0;i<newData.length;i++){
+        data.push([startDate.format('MM/DD/YY HH:mm'),moment(newData[i][0]).format('MM/DD/YY HH:mm'),newData[i][1]]);
+        startDate.add(1,'hours');
+    }
+    var html = '';
+    for(var i =0;i<data.length;i++){
+        html = html+data[i][0]+","+data[i][1]+","+data[i][2]+"<br />";
+    }
+    $('#shefText').html(html);
+
+
 }
 
 
@@ -2521,8 +2585,8 @@ $('#getGDLhydro').click(function(){
 
 $('#zoomToStage').click(function(){
     var dischargeChart = $('#dischargegraph').highcharts();
-    dischargeChart.get('dailyStats').hide();
-    dischargeChart.get('annualPeakYear').hide();
+    if(dischargeChart.get('dailyStats')) dischargeChart.get('dailyStats').hide();
+    if(dischargeChart.get('annualPeakYear')) dischargeChart.get('annualPeakYear').hide();
     dischargeChart.xAxis[0].setExtremes(new Date().getTime()-3600000*24*7, new Date().getTime()+3600000*24*4);
     dischargeChart.showResetZoom();
 });
@@ -2631,7 +2695,7 @@ function loadPage(site){
         success: function(data){
             siteInfo = getRDBSiteInfo(data);
             state = FIPSCODES[siteInfo.state_cd].toLowerCase();
-            $('#watershedArea').val(siteInfo.drain_area_va);
+            showUSGSinfo(siteInfo);
             Area = siteInfo.drain_area_va;
             Highcharts.setOptions({
                 title: {
@@ -3521,7 +3585,7 @@ $(function () {
         values: [0,11],
         slide: function( event, ui ) {
             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
-            showQmeas(ui.values[0],ui.values[1],$("#qmeas-years" ).slider( "values", 0 ),$("#qmeas-years" ).slider( "values", 1 ));
+            showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).slider( "values", 0 ),$("#qmeas-years" ).slider( "values", 1 ));
         }
     });
     $( "#months2show" ).val( moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 0 ), 01)).format("MMM") +
