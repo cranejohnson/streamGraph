@@ -918,6 +918,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     var ext = chartAdd.xAxis[0].getExtremes();
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
     var cD = '00060';
+    var seriesId = 'USGSiv'+usgsID;
     var start = '1900-01-01';
     var end = '2020-01-01';
     if(year != 'all'){
@@ -932,7 +933,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     if(dv_iv == 'dv'){
         durLabel = 'Daily';
         lineColor = 'darkgreen';
-        seriesId = 'USGSdv';
+        seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     };
@@ -954,7 +955,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                 var olddate = 0;
                 var years = graphYear - workingYear;
                 for(var i=0;i<allData.length;i++){
-                    var date = moment.utc(allData[i][0]).add(years, 'years');
+                    var date = moment.utc(allData[i][0]).year(graphYear);
                     origDate.push(allData[i][0]);
                     if(date.valueOf() > olddate){
                         yearData.push([date.valueOf(),allData[i][1]]);
@@ -969,6 +970,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     param: 'stage',
                     source: 'USGS',
                     timeShift: true,
+                    id: seriesId+'_'+workingYear,
                     calcVol: true,
                     USGSid:usgsID,
                     originalDates:origDate,
@@ -2578,7 +2580,9 @@ $('#getGDLhydro').click(function(){
     var dischargeChart = $('#dischargegraph').highcharts();
     if(chart.get('peakHydroGraph')) chart.get('peakHydroGraph').remove();
     var base = dischargeChart.get('baseFlow');
+    console.log(base.userOptions.peakDataId);
     var compareHydro = dischargeChart.get(base.userOptions.peakDataId);
+    console.log(compareHydro);
     getPeakHydroGraph(dischargeChart,compareHydro,base);
 });
 
