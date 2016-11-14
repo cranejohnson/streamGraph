@@ -15,7 +15,7 @@
     <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
-    
+
     <script src="USGS_CODE.js"></script>
 
     <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
@@ -919,6 +919,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     var ext = chartAdd.xAxis[0].getExtremes();
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
     var cD = '00060';
+    var seriesId = 'USGSiv'+usgsID;
     var start = '1900-01-01';
     var end = '2020-01-01';
     if(year != 'all'){
@@ -933,7 +934,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     if(dv_iv == 'dv'){
         durLabel = 'Daily';
         lineColor = 'darkgreen';
-        seriesId = 'USGSdv';
+        seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
         usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     };
@@ -951,11 +952,12 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                 var allData = USGStoHC(json,"00060");
                 var workingYear = moment(allData[Math.round(allData.length/2)][0]).format("YYYY");
                 var yearData = [];
+                var origDate = [];
                 var olddate = 0;
                 var years = graphYear - workingYear;
-                var shift = -moment.utc(allData[12][0]).add(years, 'years').valueOf() + allData[12][0];
                 for(var i=0;i<allData.length;i++){
-                    var date = moment(allData[i][0]).add(years, 'years');
+                    var date = moment.utc(allData[i][0]).year(graphYear);
+                    origDate.push(allData[i][0]);
                     if(date.valueOf() > olddate){
                         yearData.push([date.valueOf(),allData[i][1]]);
                         olddate = date.valueOf();
@@ -969,16 +971,17 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     param: 'stage',
                     source: 'USGS',
                     timeShift: true,
+                    id: seriesId+'_'+workingYear,
                     calcVol: true,
                     USGSid:usgsID,
-                    dateShift:shift,
+                    originalDates:origDate,
                     tooltip: {
                         headerFormat:'<b>{point.x:%Y-%m-%d}</b><br>',
                         pointFormatter: function (){
                             if(this.series.options.dateShift == 0){
                                 return '<b>'+numberWithCommas(this.y) + ' cfs</b>';
                             }else{
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.x).add(this.series.options.dateShift,'milliseconds').format("YYYY-MM-DD H:mm")+')' ;
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.series.options.originalDates[this.index]).format("YYYY-MM-DD H:mm")+')' ;
                             }
                         },
                     },
@@ -1633,7 +1636,7 @@ function addStats(chartDiv){
 
 
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
-            if(tdata[5] > 8) yearMax = yearMax-1;
+            if(tdata[5] > 9) yearMax = yearMax-1;
             var maxData = {y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
@@ -1656,11 +1659,12 @@ function addStats(chartDiv){
 
         var sdate= new Date(extX.min);
         var edate = new Date(extX.max);
-
+        var d = new Date();
+        var n = d.getTimezoneOffset();
         //Make annual stats series match the time period of graph
         while (sdate < edate){
-
-            var plotDate = moment(sdate).add(12, 'hours');
+            var plotDate = moment.utc(sdate).hours(12);
+            plotDate.add(n,'minutes');
             var doy = plotDate.format("MDD");
 
             //Push max and min data into series
@@ -2001,10 +2005,10 @@ function qMeasJSON2HC_Rating(json,type){
 }
 
 
-
+//Convert USGS XML object to highcharts data series
 function USGStoHC(usgsObj,TSvalue){
     var d = new Date()
-
+    var n = d.getTimezoneOffset();
     var len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
     var urlSource = usgsObj.value.queryInfo.queryURL;
@@ -2020,10 +2024,13 @@ function USGStoHC(usgsObj,TSvalue){
 
     var numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     var olddate = moment("1900-01-01");
-
     for (var i = 0; i < numQ; i++) {
-        d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
-        if(isDaily) d.hour(12);
+        d = moment.utc(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
+        if(isDaily){
+            //Set the time in UTC to noon local (for Alaska subtract 3 hours)
+            d.hours(12);
+            d.add(n,'minutes');
+        }
         val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value;
         val = parseFloat(val);
 
@@ -2574,7 +2581,9 @@ $('#getGDLhydro').click(function(){
     var dischargeChart = $('#dischargegraph').highcharts();
     if(chart.get('peakHydroGraph')) chart.get('peakHydroGraph').remove();
     var base = dischargeChart.get('baseFlow');
+    console.log(base.userOptions.peakDataId);
     var compareHydro = dischargeChart.get(base.userOptions.peakDataId);
+    console.log(compareHydro);
     getPeakHydroGraph(dischargeChart,compareHydro,base);
 });
 
