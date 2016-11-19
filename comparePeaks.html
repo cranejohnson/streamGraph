@@ -1,7 +1,3 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-<head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
   <script type="text/javascript" src="http://code.jquery.com/jquery-latest.min.js"></script>
   <script src="http://code.highcharts.com/highcharts.js"></script>
   <script src="https://code.highcharts.com/modules/heatmap.js"></script>
@@ -9,15 +5,14 @@
   <script src="http://code.highcharts.com/modules/exporting.js"></script>
   <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
   <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
-  <script src="moment.js"></script>
-  <script src="underscore.js"></script>
+  <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
+
+  
 
   <title>NWS JS Graphing Example</title>
-</head>
-<body>
 <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
 <div id="peakComparisonGraph" style="width: 800px; height: 500px; padding-left:20px"></div>
-</body>
+
 
 
 <script type="text/javascript">
@@ -111,6 +106,9 @@ $(function () {
         chart: {
             zoomType: 'xy',
         },
+        credits: {
+            enabled: false
+        },
         title: {
             text: 'Comparison of Peak Flows',
         },
@@ -129,6 +127,11 @@ $(function () {
             align: 'right',
             verticalAlign: 'middle',
             borderWidth: 0
+        },
+        tooltip: {
+            positioner: function () {
+                    return { x: 200, y: 150 };
+             },
         },
         series: addPeakFlow()
     });
