@@ -28,6 +28,10 @@
           height: 300px;
           width: 400px;
         }
+        #heatMapQ,
+        #annualMapQ{
+            float:left;
+        }
         .box-table-a{font-family:"Lucida Sans Unicode", "Lucida Grande", Sans-Serif;font-size:12px;width:480px;text-align:left;border-collapse:collapse;margin:20px;}.box-table-a th{font-size:13px;font-weight:normal;background:#b9c9fe;border-top:4px solid #aabcfe;border-bottom:1px solid #fff;color:#039;padding:8px;}.box-table-a td{background:#e8edff;border-bottom:1px solid #fff;color:#669;border-top:1px solid transparent;padding:8px;}.box-table-a tr:hover td{background:#d0dafd;color:#339;}
     </style>
 
@@ -102,7 +106,8 @@
                 <div id='shefText'></div>
             </td>
             <td style="vertical-align: top;">
-                <div id="heatMapQ" style="width: 700px; height: 550px; margin: 0 auto;"></div>
+                <div id="heatMapQ" style="width: 600px; height: 550px; margin: 0 auto;"></div>
+                <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
             </td>
         </tr>
     </table>
@@ -2065,20 +2070,37 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
         break;
       }
     }
+    var oldYear = 1800;
+    var newYear = 1800;
+    var annualSum = 0;
+    var numInYear = 0;
+
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
       var d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
 
-      var year = d.getFullYear();
-      var start = new Date(year,0,0);
+      newYear = d.getFullYear();
+      if(newYear != oldYear){
+            if(oldYear != 1800){
+                for(var y = 375;y<376;y++){
+                    data.push([parseInt(y),parseInt(oldYear),(annualSum/numInYear)]);
+                }
+            }
+            oldYear = newYear;
+            annualSum = 0;
+            numInYear = 1;
+      }
+
+      var start = new Date(newYear,0,0);
       var diff = d - start;
       var oneDay = 1000 * 60 * 60 * 24;
       var day = Math.floor(diff / oneDay);
       val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value
-      //val = Math.log(parseFloat(val));
       val = parseFloat(val);
       if(val < 1) val  = 1;
-      data.push([parseInt(day),parseInt(year),val])
+      data.push([parseInt(day),parseInt(newYear),val])
+      annualSum = annualSum + val;
+      numInYear = numInYear + 1;
     }
     return data
 }
@@ -2500,6 +2522,15 @@ function plotHeatQ(usgsSite){
                 });
                 NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName;
                 graphHeatQ(NWS);
+                var annualUSGS = [];
+                console.log(NWS.dailyUSGS[0].data.length);
+                for(var i = 0;i < NWS.dailyUSGS[0].data.length; i++) {
+                    if(NWS.dailyUSGS[0].data[i][0]>370){
+                        annualUSGS.push(NWS.dailyUSGS[0].data[i]);
+                    }
+                }
+                console.log(annualUSGS);
+                annualHeatQ(annualUSGS);
 
             }
         },
@@ -2523,7 +2554,7 @@ function addNWMPlots(graphID,direction){
     else if(direction == 'up'){
         x = nwmReach.geometry.paths[0][0][0];
         y = nwmReach.geometry.paths[0][0][1];
-    }    
+    }
     chart.get('NWMshort').remove();
     chart.get('NWMmedium').remove();
     chart.get('NWMlong').remove();
@@ -2531,11 +2562,11 @@ function addNWMPlots(graphID,direction){
     addNWM('dischargegraph',y,x,'medium_range',direction);
     addNWM('dischargegraph',y,x,'long_range',direction);
 }
-    
 
-    
-    
-    
+
+
+
+
 $('#query').click(function() {
     loadPage($('#site').val());
 });
@@ -3325,6 +3356,10 @@ function graphHeatQ(NWS){
             renderTo: 'heatMapQ',
             type: 'heatmap',
             zoomType: 'xy',
+            marginRight: 0,
+            marginTop:40,
+            marginBottom:100,
+            marginLeft:50
 
         },
         credits: {
@@ -3333,6 +3368,7 @@ function graphHeatQ(NWS){
         title: {
             text: title+' DAILY DATA'
         },
+
         plotOptions:{
             series:{
                 point: {
@@ -3369,13 +3405,13 @@ function graphHeatQ(NWS){
             },
             min: 0,
             max: 365,
-            tickPositions: [1,32, 60,91, 121,152, 182,213, 244,274,305,335],
+            tickPositions: [1,32, 60,91, 121,152, 182,213, 244,274,305,335,380],
             labels: {
                 align: 'left',
                 x: 5,
                 y: 14,
                 formatter: function (){
-
+                    if(this.value == 370) return 'Annual';
                     return $.datepicker.formatDate(' M ',dateFromDay('2015',this.value));
                  }
             },
@@ -3408,7 +3444,7 @@ function graphHeatQ(NWS){
                 return '<b>' + $.datepicker.formatDate('M d yy',dateFromDay(this.point.y,this.point.x))+' - '+numberWithCommas(this.point.value) + ' cfs </b>';
             },
             positioner: function () {
-                    return { x: 500, y: 28 };
+                    return { x: 300, y: 15 };
              }
         },
         series: [{
@@ -3424,6 +3460,97 @@ function graphHeatQ(NWS){
     heatchart = new Highcharts.Chart(heatchartobj);
 
 }
+
+
+function annualHeatQ(NWS){
+
+
+    var start;
+    annualheatchartobj= {
+        chart: {
+            renderTo: 'annualMapQ',
+            type: 'heatmap',
+            zoomType: 'xy',
+            marginLeft: 0,
+            marginRight: 0,
+            marginTop:40,
+            marginBottom:100
+
+        },
+        credits: {
+            enabled: false
+        },
+        exporting: {
+            enabled: false
+        },
+        title:{
+            floating:true,
+            text:''
+        },
+        legend: {
+            enabled: false
+        },
+       xAxis: {
+            min: 374,
+            max: 376,
+            tickPositions: [374],
+            labels: {
+                align: 'left',
+                x: 5,
+                y: 14,
+                formatter: function (){
+                    if(this.value == 374) return 'Annual';
+                    return $.datepicker.formatDate(' M ',dateFromDay('2015',this.value));
+                 }
+            },
+            showLastLabel: true,
+            tickLength: 10
+        },
+
+        yAxis: {
+            minPadding: 0,
+            maxPadding: 0,
+            labels:{
+                enabled: false
+            }
+        },
+
+        colorAxis: {
+            type: 'linear',
+            stops: [
+                [0 ,   '#FF0000'],
+                [0.3, '#FFCC33'],
+//                [0.5, '#2F873A'],
+                [0.8, '#66CCFF'],
+                [1 ,   '#3300CC']
+            ],
+            startOnTick: false,
+            endOnTick: false,
+        },
+        tooltip: {
+            headerFormat: 'Annual Discharge<br>',
+            formatter: function (){
+                return '<b>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
+            },
+            positioner: function () {
+                    return { x: 0, y: 10 };
+             }
+        },
+        series: [{
+            data: NWS,
+            borderWidth: 0,
+            nullColor: '#EFEFEF',
+            turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
+        }]
+
+    }
+
+
+    annualheatchart = new Highcharts.Chart(annualheatchartobj);
+
+}
+
+
 
     /**
      * Display a temporary label on the chart
