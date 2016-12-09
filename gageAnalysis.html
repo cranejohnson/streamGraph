@@ -2114,6 +2114,9 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  *
  */
 function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
+    console.log(AHPSjson);
+    
+    
     if (addTable === undefined) {
         addTable = true;
     }
@@ -2126,6 +2129,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
 
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
+    if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
     var extremes = chart.yAxis[0].getExtremes();
     if(getAhps(nwsLid,AHPSjson) == false) return;
 
@@ -2181,7 +2185,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         }
     };
 
-
+    
     $.each( colors, function( key, value ){
         if(typeof AHPSjson[nwsLid].sigstages[key].value != 'undefined'){
             if(AHPSjson[nwsLid].sigstages[key].value > maxY){
