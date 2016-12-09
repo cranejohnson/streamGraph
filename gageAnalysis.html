@@ -34,6 +34,12 @@
             float:left;
         }
         .box-table-a{font-family:"Lucida Sans Unicode", "Lucida Grande", Sans-Serif;font-size:12px;width:480px;text-align:left;border-collapse:collapse;margin:20px;}.box-table-a th{font-size:13px;font-weight:normal;background:#b9c9fe;border-top:4px solid #aabcfe;border-bottom:1px solid #fff;color:#039;padding:8px;}.box-table-a td{background:#e8edff;border-bottom:1px solid #fff;color:#669;border-top:1px solid transparent;padding:8px;}.box-table-a tr:hover td{background:#d0dafd;color:#339;}
+
+	.ui-slider .ui-slider-handle{
+    		width:10px; 
+	}
+
+
     </style>
 
     <link rel="stylesheet" href="https://openlayers.org/en/v3.19.0/css/ol.css" type="text/css">
@@ -3543,7 +3549,7 @@ function annualHeatQ(NWS){
         tooltip: {
             formatter: function (){
                 if(this.point.value == null) return 'No Avg.<br>Available';
-                return '<b>Avg.<br> Annual<br>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
+                return '<b>Avg.<br>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
             },
             positioner: function () {
                     return { x: 0, y: 0 };
