@@ -1262,7 +1262,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
                         values: [parseInt(minYear),parseInt(maxYear)],
                         slide: function( event, ui ) {
                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-                            showQmeas($("#qmeas-range").slider("values",0),$("#qmeas-range").slider("values",1),ui.values[0],ui.values[1]);
+                            showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
                         }
                     });
                     $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
@@ -2119,8 +2119,8 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  */
 function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
     console.log(AHPSjson);
-    
-    
+
+
     if (addTable === undefined) {
         addTable = true;
     }
@@ -2189,7 +2189,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         }
     };
 
-    
+
     $.each( colors, function( key, value ){
         if(typeof AHPSjson[nwsLid].sigstages[key].value != 'undefined'){
             if(AHPSjson[nwsLid].sigstages[key].value > maxY){
@@ -3733,7 +3733,7 @@ $(function () {
         }
     });
 
-    $( "#qmeas-range" ).slider({
+    $( "#qmeas-range" ).dragslider({
         range: true,
         min: 0,
         max: 11,
@@ -3742,11 +3742,11 @@ $(function () {
         rangeDrag: true, // Enable range dragging.
         slide: function( event, ui ) {
             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
-            showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).slider( "values", 0 ),$("#qmeas-years" ).slider( "values", 1 ));
+            showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
         }
     });
-    $( "#months2show" ).val( moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 0 ), 01)).format("MMM") +
-      " - " + moment(new Date(2012,$( "#qmeas-range" ).slider( "values", 1 ), 01)).format("MMM") );
+    $( "#months2show" ).val( moment(new Date(2012,$( "#qmeas-range" ).dragslider( "values", 0 ), 01)).format("MMM") +
+      " - " + moment(new Date(2012,$( "#qmeas-range" ).dragslider( "values", 1 ), 01)).format("MMM") );
 
 
 
