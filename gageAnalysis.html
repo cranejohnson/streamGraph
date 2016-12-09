@@ -9,6 +9,7 @@
     <script src="http://code.highcharts.com/modules/exporting.js"></script>
     <script src="http://highcharts.github.io/export-csv/export-csv.js"></script>
     <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script src="jquery.ui.slider.custom.js"></script>
     <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
     <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
 
@@ -115,6 +116,8 @@
 
 
 <script type="text/javascript">
+
+
 
 
 ///////////////////////////////////
@@ -1250,10 +1253,11 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
                         if(moment(value.date).format('Y')>maxYear) maxYear = moment(value.x).format('Y');
                     });
 
-                    $( "#qmeas-years" ).slider({
+                    $( "#qmeas-years" ).dragslider({
                         range: true,
                         min: parseInt(minYear),
                         max: parseInt(maxYear),
+                        rangeDrag: true, // Enable range dragging.
                         step: 1,
                         values: [parseInt(minYear),parseInt(maxYear)],
                         slide: function( event, ui ) {
@@ -1261,8 +1265,8 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
                             showQmeas($("#qmeas-range").slider("values",0),$("#qmeas-range").slider("values",1),ui.values[0],ui.values[1]);
                         }
                     });
-                    $( "#years2show" ).val($("#qmeas-years" ).slider( "values", 0 ) +
-                       " - " + $("#qmeas-years" ).slider( "values", 1 ));
+                    $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
+                       " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
                 }
         }
     });
@@ -3726,6 +3730,7 @@ $(function () {
         max: 11,
         step: 1,
         values: [0,11],
+        rangeDrag: true, // Enable range dragging.
         slide: function( event, ui ) {
             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
             showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).slider( "values", 0 ),$("#qmeas-years" ).slider( "values", 1 ));
