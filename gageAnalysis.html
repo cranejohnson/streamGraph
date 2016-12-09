@@ -2086,8 +2086,11 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
       newYear = d.getFullYear();
       if(newYear != oldYear){
             if(oldYear != 1800){
-                for(var y = 375;y<376;y++){
-                    data.push([parseInt(y),parseInt(oldYear),(annualSum/numInYear)]);
+                if(numInYear > 330){
+                    data.push([parseInt(375),parseInt(oldYear),(annualSum/numInYear)]);
+                }
+                else{
+                    data.push([parseInt(375),parseInt(oldYear),null]);
                 }
             }
             oldYear = newYear;
@@ -2115,6 +2118,9 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  *
  */
 function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
+    console.log(AHPSjson);
+    
+    
     if (addTable === undefined) {
         addTable = true;
     }
@@ -2127,6 +2133,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
 
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
+    if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
     var extremes = chart.yAxis[0].getExtremes();
     if(getAhps(nwsLid,AHPSjson) == false) return;
 
@@ -2182,7 +2189,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         }
     };
 
-
+    
     $.each( colors, function( key, value ){
         if(typeof AHPSjson[nwsLid].sigstages[key].value != 'undefined'){
             if(AHPSjson[nwsLid].sigstages[key].value > maxY){
@@ -3429,6 +3436,7 @@ function graphHeatQ(NWS){
             },
             minPadding: 0,
             maxPadding: 0,
+            max:2020
         },
 
         colorAxis: {
@@ -3514,6 +3522,7 @@ function annualHeatQ(NWS){
         yAxis: {
             minPadding: 0,
             maxPadding: 0,
+            max:2020,
             labels:{
                 enabled: false
             }
@@ -3532,12 +3541,12 @@ function annualHeatQ(NWS){
             endOnTick: false,
         },
         tooltip: {
-            headerFormat: 'Annual Discharge<br>',
             formatter: function (){
-                return '<b>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
+                if(this.point.value == null) return 'No Avg.<br>Available';
+                return '<b>Avg.<br> Annual<br>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
             },
             positioner: function () {
-                    return { x: 0, y: 10 };
+                    return { x: 0, y: 0 };
              }
         },
         series: [{
