@@ -36,7 +36,7 @@
         .box-table-a{font-family:"Lucida Sans Unicode", "Lucida Grande", Sans-Serif;font-size:12px;width:480px;text-align:left;border-collapse:collapse;margin:20px;}.box-table-a th{font-size:13px;font-weight:normal;background:#b9c9fe;border-top:4px solid #aabcfe;border-bottom:1px solid #fff;color:#039;padding:8px;}.box-table-a td{background:#e8edff;border-bottom:1px solid #fff;color:#669;border-top:1px solid transparent;padding:8px;}.box-table-a tr:hover td{background:#d0dafd;color:#339;}
 
 	.ui-slider .ui-slider-handle{
-    		width:10px; 
+    		width:10px;
 	}
 
 
@@ -727,6 +727,7 @@ function showQmeas(lowMonth,highMonth,lowYear,highYear,chartDiv){
         if((month>=lowMonth) && (month<=highMonth)){
             if((year>=lowYear) && (year<=highYear)){
                 newData.push(this);
+
              }
         }
     });
@@ -943,7 +944,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         end = year+'-12-31';
     }
 
-    var usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    var usgsUrl = "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     var durLabel = 'Instantaneous';
     var lineColor = 'royalblue';
     var lineIndex = 2;
@@ -952,7 +953,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
-        usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     };
 
     $.ajax({
@@ -1043,7 +1044,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
     var start = Highcharts.dateFormat('%Y-%m-%d',extX.min-3600*1000*24);
     var end = Highcharts.dateFormat('%Y-%m-%d',extX.max);
 
-    usgsUrl = "http://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+    usgsUrl = "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     var durLabel = 'Iv';
     var lineColor = 'royalblue';
     var lineIndex = 2;
@@ -1052,7 +1053,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
         lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
-        usgsUrl = "http://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
     if(style == 'dashed')lineColor = '';
     $.ajax({
@@ -1251,29 +1252,32 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
                 if(json.error_info.error == 0){
                     newSeries[0].turboThreshold = 2000;
                     chart.addSeries(newSeries[0]);
-
-                    var minYear = 2100;
-                    var maxYear = 1900;
-                    $.each(newSeries[0]['data'], function( index, value ) {
-                        if(moment(value.date).format('Y')<minYear) minYear = moment(value.x).format('Y');
-                        if(moment(value.date).format('Y')>maxYear) maxYear = moment(value.x).format('Y');
-                    });
-
-                    $( "#qmeas-years" ).dragslider({
-                        range: true,
-                        min: parseInt(minYear),
-                        max: parseInt(maxYear),
-                        rangeDrag: true, // Enable range dragging.
-                        step: 1,
-                        values: [parseInt(minYear),parseInt(maxYear)],
-                        slide: function( event, ui ) {
-                            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-                            showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
-                        }
-                    });
-                    $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
-                       " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
-                }
+                    if(chartDiv == 'ratinggraph'){
+                        var minYear = 2100;
+                        var maxYear = 1900;
+                        console.log(minYear,maxYear);
+                        $.each(newSeries[0]['data'], function( index, value ) {
+                            console.log(moment(value.date).format('Y'));
+                            if(parseInt(moment(value.date).format('Y'))< minYear) minYear = parseInt(moment(value.date).format('Y'));
+                            if(parseInt(moment(value.date).format('Y'))> maxYear) maxYear = parseInt(moment(value.date).format('Y'));
+                            console.log(minYear,maxYear);
+                        });
+                        $( "#qmeas-years" ).dragslider({
+                            range: true,
+                            min: parseInt(minYear),
+                            max: parseInt(maxYear),
+                            rangeDrag: true, // Enable range dragging.
+                            step: 1,
+                            values: [parseInt(minYear),parseInt(maxYear)],
+                            slide: function( event, ui ) {
+                                $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+                                showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
+                            }
+                        });
+                        $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
+                           " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
+                    }
+            }
         }
     });
 }
@@ -1491,7 +1495,7 @@ function addStats(chartDiv){
     var d = new Date()
     var n = d.getTimezoneOffset()/60;
 
-    $.get('http://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
+    $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
 
 
         var lines = data.split('\n');
@@ -2006,6 +2010,7 @@ function qMeasJSON2HC_Rating(json,type){
             'x' : xVal,
             'y': yVal,
             'date':parseInt(qDate.format("x")),
+            'age':age,
             'name': localeDate.format('MMMM Do YYYY, h:mm:ss a')+' '+json.records[i][tzIndex],
             'marker':{
                 'fillColor': color,
@@ -2124,7 +2129,7 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
  *
  */
 function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
-    console.log(AHPSjson);
+    //console.log(AHPSjson);
 
 
     if (addTable === undefined) {
@@ -2526,7 +2531,7 @@ function plotHeatQ(usgsSite){
 
     //Load USGS Rating Curve
     $.ajax({
-        url: "http://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
+        url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
         dataType: 'json',
         data: '',
         success: function(json){
@@ -2540,13 +2545,11 @@ function plotHeatQ(usgsSite){
                 NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName;
                 graphHeatQ(NWS);
                 var annualUSGS = [];
-                console.log(NWS.dailyUSGS[0].data.length);
                 for(var i = 0;i < NWS.dailyUSGS[0].data.length; i++) {
                     if(NWS.dailyUSGS[0].data[i][0]>370){
                         annualUSGS.push(NWS.dailyUSGS[0].data[i]);
                     }
                 }
-                console.log(annualUSGS);
                 annualHeatQ(annualUSGS);
 
             }
@@ -2646,14 +2649,14 @@ $('#addFFlines2003').change(function() {
   }
 });
 
-$('#loadAnnual').click(function(){
-    var year = new Date().getFullYear();
-    $('#dischargeStart').val(year+'-01-01');
-    $('#dischargeEnd').val(year+'-12-31');
-
-    $( "#loadQ" ).trigger( "click" );
-
-});
+// $('#loadAnnual').click(function(){
+//     var year = new Date().getFullYear();
+//     $('#dischargeStart').val(year+'-01-01');
+//     $('#dischargeEnd').val(year+'-12-31');
+//
+//     $( "#loadQ" ).trigger( "click" );
+//
+// });
 
 $('#getGDLhydro').click(function(){
 
@@ -2776,7 +2779,7 @@ function loadPage(site){
     var siteInfo;
     //Load USGS Site Information
     $.ajax({
-        url: "http://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
+        url: "https://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
         dataType: 'text',
         data: '',
         async: false,
@@ -3539,7 +3542,6 @@ function annualHeatQ(NWS){
             stops: [
                 [0 ,   '#FF0000'],
                 [0.3, '#FFCC33'],
-//                [0.5, '#2F873A'],
                 [0.8, '#66CCFF'],
                 [1 ,   '#3300CC']
             ],
