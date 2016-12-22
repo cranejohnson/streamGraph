@@ -58,7 +58,7 @@
             <td>
                 <input type="button" id="nwmUp" class = "hasNWM" value="NWM Upstream">
                 <input type="button" id="nwmDown" class = "hasNWM" value="NWM Downstream">
-                <div id="map" class="map"></div>
+                <div id="map" class="map" class="ui-widget-content"></div>
             </td>
             <td>
                 <div id='usgsSiteInfo'></div>
@@ -3654,6 +3654,9 @@ $(function () {
     var d = new Date()
     var n = d.getTimezoneOffset()/60;
 
+    $( "#map" ).resizable({
+        aspectRatio: true
+    });
 
     Highcharts.setOptions({
         title: {
