@@ -147,7 +147,6 @@ var osm_default = new ol.layer.Tile({
       source: new ol.source.XYZ({
         //attributions: [attribution],
         url: 'https://txpub.usgs.gov/arcgis/rest/services/Mapping/HydroBaseMapForTerrain/MapServer/tile/{z}/{y}/{x}'
-//        url: 'http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
       })
     });
 
@@ -934,6 +933,8 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         nwsID = site.nws;
     }
 
+    if(usgsID === undefined) return;
+
     var ext = chartAdd.xAxis[0].getExtremes();
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
     var cD = '00060';
@@ -1030,6 +1031,8 @@ function addUSGS(chartDiv,type,dv_iv,site){
         usgsID = site.usgs;
         nwsID = site.nws;
     }
+
+    //if(usgsID === undefined) return;
 
     var style = 'solid';
 
@@ -1497,6 +1500,8 @@ function addStats(chartDiv){
     var usgsID = chartAdd.options.usgsID;
     var d = new Date()
     var n = d.getTimezoneOffset()/60;
+
+    if(usgsID === undefined) return;
 
     $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
 
@@ -2531,7 +2536,7 @@ function swapAxis(allSeries){
 }
 
 function plotHeatQ(usgsSite){
-
+    if(usgsSite === undefined) return;
     //Load USGS Rating Curve
     $.ajax({
         url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
@@ -2779,25 +2784,46 @@ function loadPage(site){
     $('#dischargeEnd').val(year+'-12-31');
     initializeNWS();
     var siteId = getBothIds(site);
-    var siteInfo;
+    var siteInfo = {'dec_long_va': 0,
+                     'dec_lat_va':0};
     //Load USGS Site Information
-    $.ajax({
-        url: "https://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
-        dataType: 'text',
-        data: '',
-        async: false,
-        success: function(data){
-            siteInfo = getRDBSiteInfo(data);
-            state = FIPSCODES[siteInfo.state_cd].toLowerCase();
-            showUSGSinfo(siteInfo);
-            Area = siteInfo.drain_area_va;
-            Highcharts.setOptions({
-                title: {
-                    text:siteInfo.station_nm
+    if(typeof siteId.usgs !== 'undefined'){
+        $.ajax({
+            url: "https://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
+            dataType: 'text',
+            data: '',
+            async: false,
+            success: function(data){
+                siteInfo = getRDBSiteInfo(data);
+                state = FIPSCODES[siteInfo.state_cd].toLowerCase();
+                showUSGSinfo(siteInfo);
+                Area = siteInfo.drain_area_va;
+                Highcharts.setOptions({
+                    title: {
+                        text:siteInfo.station_nm
+                    }
+                });
+            },
+        });
+     }
+     else{
+        $.ajax({
+                url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=rss&site="+site,
+                dataType: 'text',
+                data: '',
+                async: false,
+                success: function(xml){
+                    var myRe = /<geo:long>(.*)<\/geo:long>/g;
+                    var myArray = myRe.exec(xml);
+                    siteInfo['dec_long_va'] = parseFloat(myArray[1]);
+                    myRe = /<geo:lat>(.*)<\/geo:lat>/g;
+                    myArray = myRe.exec(xml);
+                    siteInfo['dec_lat_va'] = parseFloat(myArray[1]);
+
                 }
-            });
-        }
-    });
+        });
+    }
+
 
     //Setup Stage and Discharge Graphs with AHPS data
     graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
