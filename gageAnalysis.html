@@ -268,7 +268,7 @@ $( document ).ajaxSend(function( event, xhr, settings ) {
             var regExp = new RegExp(AJAXLOOKUPTABLE[i].match);
             if(regExp.test(settings.url)){
                  //$( "#log" ).append( '<span style="color:red" id="'+AJAXLOOKUPTABLE[i].name.replace(/\s+/g, '')+'_log">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" );
-                $( '<span style="color:red" id="'+settings.url.replace(/\W/g, '')+'">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" ).prependTo( "#log" );
+                $( '<span style="color:red" id="'+settings.url.replace(/\W/g, '')+'">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"' target='_blank'>Data Link</a><br>" ).prependTo( "#log" );
 
              }
          }
@@ -347,7 +347,7 @@ function addReach2Map(map,reach){
 
 
 function showUSGSinfo(jsonData){
-    var html = "<table class = \"box-table-a\"><thead><tr><th colspan = \"2\">Site Information</th></tr>";
+    var html = "<table class = \"box-table-a\"><thead><tr><th colspan = \"2\">USGS Site Information</th></tr>";
     html = html + "<tr><td>USGS Site Name</td><td>"+jsonData.station_nm+"</td></tr>";
     html = html + "<tr><td>USGS Site Number</td><td>"+jsonData.site_no+"</td></tr>";
     html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.</td></tr>";
@@ -855,6 +855,7 @@ function getNWM(reachID,forecastType){
                   param: 'discharge',
                   id: "NWM"+typeName[0],
                   color:seriesColor,
+                  calcVol: true,
                   zIndex:zVal,
                   source: 'NWS-NWM',};
     $.ajax({
