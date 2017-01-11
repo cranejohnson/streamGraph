@@ -6,6 +6,12 @@ if(isset($_GET['format'])){
     $format = $_GET['format'];
 }
 
+if($format == 'rss'){
+   header("Access-Control-Allow-Origin: *");
+   header('Content-Type: application/json');
+   echo file_get_contents("http://water.weather.gov/ahps2/rss/obs/$site.rss");
+}
+
 $xml_string = file_get_contents("http://water.weather.gov/ahps2/hydrograph_to_xml.php?gage=$site&output=xml");
 
 if($format == 'xml'){
