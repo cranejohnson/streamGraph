@@ -56,9 +56,10 @@
                 <div id="log" style="overflow-y: scroll;width:300px; height:300px; font-size:x-small;"><br></div>
             </td>
             <td>
-                <input type="button" id="nwmUp" class = "hasNWM" value="NWM Upstream">
-                <input type="button" id="nwmDown" class = "hasNWM" value="NWM Downstream">
+                <span>Gage location (circle) and NWM reach shown (blue highlight)
                 <div id="map" class="map" class="ui-widget-content"></div>
+                <input type="button" id="nwmUp" class = "hasNWM" value="NWM Upstream Results">
+                <input type="button" id="nwmDown" class = "hasNWM" value="NWM Downstream Results">
             </td>
             <td>
                 <div id='usgsSiteInfo'></div>
@@ -161,7 +162,7 @@ var map = new ol.Map({
     layers: [osm_default2,osm_default],
     target: 'map',
     view: new ol.View({
-        center: ol.proj.transform([-1.8118500054456526, 52.4431409750608], 'EPSG:4326', 'EPSG:3857'),
+        center: ol.proj.transform([-100, 40], 'EPSG:4326', 'EPSG:3857'),
         zoom: 10
     })
 });
@@ -208,10 +209,10 @@ var AJAXLOOKUPTABLE = [{
                 match:"rdbajax.php.+qmeas",
                 name: "USGS Discharge Measurements"
                 },
-                {
-                match:"Flood_Stats",
-                name: "Alaska Flood Frequency Data"
-                },
+                //{
+                //match:"Flood_Stats",
+                //name: "Alaska Flood Frequency Data"
+                //},
                 {
                 match:"\/nwis\/stat",
                 name: "USGS Statistics"
@@ -267,7 +268,6 @@ $( document ).ajaxSend(function( event, xhr, settings ) {
         for(i=0;i<AJAXLOOKUPTABLE.length;i++){
             var regExp = new RegExp(AJAXLOOKUPTABLE[i].match);
             if(regExp.test(settings.url)){
-                 //$( "#log" ).append( '<span style="color:red" id="'+AJAXLOOKUPTABLE[i].name.replace(/\s+/g, '')+'_log">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"'>Data Link</a><br>" );
                 $( '<span style="color:red" id="'+settings.url.replace(/\W/g, '')+'">Loading....</span> ' +  AJAXLOOKUPTABLE[i].name + " <a href='"+settings.url+"' target='_blank'>Data Link</a><br>" ).prependTo( "#log" );
 
              }
@@ -745,7 +745,6 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
     if (reachID === undefined) {
         reachID = 0;
     }
-    var chartAdd = $('#'+chartDiv).highcharts();
     var point2 = {};
 
     if(lat > 90){
@@ -808,11 +807,7 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                     if(forecastType == 'short_range'){
                         addReach2Map(map,stream.geometry.paths[0]);
                     };
-                    var newSeries = getNWM(reachID,forecastType);
-                    if(newSeries){
-                        newSeries.nwmJSON = stream;
-                       chartAdd.addSeries(newSeries);
-                    }
+                    plotNWM(chartDiv,reachID,forecastType,stream);
                 },
                 error: function (request, status, errorThrown) {
                     console.log(status);
@@ -820,16 +815,15 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
         });
      }
      else{
-        var newSeries = getNWM(reachID,forecastType);
-
-        //newSeries.nwmJSON = stream;
-        if(newSeries) chartAdd.addSeries(newSeries);
+        plotNWM(chartDiv,reachID,forecastType);
      }
     return reachID;
 }
 
 
-function getNWM(reachID,forecastType){
+function plotNWM(chartDiv,reachID,forecastType,stream){
+    var chartAdd = $('#'+chartDiv).highcharts();
+
     if (forecastType === undefined) {
         forecastType = 'short_range';
     }
@@ -857,13 +851,14 @@ function getNWM(reachID,forecastType){
                   color:seriesColor,
                   calcVol: true,
                   zIndex:zVal,
+                  nwmJSON:stream,
                   source: 'NWS-NWM',};
     $.ajax({
             type: "GET",
             url: "http://nwmdata.nohrsc.noaa.gov/0.2/forecasts/"+forecastType+"/streamflow",
             data: params,
             contentType: "application/json; charset=utf-8",
-            async: false,
+            //async: false,
             headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
             dataType: "json",
             success: function (forecast) {
@@ -872,6 +867,7 @@ function getNWM(reachID,forecastType){
                     xVal = parseInt(moment.utc(point["forecast-time"]).format("x"));
                     series.data.push([xVal,point.value]);
                 })
+                if(series) chartAdd.addSeries(series);
 
             },
             error: function (request, status, errorThrown) {
@@ -879,13 +875,15 @@ function getNWM(reachID,forecastType){
                 return false;
             }
         });
-    return series;
+
+    return;
 
 }
 
 function addNWM2Stage(dischargeGraph,stageGraph){
     var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
     var stagePlt = $(stageGraph).highcharts();
+    var ratingchart = $('#ratinggraph').highcharts();
     var dischargePlt = $(dischargeGraph).highcharts();
     stagePlt.addSeries({data:null,name:'NWM Output'});
     $.each( NWMseries, function( index, item ) {
@@ -1034,6 +1032,11 @@ function addUSGS(chartDiv,type,dv_iv,site){
     }
 
     //if(usgsID === undefined) return;
+    if(typeof(usgsID) == 'undefined'){
+        $( '<span style="color:orange">USGS '+dv_iv+' data (no id)<br></span>' ).prependTo( "#log" );
+        return false;
+    }
+
 
     var style = 'solid';
 
@@ -1087,6 +1090,76 @@ function addUSGS(chartDiv,type,dv_iv,site){
         },
     })
 
+}
+
+
+function addUSGSrating(chartDiv,usgsSite){
+     if(typeof(usgsSite) == 'undefined'){
+             $( '<span style="color:orange">USGS rating data (no id)<br></span>' ).prependTo( "#log" );
+             return;
+      }
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var ratingArray=[];
+    $.ajax({
+        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating",
+        dataType: 'json',
+        data: '',
+        //async: false,
+        success: function(json){
+            if(json.error_info.error == 0){
+                ratingArray = ratingJSON2HC(json);
+                chartAdd.addSeries(ratingArray);
+                addMeasureQ_Rating(chartDiv,usgsSite,"curve");
+                chartAdd.yAxis[0].setExtremes(ratingArray['data'][0][1],ratingArray['data'][ratingArray['data'].length-1][1]);
+                chartAdd.showResetZoom();
+
+            }
+        },
+    });
+}
+
+
+function addAHPSrating(chartDiv,nwsLid){
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var ratingArray=[];
+
+    if(getAhps(nwsLid,AHPSjson) == false) return;
+
+    var hasZero = false;
+    if(typeof AHPSjson[nwsLid].rating.datum != 'undefined'){
+        $.each(AHPSjson[nwsLid].rating.datum, function(){
+            var mult = 1;
+            if(this._flowUnits == "kcfs") mult = 1000;
+            var flow = parseFloat(this._flow) * mult;
+            if(flow == 0){
+                if(hasZero){
+                    return true;
+                }
+                else{
+                    hasZero = true;
+                }
+            }
+            var stage = parseFloat(this._stage);
+            ratingArray.push([flow,stage]);
+        });
+    }
+
+    var newSeries = [{
+        data : ratingArray,
+        name : 'NWS Rating Curve',
+        color: 'purple',
+        source: 'NWS',
+        id:'nwsRating',
+        NWSid: nwsLid,
+        zIndex:3,
+    }];
+
+
+    $.each(newSeries, function(){
+        chartAdd.addSeries(this);
+    });
+
+    return;
 }
 
 
@@ -1238,9 +1311,8 @@ function addAHPS(chartDiv,type){
             chartAdd.addSeries(this);
         }
     });
-
-
 }
+
 
 function addMeasureQ_Rating(chartDiv,usgsID,type){
     var chart = $('#'+chartDiv).highcharts();
@@ -1248,45 +1320,73 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         usgsID = chart.options.usgsID;
     }
 
+    if(typeof(usgsID) == 'undefined'){
+        $( '<span style="color:orange">USGS measured Q (no id)<br></span>' ).prependTo( "#log" );
+        return false;
+    }
     $.ajax({
         url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas&rand="+Math.floor((Math.random() * 100000) + 1),
         dataType: 'json',
         data: '',
         success: function(json){
             var newSeries = qMeasJSON2HC_Rating(json,type);
-                if(json.error_info.error == 0){
-                    newSeries[0].turboThreshold = 2000;
-                    chart.addSeries(newSeries[0]);
-                    if(chartDiv == 'ratinggraph'){
-                        var minYear = 2100;
-                        var maxYear = 1900;
-                        console.log(minYear,maxYear);
-                        $.each(newSeries[0]['data'], function( index, value ) {
-                            if(parseInt(moment(value.date).format('Y'))< minYear) minYear = parseInt(moment(value.date).format('Y'));
-                            if(parseInt(moment(value.date).format('Y'))> maxYear) maxYear = parseInt(moment(value.date).format('Y'));
-                        });
-                        $( "#qmeas-years" ).dragslider({
-                            range: true,
-                            min: parseInt(minYear),
-                            max: parseInt(maxYear),
-                            rangeDrag: true, // Enable range dragging.
-                            step: 1,
-                            values: [parseInt(minYear),parseInt(maxYear)],
-                            slide: function( event, ui ) {
-                                $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-                                showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
-                            },
-                            stop: function( event, ui ) {
-                                $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-                                showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
-                            }
-                        });
-                        $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
-                           " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
-                    }
+            if(json.error_info.error == 0){
+                newSeries[0].turboThreshold = 2000;
+                chart.addSeries(newSeries[0]);
+                if(chartDiv == 'ratinggraph'){
+                    text = chart.renderer.text(
+                        '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>',
+                        550,
+                        400
+                    ).attr({
+                        zIndex: 5
+                    }).css({
+                        color: 'black',
+                        'text-align': 'center',
+                        'font-weight': 'bold',
+                        width:  400,
+                        fontSize: '13px'
+                    }).add(),
+                    box = text.getBBox();
+                    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
+                        .attr({
+                            fill: 'white',
+                            stroke: 'gray',
+                            'stroke-width': 1,
+                            zIndex: 4
+                        })
+                        .add();
+                    var minYear = 2100;
+                    var maxYear = 1900;
+                    console.log(minYear,maxYear);
+                    $.each(newSeries[0]['data'], function( index, value ) {
+                        if(parseInt(moment(value.date).format('Y'))< minYear) minYear = parseInt(moment(value.date).format('Y'));
+                        if(parseInt(moment(value.date).format('Y'))> maxYear) maxYear = parseInt(moment(value.date).format('Y'));
+                    });
+                    $( "#qmeas-years" ).dragslider({
+                        range: true,
+                        min: parseInt(minYear),
+                        max: parseInt(maxYear),
+                        rangeDrag: true, // Enable range dragging.
+                        step: 1,
+                        values: [parseInt(minYear),parseInt(maxYear)],
+                        slide: function( event, ui ) {
+                            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+                            showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
+                        },
+                        stop: function( event, ui ) {
+                            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+                            showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
+                        }
+                    });
+                    $( "#years2show" ).val($("#qmeas-years" ).dragslider( "values", 0 ) +
+                       " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
+                }
             }
         }
     });
+
+
 }
 
 function addPeakFlow(chartDiv,year){
@@ -1376,8 +1476,14 @@ function addAnnualPeaks(chartDiv,state){
     }
     var chart = $('#'+chartDiv).highcharts();
     var usgsID = chart.options.usgsID;
+    if(typeof(usgsID) == 'undefined'){
+        $( '<span style="color:orange">USGS Annual peaks (no id)<br></span>' ).prependTo( "#log" );
+        return false;
+    }
+
     $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state,
+        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks",
+        //&state="+state
         dataType: 'json',
 
    // $.get("http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state, function( data ) {
@@ -2153,6 +2259,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
 
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
+    if(typeof AHPSjson[nwsLid] == 'undefined') return;
     if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
     var extremes = chart.yAxis[0].getExtremes();
     if(getAhps(nwsLid,AHPSjson) == false) return;
@@ -2490,23 +2597,6 @@ $('#showFloodStagesRating').change(function() {
         }
 });
 
-function plotRating(usgsSite,ahps){
-
-    $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating",
-        dataType: 'json',
-        data: '',
-        async: false,
-        success: function(json){
-            graphRating('ratinggraph',NWS,usgsSite,ahps);
-            if(json.error_info.error == 0){
-                NWS.ratingsSeries.push(ratingJSON2HC(json));
-                graphRating('ratinggraph',NWS,usgsSite,ahps);
-                addMeasureQ_Rating('ratinggraph',usgsSite,"curve");
-            }
-        },
-    });
-}
 
 
 function swapAxis(allSeries){
@@ -2537,31 +2627,43 @@ function swapAxis(allSeries){
 }
 
 function plotHeatQ(usgsSite){
+    var chart = $('#heatMapQ').highcharts();
+    var annualChart = $('#annualMapQ').highcharts();
     if(usgsSite === undefined) return;
-    //Load USGS Rating Curve
     $.ajax({
         url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
         dataType: 'json',
         data: '',
         success: function(json){
+            var series = [];
             if(json.value.timeSeries.length>0){
-                NWS.dailyUSGS.push({
+                series.push({
                     data: USGSDailytoHCHeat(json,"00060"),
                     name:'USGS Daily Data',
+                    //borderWidth: 0,
                     zIndex:2,
-                    nwsType: 'observed'
-                });
-                NWS.usgsTitle = json.value.timeSeries[0].sourceInfo.siteName;
-                graphHeatQ(NWS);
-                var annualUSGS = [];
-                for(var i = 0;i < NWS.dailyUSGS[0].data.length; i++) {
-                    if(NWS.dailyUSGS[0].data[i][0]>370){
-                        annualUSGS.push(NWS.dailyUSGS[0].data[i]);
-                    }
-                }
-                annualHeatQ(annualUSGS);
+                    nwsType: 'observed',
+                    turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
+                    });
 
+                chart.addSeries(series[0]);
+            };
+            var annualSeries= [{
+                data: [],
+                borderWidth: 0,
+                nullColor: '#EFEFEF',
+                turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
+            }]
+            for(var i = 0;i < series[0].data.length; i++) {
+                if(series[0].data[i][0]>370){
+                    annualSeries[0].data.push(series[0].data[i]);
+                }
             }
+            annualChart.addSeries(annualSeries[0]);
+
+
+
+//            }
         },
         error : function(XMLHttpRequest, textStatus, errorThrown) {
             $('#discharge').val('');
@@ -2787,15 +2889,41 @@ function loadPage(site){
     var siteId = getBothIds(site);
     var siteInfo = {'dec_long_va': 0,
                      'dec_lat_va':0};
+
+
+
+    graphRating('ratinggraph',siteId.usgs,siteId.nws);
+    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
+    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
+    addUSGS('stagegraph','stage','iv');
+    addStats('dischargegraph');
+    addUSGSrating('ratinggraph',siteId.usgs);
+    graphHeatQ();
+    annualHeatQ();
+
+    if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
+    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
+    addAnnualPeaks('dischargegraph',state);
+    addMeasureQ_Rating('dischargegraph',null,"series");
+    if($('#addFFlines').is(':checked')){
+        addPeakFlow('dischargegraph');
+    }
+
+
+
+
     //Load USGS Site Information
     if(typeof siteId.usgs !== 'undefined'){
         $.ajax({
             url: "https://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
             dataType: 'text',
             data: '',
-            async: false,
             success: function(data){
                 siteInfo = getRDBSiteInfo(data);
+                setupMap(siteInfo);
+                var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
+                addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
+                addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
                 state = FIPSCODES[siteInfo.state_cd].toLowerCase();
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
@@ -2820,6 +2948,10 @@ function loadPage(site){
                     myRe = /<geo:lat>(.*)<\/geo:lat>/g;
                     myArray = myRe.exec(xml);
                     siteInfo['dec_lat_va'] = parseFloat(myArray[1]);
+                    setupMap(siteInfo);
+                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
 
                 }
         });
@@ -2827,16 +2959,32 @@ function loadPage(site){
 
 
     //Setup Stage and Discharge Graphs with AHPS data
-    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
+
+    addAHPS('dischargegraph','discharge');
     addAHPS('stagegraph','stage');
     if($('#showFloodStages').is(':checked')){
         addNWSBands('stagegraph',AHPSjson,true,'band',true);
     }
 
-    //Setup Discharge Graph
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
-    addAHPS('dischargegraph','discharge');
+    if($('#showFloodStagesRating').is(':checked')){
+        addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+    }
 
+
+
+    //Setup Discharge Graph
+
+
+
+
+    if(siteId.usgs == '') return;
+    plotHeatQ(siteId.usgs);
+
+    addAHPSrating('ratinggraph',siteId.nws);
+
+}
+
+function setupMap(siteInfo){
     var usgsLat = parseFloat(siteInfo.dec_lat_va);
     var usgsLon = parseFloat(siteInfo.dec_long_va);
 
@@ -2872,37 +3020,7 @@ function loadPage(site){
         source: vSource
     });
     map.addLayer(vLayer);
-
-    var reachID = addNWM('dischargegraph',usgsLat,usgsLon,'short_range','down');
-    addNWM('dischargegraph',usgsLat,usgsLon,'medium_range','down',reachID);
-    addNWM('dischargegraph',usgsLat,usgsLon,'long_range','down',reachID);
-
-    if(siteId.usgs == '') return;
-    plotHeatQ(siteId.usgs);
-    plotRating(siteId.usgs,siteId.nws);
-
-    addUSGS('stagegraph','stage','iv');
-
-    addStats('dischargegraph');
-    if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
-    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
-    addAnnualPeaks('dischargegraph',state);
-    addMeasureQ_Rating('dischargegraph',null,"series");
-    if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph');
-    }
-    var chart = $('#ratinggraph').highcharts();
-    if(chart != undefined){
-        var nwsLid = chart.options.nwsLid;
-        if($('#showFloodStagesRating').is(':checked')){
-            addNWSBands('ratinggraph',AHPSjson,false,'line',false);
-        }
-    }
-    //graphAnnual('annualDischarge',siteId.usgs,siteId.nws);
-    //addAnnualData('annualDischarge','iv');
-
 }
-
 
 function graphStage(container,minDate,maxDate,usgs,nws){
 
@@ -2999,6 +3117,8 @@ function graphStage(container,minDate,maxDate,usgs,nws){
 
                         drop:function(){
                             this.update({y:round(this.y,2)});
+                            var ratingchart = $('#ratinggraph').highcharts();
+
                             var dischargeChart = $('#dischargegraph').highcharts();
                             if(this.series.options.id == 'nwsStageForecast' && dischargeChart.get('nwsDischargeForecast') != null){
 
@@ -3140,6 +3260,8 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                         },
                         mouseOver: function() {
                             var val;
+                            var ratingchart = $('#ratinggraph').highcharts();
+
                             if(typeof this.high == 'undefined'){
                                 val = this.y;
                             }else{
@@ -3174,10 +3296,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                             });
                         },
                         mouseOut: function() {
+                            var ratingchart = $('#ratinggraph').highcharts();
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
                             ratingchart.yAxis[0].removePlotLine('horz_loc');
                         },
                         drop: function(){
+                            var ratingchart = $('#ratinggraph').highcharts();
                             if(this.series.options.id == 'nwsDischargeForecast'){
                                 var stageChart = $('#stagegraph').highcharts();
                                 var forecast = stageChart.get('nwsStageForecast').points;
@@ -3263,7 +3387,7 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
 
 
-function graphRating(container,NWS,usgs,nws){
+function graphRating(container,usgs,nws){
     ////////////////////////////////////Rating Graph////////////////////////////////
     ratingchartobj= {
       credits: {
@@ -3328,43 +3452,11 @@ function graphRating(container,NWS,usgs,nws){
             borderWidth: 0,
             x:10
         },
-        series: NWS.ratingsSeries
+        series : [{data:[null,null],
+                    visible:false,
+                    showInLegend:false}]
     }
-    ratingchart = new Highcharts.Chart(ratingchartobj);
-    text = ratingchart.renderer.text(
-                '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>',
-                550,
-                400
-            ).attr({
-                zIndex: 5
-            }).css({
-                color: 'black',
-                'text-align': 'center',
-                'font-weight': 'bold',
-                width:  400,
-                fontSize: '13px'
-            }).add(),
-            box = text.getBBox();
-
-        ratingchart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
-            .attr({
-                fill: 'white',
-                stroke: 'gray',
-                'stroke-width': 1,
-                zIndex: 4
-            })
-            .add();
-
-    //This was added to zoom to the current rating curve, helps when bad/old data skews the extents of graph
-    if(typeof ratingchart.series[0] != 'undefined'){
-        var points=ratingchart.series[0].points;
-        if( points.length > 0){
-            var ymin=points[0].y;
-            var ymax=points[points.length-1].y+1;
-            ratingchart.yAxis[0].setExtremes(ymin,ymax);
-            ratingchart.showResetZoom();
-        }
-    }
+    chart = new Highcharts.Chart(ratingchartobj);
 }
 
 
@@ -3392,13 +3484,15 @@ $('#ratingLog').change(function() {
 });
 
 
-function graphHeatQ(NWS){
+function graphHeatQ(){
+    var ratingchart = $('#ratinggraph').highcharts();
+
     var title;
-    if(NWS.usgsTitle.length>0){
-        title = NWS.usgsTitle;
-    }else{
-      title = NWS.nwsTitle;
-    }
+//     if(NWS.usgsTitle.length>0){
+//         title = NWS.usgsTitle;
+//     }else{
+//       title = NWS.nwsTitle;
+//     }
 
     var start;
     heatchartobj= {
@@ -3416,7 +3510,7 @@ function graphHeatQ(NWS){
             enabled: false
         },
         title: {
-            text: title+' DAILY DATA'
+            text: 'DAILY DATA'
         },
 
         plotOptions:{
@@ -3497,19 +3591,9 @@ function graphHeatQ(NWS){
             positioner: function () {
                     return { x: 300, y: 15 };
              }
-        },
-        series: [{
-            data: NWS.dailyUSGS[0].data,
-            borderWidth: 0,
-            nullColor: '#EFEFEF',
-            turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
-        }]
-
+        }
     }
-
-
     heatchart = new Highcharts.Chart(heatchartobj);
-
 }
 
 
@@ -3587,12 +3671,7 @@ function annualHeatQ(NWS){
                     return { x: 0, y: 0 };
              }
         },
-        series: [{
-            data: NWS,
-            borderWidth: 0,
-            nullColor: '#EFEFEF',
-            turboThreshold: Number.MAX_VALUE // #3404, remove after 4.0.5 release
-        }]
+
 
     }
 
