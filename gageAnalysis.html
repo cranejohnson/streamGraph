@@ -1140,7 +1140,7 @@ function addAHPSrating(chartDiv,nwsLid){
                 }
             }
             var stage = parseFloat(this._stage);
-            ratingArray.push([flow,stage]);
+            if(flow) ratingArray.push([flow,stage]);
         });
     }
 
@@ -1153,8 +1153,8 @@ function addAHPSrating(chartDiv,nwsLid){
         NWSid: nwsLid,
         zIndex:3,
     }];
-
-
+    console.log(ratingArray);
+    if(ratingArray.length == 0) return;
     $.each(newSeries, function(){
         chartAdd.addSeries(this);
     });
