@@ -1773,10 +1773,12 @@ function addStats(chartDiv){
 
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
             if(tdata[5] > 9) yearMax = yearMax-1;
+
             var maxData = {y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
-            annualSeries[0].data[doy] = maxData;
+//            annualSeries[0].data[doy] = maxData;
+            annualSeries[0].data[doy] = [min,max];
 
             //set 5% -  95% series
             annualSeries[1].data[doy] = [per5,per95];
@@ -1784,6 +1786,7 @@ function addStats(chartDiv){
             annualSeries[2].data[doy] = [per25,per75];
             //set median
             annualSeries[3].data[doy] = [median];
+           //set max-min
 
 
 
@@ -1791,6 +1794,8 @@ function addStats(chartDiv){
 
         });
 
+        console.log(annualSeries[0]);
+        console.log(annualSeries[1]);
         var extX = chartAdd.xAxis[0].getExtremes();
 
         var sdate= new Date(extX.min);
@@ -1799,20 +1804,24 @@ function addStats(chartDiv){
         var n = d.getTimezoneOffset();
         //Make annual stats series match the time period of graph
         while (sdate < edate){
+            console.log(sdate);
             var plotDate = moment.utc(sdate).hours(12);
             plotDate.add(n,'minutes');
             var doy = plotDate.format("MDD");
-
+            console.log(doy);
             //Push max and min data into series
             var dat = annualSeries[0].data[doy];
 
             if(typeof dat !== 'undefined'){
-                dat.x = parseInt(plotDate.format("x"));
-                statsSeries[0].data.push(dat);
-                statsSeries[4].data.push(dat);
+                //dat.x = parseInt(plotDate.format("x"));
+                console.log(dat.x);
+                //statsSeries[0].data.push(dat);
+                //statsSeries[4].data.push(dat);
+            }else{
+                console.log('undefined');
             }
 
-            for(var j=1;j<=3;j++){
+            for(var j=0;j<=3;j++){
                 dat = annualSeries[j].data[doy];
                 if(typeof dat !== 'undefined'){
 
@@ -1827,7 +1836,13 @@ function addStats(chartDiv){
         var newDate = sdate.setDate(sdate.getDate() + 1);
         sdate = new Date(newDate);
         }
-
+       //  statsSeries[0].data.sort(function(a, b) {
+//             return parseFloat(a.x) - parseFloat(b.x);
+//         });
+//         statsSeries[4].data.sort(function(a, b) {
+//             return parseFloat(a.x) - parseFloat(b.x);
+//         });
+        console.log(statsSeries);
         $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
@@ -2083,7 +2098,7 @@ function qMeasJSON2HC_Rating(json,type){
     for (var i = 0; i < len; i++) {
 
         //Check if stage is included and if discharge is not zero
-        if((json.records[i][depIndex]=== null) && (type != 'curve')) continue;
+        if((json.records[i][depIndex]=== null) && (type == 'curve')) continue;
         if(Math.abs(json.records[i][indepIndex])=== 0) continue;
 
         var ratingInfo = {}
