@@ -1131,15 +1131,10 @@ function addAHPSrating(chartDiv,nwsLid){
             var mult = 1;
             if(this._flowUnits == "kcfs") mult = 1000;
             var flow = parseFloat(this._flow) * mult;
-            if(flow == 0){
-                if(hasZero){
-                    return true;
-                }
-                else{
-                    hasZero = true;
-                }
-            }
+            if(flow < 0.1) return true;
+
             var stage = parseFloat(this._stage);
+            if(stage < 0.1) return true;
             if(flow) ratingArray.push([flow,stage]);
         });
     }
@@ -1605,8 +1600,8 @@ function addAnnualPeaks(chartDiv,state){
 function addStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID = chartAdd.options.usgsID;
-    var d = new Date()
-    var n = d.getTimezoneOffset()/60;
+    //var d = new Date()
+    //var n = d.getTimezoneOffset()/60;
 
     if(usgsID === undefined) return;
 
@@ -1757,7 +1752,7 @@ function addStats(chartDiv){
 
             var vdate = moment("2016-"+tdata[5]+"-"+tdata[6],"YYYY-MM-DD");
             var doy = vdate.format('MDD');
-
+            //console.log(doy);
 
             var min = (tdata[13] < 0 ) ? null: tdata[13];
             var max = (tdata[11] < 0 ) ? null: tdata[11];
@@ -1774,11 +1769,10 @@ function addStats(chartDiv){
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
             if(tdata[5] > 9) yearMax = yearMax-1;
 
-            var maxData = {y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
+            var maxData = {dayOfYear:doy,y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
-//            annualSeries[0].data[doy] = maxData;
-            annualSeries[0].data[doy] = [min,max];
+            annualSeries[0].data[doy] = maxData;
 
             //set 5% -  95% series
             annualSeries[1].data[doy] = [per5,per95];
@@ -1794,56 +1788,53 @@ function addStats(chartDiv){
 
         });
 
-        console.log(annualSeries[0]);
-        console.log(annualSeries[1]);
         var extX = chartAdd.xAxis[0].getExtremes();
 
-        var sdate= new Date(extX.min);
-        var edate = new Date(extX.max);
-        var d = new Date();
-        var n = d.getTimezoneOffset();
+        var sdate = moment(extX.min).hours(12);
+        var edate = moment(extX.max).hours(12);
         //Make annual stats series match the time period of graph
-        while (sdate < edate){
-            console.log(sdate);
-            var plotDate = moment.utc(sdate).hours(12);
-            plotDate.add(n,'minutes');
-            var doy = plotDate.format("MDD");
-            console.log(doy);
+        while (sdate <= edate){
+            var doy = sdate.format("MDD");
+
             //Push max and min data into series
             var dat = annualSeries[0].data[doy];
-
             if(typeof dat !== 'undefined'){
-                //dat.x = parseInt(plotDate.format("x"));
-                console.log(dat.x);
-                //statsSeries[0].data.push(dat);
+                var mData = {
+                    dayOfYear:doy,
+                    y:dat['y'],
+                    x:parseInt(sdate.format("x")),
+                    high:dat['high'],
+                    low:dat['low'],
+                    maxYear:dat['maxYear'],
+                    minYear:dat['minYear'],
+                    count:dat['count']};
+
+                statsSeries[0].data.push(mData);
                 //statsSeries[4].data.push(dat);
-            }else{
-                console.log('undefined');
             }
 
-            for(var j=0;j<=3;j++){
+            for(var j=1;j<=3;j++){
                 dat = annualSeries[j].data[doy];
                 if(typeof dat !== 'undefined'){
 
                     if(dat.length ==2){
-                        statsSeries[j].data.push([parseInt(plotDate.format("x")),dat[0],dat[1]]);
+                        statsSeries[j].data.push([parseInt(sdate.format("x")),dat[0],dat[1]]);
                      }else{
-                        statsSeries[j].data.push([parseInt(plotDate.format("x")),dat[0]]);
+                        statsSeries[j].data.push([parseInt(sdate.format("x")),dat[0]]);
                      }
                 }
             }
-
-        var newDate = sdate.setDate(sdate.getDate() + 1);
-        sdate = new Date(newDate);
+        sdate.add(1, 'days');
         }
-       //  statsSeries[0].data.sort(function(a, b) {
-//             return parseFloat(a.x) - parseFloat(b.x);
-//         });
-//         statsSeries[4].data.sort(function(a, b) {
-//             return parseFloat(a.x) - parseFloat(b.x);
-//         });
-        console.log(statsSeries);
-        $.each(statsSeries,function(){
+         statsSeries[0].data.sort(function(a, b) {
+            return parseFloat(a.x) - parseFloat(b.x);
+        });
+        statsSeries[4].data.sort(function(a, b) {
+            return parseFloat(a.x) - parseFloat(b.x);
+        });
+
+
+       $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
                 chartAdd.addSeries(this);
@@ -1978,7 +1969,7 @@ function ratingJSON2HC(json){
 
     var data = new Array();
     for (var i = 0; i < len; i++) {
-        if(json.records[i][indepIndex] > 0) data.push([json.records[i][depIndex],json.records[i][indepIndex]]);
+        if((json.records[i][indepIndex] > 0)&&(json.records[i][depIndex] > 0))  data.push([json.records[i][depIndex],json.records[i][indepIndex]]);
     }
     series['data'] = data;
 
@@ -2075,8 +2066,10 @@ function qMeasJSON2HC_Rating(json,type){
             type: 'scatter',
             zIndex : 10,
             id:'qMeasured',
+            color: 'red',
             marker : {
                 enabled : true,
+                symbol : 'diamond'
             },
             lineWidth : 0,
             states:{
@@ -2129,11 +2122,12 @@ function qMeasJSON2HC_Rating(json,type){
 
         age = moment().diff(qDate,'years',true);
 
-        var color= 'rgba(0,0,205,0.3)';
-        if(age < 10) color= 'rgba(0,0,205,0.5)';
-        if(age < 5) color= 'rgba(0,0,205,0.7)';
-        if(age < 1 ) color = 'orange';
-        if(i+1 == len) color = 'red';
+        var mColor= 'rgba(0,0,205,0.3)';
+        if(age < 10) mColor= 'rgba(0,0,205,0.5)';
+        if(age < 5) mColor= 'rgba(0,0,205,0.7)';
+        if(age < 1 ) mColor = 'orange';
+        if(i+1 == len) mColor = 'red';
+        if(type != 'curve') mColor = 'red';
 
 
         ratingInfo = $.extend({
@@ -2141,9 +2135,10 @@ function qMeasJSON2HC_Rating(json,type){
             'y': yVal,
             'date':parseInt(qDate.format("x")),
             'age':age,
+            'color': mColor,
             'name': localeDate.format('MMMM Do YYYY, h:mm:ss a')+' '+json.records[i][tzIndex],
             'marker':{
-                'fillColor': color,
+                //'fillColor': mColor,
                 symbol: 'diamond'
             }
         },ratingInfo);
