@@ -1400,6 +1400,7 @@ function addPeakFlow(chartDiv,year){
     var chart = $('#'+chartDiv).highcharts();
     usgsID = chart.options.usgsID;
     $.ajax({
+        //url: "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID,
         url: "Flood_Stats.json",
         dataType: 'json',
         data: '',
@@ -1606,8 +1607,8 @@ function addStats(chartDiv){
 
     if(usgsID === undefined) return;
 
-    $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=min,max,median,p05,p25,p75,p95&parameterCd=00060', function( data ) {
-
+    $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=all&parameterCd=00060', function( data ) {
+//https://waterservices.usgs.gov/nwis/stat/?format=rdb&sites=11335000&statReportType=daily&statTypeCd=all
 
         var lines = data.split('\n');
         var statsSeries = [
@@ -1617,8 +1618,8 @@ function addStats(chartDiv){
                 visible : true,
                 id: 'dailyStats',
                 type: 'arearange',
-                lineWidth: 1,
-                color: '#ECC5C0',
+                lineWidth: 0,
+                color: '#0000FF',
                 calcVol: false,
                 zIndex: 0,
                 showInLegend:true,
@@ -1640,7 +1641,7 @@ function addStats(chartDiv){
                 }
             },
             {
-                name: 'P 5% -  95%',
+                name: 'P 0% -  10%',
                 data: [],
                 visible : true,
                 trackByArea: true,
@@ -1648,7 +1649,28 @@ function addStats(chartDiv){
                 calcVol: false,
                 lineWidth: 0,
                 linkedTo: ':previous',
-                color: '#00bfff',
+                color: '#8B0000',
+                fillOpacity: 0.2,
+                zIndex: 1,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                },
+                point:{
+                    events:{
+                        mouseOver: null
+                    }
+                }
+           },
+            {
+                name: 'P 10% -  25%',
+                data: [],
+                visible : true,
+                trackByArea: true,
+                type: 'arearange',
+                calcVol: false,
+                lineWidth: 0,
+                linkedTo: ':previous',
+                color: '#B8860B',
                 fillOpacity: 0.2,
                 zIndex: 1,
                 tooltip:{
@@ -1669,7 +1691,28 @@ function addStats(chartDiv){
                 calcVol: false,
                 lineWidth: 0,
                 linkedTo: ':previous',
-                color: '#0040ff',
+                color: '#006400',
+                fillOpacity: 0.3,
+                zIndex: 2,
+                tooltip:{
+                    headerFormat:'<b>{point.x:%b %e}</b><br>',
+                },
+                point:{
+                    events:{
+                        mouseOver: null
+                    }
+                }
+            },
+            {
+                name: 'P 75% - 90%',
+                data: [],
+                visible : true,
+                trackByArea: true,
+                type: 'arearange',
+                calcVol: false,
+                lineWidth: 0,
+                linkedTo: ':previous',
+                color: '#008B8B',
                 fillOpacity: 0.3,
                 zIndex: 2,
                 tooltip:{
@@ -1690,33 +1733,6 @@ function addStats(chartDiv){
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                 }
-            },
-            {
-                name: 'Max - Min',
-                linkedTo: ':previous',
-                data: [],
-                visible : true,
-                type: 'line',
-                lineWidth: 1,
-                color: '#ECC5C0',
-                calcVol: false,
-                zIndex: 2,
-                showInLegend:false,
-                point:{
-                    events:{
-                        //mouseOver: null,
-                        click: function(){
-                            addAnnualData(chartDiv,'iv',this.maxYear);
-                            addAnnualData(chartDiv,'dv',this.maxYear);
-                        }
-                     }
-                 },
-                tooltip:{
-                    headerFormat:'<b>{point.x:%b %e}</b><br>',
-                    pointFormatter: function (){
-                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>Min: '+numberWithCommas(this.low) + ' cfs ('+this.minYear+')<br>Count: '+this.count+'</b>';
-                    },
-                }
             }
         ];
         var annualSeries =[
@@ -1733,6 +1749,9 @@ function addStats(chartDiv){
                 data:[]
              },
              {
+                data:[]
+             },
+            {
                 data:[]
              }
              ];
@@ -1755,32 +1774,38 @@ function addStats(chartDiv){
             var doy = vdate.format('MDD');
             //console.log(doy);
 
-            var min = (tdata[13] < 0 ) ? null: tdata[13];
-            var max = (tdata[11] < 0 ) ? null: tdata[11];
             var yearMin = (tdata[12] < 0 ) ? null: tdata[12];
             var yearMax = (tdata[10] < 0 ) ? null: tdata[10];
-            var per5 = (tdata[14] < 0 ) ? null: tdata[14];
-            var per95 = (tdata[18] < 0 ) ? null: tdata[18];
-            var per25 = (tdata[15] < 0 ) ? null: tdata[15];
-            var per75 = (tdata[17] < 0 ) ? null: tdata[17];
-            var median =  (tdata[16] < 0 ) ? null: tdata[16];
+            var min = (tdata[13] < 0 ) ? null: tdata[13];
+            var per5 = (tdata[14] < 0 ) ? null: tdata[15];
+            var per10 = (tdata[14] < 0 ) ? null: tdata[16];
+            var per25 = (tdata[15] < 0 ) ? null: tdata[18];
+            var median =  (tdata[16] < 0 ) ? null: tdata[19];
+            var per75 = (tdata[17] < 0 ) ? null: tdata[20];
+            var per90 = (tdata[18] < 0 ) ? null: tdata[22];
+            var per95 = (tdata[18] < 0 ) ? null: tdata[23];
+            var max = (tdata[11] < 0 ) ? null: tdata[11];
 
 
 
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
             if(tdata[5] > 9) yearMax = yearMax-1;
 
-            var maxData = {dayOfYear:doy,y:max,high:max,low:min,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
+            var maxData = {dayOfYear:doy,y:max,high:max,low:per90,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
 
 
             annualSeries[0].data[doy] = maxData;
 
-            //set 5% -  95% series
-            annualSeries[1].data[doy] = [per5,per95];
+            //set min -  10% series
+            annualSeries[1].data[doy] = [min,per10];
+            //set 10% -  25% series
+            annualSeries[2].data[doy] = [per10,per25];
             //set 25% - 75% series
-            annualSeries[2].data[doy] = [per25,per75];
+            annualSeries[3].data[doy] = [per25,per75];
+            //set 75 - 90% series
+            annualSeries[4].data[doy] = [per75,per90];
             //set median
-            annualSeries[3].data[doy] = [median];
+            annualSeries[5].data[doy] = [median];
            //set max-min
 
 
@@ -1811,10 +1836,9 @@ function addStats(chartDiv){
                     count:dat['count']};
 
                 statsSeries[0].data.push(mData);
-                //statsSeries[4].data.push(dat);
             }
 
-            for(var j=1;j<=3;j++){
+            for(var j=1;j<=5;j++){
                 dat = annualSeries[j].data[doy];
                 if(typeof dat !== 'undefined'){
 
@@ -1827,12 +1851,10 @@ function addStats(chartDiv){
             }
         sdate.add(1, 'days');
         }
-         statsSeries[0].data.sort(function(a, b) {
-            return parseFloat(a.x) - parseFloat(b.x);
-        });
-        statsSeries[4].data.sort(function(a, b) {
-            return parseFloat(a.x) - parseFloat(b.x);
-        });
+        console.log(statsSeries[4]);
+//          statsSeries[0].data.sort(function(a, b) {
+//             return parseFloat(a.x) - parseFloat(b.x);
+//         });
 
 
        $.each(statsSeries,function(){
