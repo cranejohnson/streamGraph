@@ -73,8 +73,7 @@
             <td>
                 Graph Options:
                 <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
-                <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >2016 Flood Frequency
-                <input type="checkbox" id="addFFlines2003" style="padding-left:20px">2003 Flood Frequency</br>
+                <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Flood Frequency<br>
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
                 <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
@@ -86,7 +85,7 @@
                 Comparison:<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
                 <input type="button" id="zoomToStage" value="Quick Zoom">
-                <input type="button" id="getGDLhydro" value="Plot GDL Hydrograph">
+                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph">
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
@@ -193,6 +192,10 @@ var AJAXLOOKUPTABLE = [{
                 name: "USGS Site Information"
                 },
                 {
+                match:"get_peak_flow.php",
+                name: "USGS Peak Flow"
+                },
+                {
                 match:"rdbajax.php.+rating",
                 name: "USGS Rating Curve"
                 },
@@ -212,10 +215,6 @@ var AJAXLOOKUPTABLE = [{
                 match:"rdbajax.php.+qmeas",
                 name: "USGS Discharge Measurements"
                 },
-                //{
-                //match:"Flood_Stats",
-                //name: "Alaska Flood Frequency Data"
-                //},
                 {
                 match:"\/nwis\/stat",
                 name: "USGS Statistics"
@@ -1385,82 +1384,95 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
 
 }
 
-function addPeakFlow(chartDiv,year){
-    if (year === undefined) {
-        year = '2016';
+function addPeakFlow(chartDiv,type){
+    if(type == null){
+        type = 'wtd';
     }
-    if(year == '2016'){
-        halign = 'left';
-        style = 'solid';
-    }
-    else{
-        halign = 'right';
-        style = 'longdashdot';
-    }
+    halign = 'left';
+    style = 'solid';
+
+
     var chart = $('#'+chartDiv).highcharts();
     usgsID = chart.options.usgsID;
     $.ajax({
-        //url: "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID,
-        url: "Flood_Stats.json",
+        url: "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID,
+        //url: "Flood_Stats.json",
         dataType: 'json',
         data: '',
         success: function(json){
-            if(typeof json[usgsID] != 'undefined'){
-                if(typeof json[usgsID][year] != undefined){
-                    var source = 'wtd';
-                    if(json[usgsID][year]['2yr'][source] == "") source = 'sta';
-
-                    chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['2yr'][source],
-                        color: 'yellow',
-                        width:2,
-                        id: 'ffline'+year,
-                        dashStyle: style,
-                        zIndex:2,
-                        label:{
-                            align: halign,
-                            text: '2 Year '+source+' ('+year+')'
-                        }
-                    });
-                    chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['10yr'][source],
-                        color: 'orange',
-                        width:2,
-                        zIndex:2,
-                        id: 'ffline'+year,
-                        dashStyle: style,
-                        label:{
-                            align: halign,
-                            text: '10 Year '+source+' ('+year+')'
-                        }
-                    });
-                    chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['25yr'][source],
-                        color: 'red',
-                        width:2,
-                        zIndex:2,
-                        id: 'ffline'+year,
-                        dashStyle: style,
-                        label:{
-                            align: halign,
-                            text: '25 Year '+source+' ('+year+')'
-                        }
-                    });
-                    chart.yAxis[0].addPlotLine({
-                        value: json[usgsID][year]['100yr'][source],
-                        color: 'blue',
-                        width:2,
-                        zIndex:2,
-                        id: 'ffline'+year,
-                        dashStyle: style,
-                        label:{
-                            align: halign,
-                            text: '100 Year '+source+' ('+year+')'
-                        }
-                    });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'2'],
+                color: 'green',
+                width:2,
+                id: 'ffline',
+                dashStyle: style,
+                zIndex:2,
+                label:{
+                    align: halign,
+                    text: '2 Yr ('+type+')'
                 }
-            }
-        }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'5'],
+                color: 'yellow',
+                width:2,
+                id: 'ffline',
+                dashStyle: style,
+                zIndex:2,
+                label:{
+                    align: halign,
+                    text: '5 Yr ('+type+')'
+                }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'10'],
+                color: 'orange',
+                width:2,
+                zIndex:2,
+                id: 'ffline',
+                dashStyle: style,
+                label:{
+                    align: halign,
+                    text: '10 Yr ('+type+')'
+                }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'25'],
+                color: 'red',
+                width:2,
+                zIndex:2,
+                id: 'ffline',
+                dashStyle: style,
+                label:{
+                    align: halign,
+                    text: '25 Yr ('+type+')'
+                }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'50'],
+                color: 'cyan',
+                width:2,
+                zIndex:2,
+                id: 'ffline',
+                dashStyle: style,
+                label:{
+                    align: halign,
+                    text: '50 Yr ('+type+')'
+                }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'100'],
+                color: 'blue',
+                width:2,
+                zIndex:2,
+                id: 'ffline',
+                dashStyle: style,
+                label:{
+                    align: halign,
+                    text: '100 Yr ('+type+')'
+                }
+            });
+          }
     });
 
 }
@@ -1851,11 +1863,6 @@ function addStats(chartDiv){
             }
         sdate.add(1, 'days');
         }
-        console.log(statsSeries[4]);
-//          statsSeries[0].data.sort(function(a, b) {
-//             return parseFloat(a.x) - parseFloat(b.x);
-//         });
-
 
        $.each(statsSeries,function(){
             this.marker = { enabled:false};
@@ -2737,10 +2744,14 @@ $('#query').click(function() {
 
 $('#nwmUp').click(function() {
     addNWMPlots("#dischargegraph","up");
+    addNWM2Stage('#dischargegraph','#stagegraph');
+
 });
 
 $('#nwmDown').click(function() {
     addNWMPlots("#dischargegraph","down");
+    addNWM2Stage('#dischargegraph','#stagegraph');
+
 });
 
 
@@ -2775,23 +2786,15 @@ $('#togglePeakLabels').click(function(){
 
 $('#addFFlines').change(function() {
   if($(this).is(':checked')){
-        addPeakFlow('dischargegraph');
+        addPeakFlow('dischargegraph','sta');
     }
     else
     {
-      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline2016');
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline');
   }
 });
 
-$('#addFFlines2003').change(function() {
-  if($(this).is(':checked')){
-        addPeakFlow('dischargegraph','2003');
-    }
-    else
-    {
-      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline2003');
-  }
-});
+
 
 // $('#loadAnnual').click(function(){
 //     var year = new Date().getFullYear();
@@ -2852,7 +2855,7 @@ $('#loadQ').click(function(){
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph');
+        addPeakFlow('dischargegraph','sta');
     }
 
 });
@@ -2921,35 +2924,34 @@ function loadPage(site){
     var siteInfo = {'dec_long_va': 0,
                      'dec_lat_va':0};
 
-
-
+    //Set up empty graphs
     graphRating('ratinggraph',siteId.usgs,siteId.nws);
     graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
-    addUSGS('stagegraph','stage','iv');
-    addStats('dischargegraph');
-    addUSGSrating('ratinggraph',siteId.usgs);
     graphHeatQ();
     annualHeatQ();
 
-    if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
-    if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
-    addAnnualPeaks('dischargegraph',state);
-    addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph');
+        addPeakFlow('dischargegraph','sta');
     }
 
 
 
 
     //Load USGS Site Information
-    if(typeof siteId.usgs !== 'undefined'){
+    if(siteId.usgs != ''){
         $.ajax({
             url: "https://waterservices.usgs.gov/nwis/site/?format=rdb,1.0&sites="+siteId.usgs+"&siteOutput=expanded",
             dataType: 'text',
             data: '',
             success: function(data){
+                addStats('dischargegraph');
+                addUSGSrating('ratinggraph',siteId.usgs);
+                addUSGS('stagegraph','stage','iv');
+                if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
+                if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
+                addAnnualPeaks('dischargegraph',state);
+                addMeasureQ_Rating('dischargegraph',null,"series");
                 siteInfo = getRDBSiteInfo(data);
                 setupMap(siteInfo);
                 var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
@@ -2988,30 +2990,24 @@ function loadPage(site){
         });
     }
 
-
     //Setup Stage and Discharge Graphs with AHPS data
+    if(siteId.nws != ''){
+        addAHPS('dischargegraph','discharge');
+        addAHPS('stagegraph','stage');
+        if($('#showFloodStages').is(':checked')){
+            addNWSBands('stagegraph',AHPSjson,true,'band',true);
+        }
 
-    addAHPS('dischargegraph','discharge');
-    addAHPS('stagegraph','stage');
-    if($('#showFloodStages').is(':checked')){
-        addNWSBands('stagegraph',AHPSjson,true,'band',true);
+        if($('#showFloodStagesRating').is(':checked')){
+            addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+        }
+
+        addAHPSrating('ratinggraph',siteId.nws);
     }
-
-    if($('#showFloodStagesRating').is(':checked')){
-        addNWSBands('ratinggraph',AHPSjson,false,'line',false);
-    }
-
-
-
-    //Setup Discharge Graph
-
-
-
 
     if(siteId.usgs == '') return;
     plotHeatQ(siteId.usgs);
 
-    addAHPSrating('ratinggraph',siteId.nws);
 
 }
 
@@ -3519,11 +3515,7 @@ function graphHeatQ(){
     var ratingchart = $('#ratinggraph').highcharts();
 
     var title;
-//     if(NWS.usgsTitle.length>0){
-//         title = NWS.usgsTitle;
-//     }else{
-//       title = NWS.nwsTitle;
-//     }
+
 
     var start;
     heatchartobj= {
