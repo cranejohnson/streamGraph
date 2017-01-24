@@ -107,7 +107,6 @@
                 <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
                 <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
                 <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
-                <input type="button" id="addNWM2Stage" class = "hasNWM" value="Add NWM to Stage Plot">
                 <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
                 <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
                 <div id='shefText'></div>
@@ -882,16 +881,21 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
 }
 
 function addNWM2Stage(dischargeGraph,stageGraph){
+    console.log('here');
     var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
     var stagePlt = $(stageGraph).highcharts();
     var ratingchart = $('#ratinggraph').highcharts();
     var dischargePlt = $(dischargeGraph).highcharts();
-    stagePlt.addSeries({data:null,name:'NWM Output'});
+    if(stagePlt.get('NWMoutput')) stagePlt.get('NWMoutput').remove();
+
+    stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
         var oldSeries = dischargePlt.get(item);
 
-        if(stagePlt.get(item)) stagePlt.get(item).remove();
+        if(stagePlt.get(item)){
+            stagePlt.get(item).remove();
+        }
         var newSeries = {data: [],
                   param: 'stage',
                   name: oldSeries.name,
@@ -2744,20 +2748,24 @@ $('#query').click(function() {
 
 $('#nwmUp').click(function() {
     addNWMPlots("#dischargegraph","up");
-    addNWM2Stage('#dischargegraph','#stagegraph');
+    $(document).ajaxStop(function () {
+      addNWM2Stage('#dischargegraph','#stagegraph');
+    });
 
 });
 
 $('#nwmDown').click(function() {
     addNWMPlots("#dischargegraph","down");
-    addNWM2Stage('#dischargegraph','#stagegraph');
+    $(document).ajaxStop(function () {
+      addNWM2Stage('#dischargegraph','#stagegraph');
+    });
 
 });
 
 
-$('#addNWM2Stage').click(function() {
-    addNWM2Stage('#dischargegraph','#stagegraph');
-});
+// $('#addNWM2Stage').click(function() {
+//     addNWM2Stage('#dischargegraph','#stagegraph');
+// });
 
 
 $('#togglePeakLabels').click(function(){
@@ -3005,8 +3013,12 @@ function loadPage(site){
         addAHPSrating('ratinggraph',siteId.nws);
     }
 
-    if(siteId.usgs == '') return;
-    plotHeatQ(siteId.usgs);
+    $(document).ajaxStop(function () {
+        addNWM2Stage('#dischargegraph','#stagegraph');
+    });
+
+    if(siteId.usgs != '') plotHeatQ(siteId.usgs);
+
 
 
 }
