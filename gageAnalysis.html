@@ -16,7 +16,7 @@
     <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/moment.js"></script>
     <script src="http://www.data.chenabasin.org/nws/streamGraph/clipboard.js"></script>
-
+    <script src="xmlToJSON.min.js"></script>
     <script src="USGS_CODE.js"></script>
 
     <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
@@ -199,7 +199,7 @@ var AJAXLOOKUPTABLE = [{
                 name: "USGS Rating Curve"
                 },
                 {
-                match:"get_ahps_data.+json",
+                match:"hydrograph_to_xml.php",
                 name: "NWS AHPS Data"
                 },
                 {
@@ -858,7 +858,6 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
             url: "http://nwmdata.nohrsc.noaa.gov/0.2/forecasts/"+forecastType+"/streamflow",
             data: params,
             contentType: "application/json; charset=utf-8",
-            //async: false,
             headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
             dataType: "json",
             success: function (forecast) {
@@ -1072,7 +1071,6 @@ function addUSGS(chartDiv,type,dv_iv,site){
     $.ajax({
         url: usgsUrl,
         dataType: 'json',
-        //async: false,
         timeout: 20000, // sets timeout to 3 seconds
         success: function(json){
             if(json.value.timeSeries.length>0){
@@ -1109,7 +1107,6 @@ function addUSGSrating(chartDiv,usgsSite){
         url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating",
         dataType: 'json',
         data: '',
-        //async: false,
         success: function(json){
             if(json.error_info.error == 0){
                 ratingArray = ratingJSON2HC(json);
@@ -1167,12 +1164,16 @@ function getAhps(site,AHPS){
     var result;
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
-            url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=json&site="+site,
-            dataType: 'json',
+            //url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=json&site="+site,
+            url: "http://water.weather.gov/ahps2/hydrograph_to_xml.php?output=xml&gage="+site,
+            dataType: 'xml',
             data: data,
             async: false,
             success: function(data){
-                AHPS[site] = data.site;
+                xmlString = (new XMLSerializer()).serializeToString(data);
+                var x2js = new X2JS();
+                var jsonObj = x2js.xml_str2json( xmlString );
+                AHPS[site] = jsonObj.site;
                 result = true;
                 },
             error: function(){
@@ -1215,16 +1216,15 @@ function addAHPS(chartDiv,type){
 
             $.each(AHPSjson[nwsLid].forecast.datum, function(){
                 var mult = 1;
-                var d = new Date(this.valid.value).getTime();
-                stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+                var d = new Date(this.valid.__text).getTime();
+                stageArray.push([parseInt(d),parseFloat(this.primary.__text)]);
                 if(typeof this.secondary != 'undefined'){
                     if(this.secondary._units == 'kcfs') mult = 1000;
-                    if(this.secondary.value > 0){
-                        dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                    if(this.secondary.__text > 0){
+                        dischargeArray.push([parseInt(d),parseFloat(this.secondary.__text)*mult]);
                     }
                 }
             });
-
             newSeries.push({
                 data : stageArray,
                 name : 'NWS Forecast ( Issued: '+issued+' )',
@@ -1262,12 +1262,12 @@ function addAHPS(chartDiv,type){
     if(typeof AHPSjson[nwsLid].observed.datum != 'undefined'){
         $.each(AHPSjson[nwsLid].observed.datum, function(){
             var mult = 1;
-            var d = new Date(this.valid.value).getTime();
-            stageArray.push([parseInt(d),parseFloat(this.primary.value)]);
+            var d = new Date(this.valid.__text).getTime();
+            stageArray.push([parseInt(d),parseFloat(this.primary.__text)]);
             if(typeof this.secondary != 'undefined'){
                 if(this.secondary._units == 'kcfs') mult = 1000;
-                if(this.secondary.value > 0){
-                    dischargeArray.push([parseInt(d),parseFloat(this.secondary.value)*mult]);
+                if(this.secondary.__text > 0){
+                    dischargeArray.push([parseInt(d),parseFloat(this.secondary.__text)*mult]);
                 }
             }
 
@@ -2360,17 +2360,16 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
         }
     };
 
-
     $.each( colors, function( key, value ){
-        if(typeof AHPSjson[nwsLid].sigstages[key].value != 'undefined'){
-            if(AHPSjson[nwsLid].sigstages[key].value > maxY){
-                maxY = parseInt(AHPSjson[nwsLid].sigstages[key].value);
+        if(typeof AHPSjson[nwsLid].sigstages[key] != 'undefined'){
+            if(parseFloat(AHPSjson[nwsLid].sigstages[key].__text) > maxY){
+                maxY = parseInt(AHPSjson[nwsLid].sigstages[key].__text);
             }
             if(key != 'record'){
                 //Add flood stage plot band for each flood stage
                 if(type == 'band'){
                     chart.yAxis[0].addPlotBand({
-                        from: AHPSjson[nwsLid].sigstages[key].value,
+                        from: AHPSjson[nwsLid].sigstages[key].__text,
                         to: upperEnd,
                         color: value,
                         id : 'plotBand',
@@ -2380,7 +2379,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
                 //Or just add plot lines for each flood stage
                 else{
                     chart.yAxis[0].addPlotLine({
-                        value: AHPSjson[nwsLid].sigstages[key].value,
+                        value: AHPSjson[nwsLid].sigstages[key].__text,
                         color: value,
                         id : 'plotLine',
                         zIndex:1,
@@ -2394,16 +2393,16 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
                     width: 1,
                     zIndex:6,
                     id: 'plotLine',
-                    value: AHPSjson[nwsLid].sigstages[key].value,
+                    value: AHPSjson[nwsLid].sigstages[key].__text,
                     label: {
-                        text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,
+                        text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,
                         textAlign: 'left',
                         fontWeight: 'bold',
                         y:-2
                     }
                 })
             }
-            upperEnd = AHPSjson[nwsLid].sigstages[key].value
+            upperEnd = AHPSjson[nwsLid].sigstages[key].__text
 
             if(addTable == false) return;
 
@@ -2419,7 +2418,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
                         width:  col1Width,
                         fontSize: legTextHeight+'px'
                 }).add();
-            text = chart.renderer.text(AHPSjson[nwsLid].sigstages[key].value+' '+AHPSjson[nwsLid].sigstages[key]._units,legendx+col1Width-50,legendy)
+            text = chart.renderer.text(AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,legendx+col1Width-50,legendy)
                 .attr({
                     zIndex:6,
                 class:'nwsLegend'})
@@ -2452,18 +2451,18 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
     });
 
     if(typeof AHPSjson[nwsLid].sigstages.record === 'object'){
-        if(AHPSjson[nwsLid].sigstages.record.value > maxY){
-            maxY = parseInt(AHPSjson[nwsLid].sigstages.record.value);
+        if(AHPSjson[nwsLid].sigstages.record.__text > maxY){
+            maxY = parseInt(AHPSjson[nwsLid].sigstages.record.__text);
         }
         chart.yAxis[0].addPlotLine({
             color: '#99FFFF',
             width: 2,
             zIndex:6,
-            value: AHPSjson[nwsLid].sigstages.record.value,
+            value: AHPSjson[nwsLid].sigstages.record.__text,
             dashStyle: 'longDash',
             id : 'plotLine',
             label: {
-                text: 'NWS Record Stage: '+AHPSjson[nwsLid].sigstages.record.value+' '+AHPSjson[nwsLid].sigstages.record._units,
+                text: 'NWS Record Stage: '+AHPSjson[nwsLid].sigstages.record.__text+' '+AHPSjson[nwsLid].sigstages.record._units,
                 align: 'center',
                 style: {
                     color: 'black',
@@ -2705,9 +2704,6 @@ function plotHeatQ(usgsSite){
             }
             annualChart.addSeries(annualSeries[0]);
 
-
-
-//            }
         },
         error : function(XMLHttpRequest, textStatus, errorThrown) {
             $('#discharge').val('');
@@ -2870,7 +2866,7 @@ $('#loadQ').click(function(){
 
 function getBothIds(site){
     var nwsLid = '';
-    var usgsID;
+    var usgsID = '';
     if(site.length<=5){
         nwsLid = site.toLowerCase();
         usgsID = CROSSWALKTABLE[nwsLid];
@@ -2884,6 +2880,7 @@ function getBothIds(site){
             }
          });
     }
+    if (typeof usgsID == 'undefined') usgsID = '';
     return {
         nws:nwsLid,
         usgs:usgsID
@@ -3014,7 +3011,7 @@ function loadPage(site){
     }
 
     $(document).ajaxStop(function () {
-        addNWM2Stage('#dischargegraph','#stagegraph');
+        //addNWM2Stage('#dischargegraph','#stagegraph');
     });
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
