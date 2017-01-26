@@ -1540,7 +1540,7 @@ function addAnnualPeaks(chartDiv,state){
                 showInLegend:true
             },
             {
-                name: 'Annual Peaks (2016)',
+                name: 'Annual Peaks',
                 tooltip: {
                     headerFormat: 'Peak Annual Flow<br>',
                     pointFormatter: function (){
@@ -3011,7 +3011,7 @@ function loadPage(site){
     }
 
     $(document).ajaxStop(function () {
-        //addNWM2Stage('#dischargegraph','#stagegraph');
+        addNWM2Stage('#dischargegraph','#stagegraph');
     });
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
@@ -3149,26 +3149,30 @@ function graphStage(container,minDate,maxDate,usgs,nws){
                 turboThreshold: 0,
                 point:{
                     events:{
-
-
                         drop:function(){
-                            this.update({y:round(this.y,2)});
                             var ratingchart = $('#ratinggraph').highcharts();
-
                             var dischargeChart = $('#dischargegraph').highcharts();
-                            if(this.series.options.id == 'nwsStageForecast' && dischargeChart.get('nwsDischargeForecast') != null){
+                            if(typeof(ratingchart.get('curve')) != 'undefined'){
+                                cData = ratingchart.get('curve').data;
+                            }
+                            else if(typeof(ratingchart.get('nwsCurve')) != 'undefined'){
+                                cData = ratingchart.get('nwsCurve').data;
+                            }else{
+                                return;
+                            }
 
+                            this.update({y:round(this.y,2)});
+                            if(this.series.options.id == 'nwsStageForecast' && dischargeChart.get('nwsDischargeForecast') != null){
                                 var forecast = dischargeChart.get('nwsDischargeForecast').points;
-                                for(var y = 0;y< this.series.data.length; y++){
-                                    var newY = this.series.data[y].y;
-                                    var newDischarge = parseInt(curveLookup(ratingchart.get('curve').data,newY,'stage'));
+                                    var newY = this.y;
+                                    var newDischarge = parseInt(curveLookup(cData,newY,'stage'));
                                     for (var i = 0; i < forecast.length; i++) {
-                                        if (forecast[i].x == this.series.data[y].x){
+                                        if (forecast[i].x == this.x){
                                             forecast[i].update({y:parseInt(newDischarge)});
                                             break;
                                         }
                                     }
-                                }
+                                //}
                             }
 
                             var extremes = this.series.yAxis.getExtremes();
