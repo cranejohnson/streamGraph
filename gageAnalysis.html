@@ -880,12 +880,20 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
 }
 
 function addNWM2Stage(dischargeGraph,stageGraph){
-    console.log('here');
     var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
     var stagePlt = $(stageGraph).highcharts();
     var ratingchart = $('#ratinggraph').highcharts();
     var dischargePlt = $(dischargeGraph).highcharts();
     if(stagePlt.get('NWMoutput')) stagePlt.get('NWMoutput').remove();
+    
+    if(typeof(ratingchart.get('curve')) != 'undefined'){
+        cData = ratingchart.get('curve').data;
+    }
+    else if(typeof(ratingchart.get('nwsCurve')) != 'undefined'){
+        cData = ratingchart.get('nwsCurve').data;
+    }else{
+        return;
+    }
 
     stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
@@ -906,7 +914,7 @@ function addNWM2Stage(dischargeGraph,stageGraph){
                   source: 'NWS-NWM',};
 
         for(var y =0; y< oldSeries.data.length;y++){
-                var stage = curveLookup(ratingchart.get('curve').data,parseInt(oldSeries.data[y].y));
+                var stage = curveLookup(cData,parseInt(oldSeries.data[y].y));
                 newSeries.data.push([oldSeries.data[y].x,parseFloat(stage)]);
         }
         stagePlt.addSeries(newSeries);
@@ -1110,6 +1118,14 @@ function addUSGSrating(chartDiv,usgsSite){
         success: function(json){
             if(json.error_info.error == 0){
                 ratingArray = ratingJSON2HC(json);
+                console.log(ratingArray);
+                if(ratingArray.data.length == 0){
+                    var url = "https://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no="+usgsSite+"&format=rdb"
+                    $('<span style="color:orange">No USGS Rating </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
+                    return;
+                }
+                
+                console.log(ratingArray);
                 chartAdd.addSeries(ratingArray);
                 addMeasureQ_Rating(chartDiv,usgsSite,"curve");
                 chartAdd.yAxis[0].setExtremes(ratingArray['data'][0][1],ratingArray['data'][ratingArray['data'].length-1][1]);
@@ -2679,9 +2695,15 @@ function plotHeatQ(usgsSite){
         data: '',
         success: function(json){
             var series = [];
+            var heatData = USGSDailytoHCHeat(json,"00060");
+            if(heatData == null){
+                    var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
+                    $('<span style="color:orange">No USGS Daily Data </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
+                    return;
+                };            
             if(json.value.timeSeries.length>0){
                 series.push({
-                    data: USGSDailytoHCHeat(json,"00060"),
+                    data: heatData,
                     name:'USGS Daily Data',
                     //borderWidth: 0,
                     zIndex:2,
