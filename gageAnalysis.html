@@ -896,10 +896,12 @@ function addNWM2Stage(dischargeGraph,stageGraph){
         console.log("Can't add nwm to stage chart");
         return;
     }
+    if(typeof(dischargePlt.get('NWSshort')) == 'undefined') return;
     stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
         var oldSeries = dischargePlt.get(item);
+
 
         if(stagePlt.get(item)){
             stagePlt.get(item).remove();
