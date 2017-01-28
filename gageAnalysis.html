@@ -880,13 +880,22 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
 }
 
 function addNWM2Stage(dischargeGraph,stageGraph){
-    console.log('here');
     var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
     var stagePlt = $(stageGraph).highcharts();
     var ratingchart = $('#ratinggraph').highcharts();
     var dischargePlt = $(dischargeGraph).highcharts();
     if(stagePlt.get('NWMoutput')) stagePlt.get('NWMoutput').remove();
-
+    var rCurve;
+    if(typeof(ratingchart.get('curve')) != 'undefined'){
+        rCurve = ratingchart.get('curve');
+    }
+    else if(typeof(ratingchart.get('nwsCurve')) != 'undefined'){
+        rCurve = ratingchart.get('nwsCurve');
+    }
+    else {
+        console.log("Can't add nwm to stage chart");
+        return;
+    }
     stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
@@ -906,7 +915,7 @@ function addNWM2Stage(dischargeGraph,stageGraph){
                   source: 'NWS-NWM',};
 
         for(var y =0; y< oldSeries.data.length;y++){
-                var stage = curveLookup(ratingchart.get('curve').data,parseInt(oldSeries.data[y].y));
+                var stage = curveLookup(rCurve.data,parseInt(oldSeries.data[y].y));
                 newSeries.data.push([oldSeries.data[y].x,parseFloat(stage)]);
         }
         stagePlt.addSeries(newSeries);
@@ -1057,11 +1066,11 @@ function addUSGS(chartDiv,type,dv_iv,site){
     var end = Highcharts.dateFormat('%Y-%m-%d',extX.max);
 
     usgsUrl = "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
-    var durLabel = 'Iv';
+    var durLabel = 'USGS Inst.';
     var lineColor = 'royalblue';
     var lineIndex = 2;
     if(dv_iv == 'dv'){
-        durLabel = 'Dv';
+        durLabel = 'USGS Daily';
         lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
@@ -1076,7 +1085,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
             if(json.value.timeSeries.length>0){
                 newSeries ={
                     data: USGStoHC(json,"00060"),
-                    name: nwsID+' '+durLabel,
+                    name: nwsID.toUpperCase()+' '+durLabel,
                     zIndex:lineIndex,
                     color: lineColor,
                     dashStyle:style,
@@ -3299,8 +3308,20 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
                            }
                         },
                         mouseOver: function() {
-                            var val;
+                            var rCurve;
                             var ratingchart = $('#ratinggraph').highcharts();
+                            var val;
+
+
+                            if(typeof(ratingchart.get('curve')) != 'undefined'){
+                                rCurve = ratingchart.get('curve');
+                            }
+                            else if(typeof(ratingchart.get('nwsCurve')) != 'undefined'){
+                                rCurve = ratingchart.get('nwsCurve');
+                            }
+                            else {
+                                return;
+                            }
 
                             if(typeof this.high == 'undefined'){
                                 val = this.y;
@@ -3318,12 +3339,12 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
                             });
                             ratingchart.yAxis[0].addPlotLine({
-                                value: curveLookup(ratingchart.get('curve').data,val),
+                                value: curveLookup(rCurve.data,val),
                                 color: 'red',
                                 width: 2,
                                 id: 'horz_loc',
                                 label: {
-                                    text: curveLookup(ratingchart.get('curve').data,val),
+                                    text: curveLookup(rCurve.data,val),
                                     align: 'center',
                                     style: {
                                         fontWeight: 'bold',
