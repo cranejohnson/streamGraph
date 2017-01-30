@@ -72,8 +72,9 @@
         <tr>
             <td>
                 Graph Options:
-                <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale
-                <input type="checkbox" id="addFFlines" style="padding-left:20px" checked >Flood Frequency<br>
+                <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                Flood Frequency:<input type="checkbox" id="addFFlinesStation" style="padding-left:20px">Station
+                <input type="checkbox" id="addFFlinesWeighted" style="padding-left:20px" checked >Weighted<br>
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
                 <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
@@ -191,10 +192,6 @@ var AJAXLOOKUPTABLE = [{
                 name: "USGS Site Information"
                 },
                 {
-                match:"get_peak_flow.php",
-                name: "USGS Peak Flow"
-                },
-                {
                 match:"rdbajax.php.+rating",
                 name: "USGS Rating Curve"
                 },
@@ -230,10 +227,6 @@ var AJAXLOOKUPTABLE = [{
                 match:'\/nwis\/iv.+00065',
                 name: "USGS Inst. Stage Data"
                 },
-//                 {
-//                 match:'Mapserver\/identify',
-//                 name: "NWM Reach Informaton"
-//                 },
                 {
                 match:'forecasts\/short_range',
                 name: "NWM Short Range"
@@ -896,7 +889,7 @@ function addNWM2Stage(dischargeGraph,stageGraph){
         console.log("Can't add nwm to stage chart");
         return;
     }
-    if(typeof(dischargePlt.get('NWSshort')) == 'undefined') return;
+    if(typeof(dischargePlt.get("NWMshort")) == 'undefined') return;
     stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
@@ -1121,6 +1114,11 @@ function addUSGSrating(chartDiv,usgsSite){
         success: function(json){
             if(json.error_info.error == 0){
                 ratingArray = ratingJSON2HC(json);
+                if(ratingArray.data.length == 0) {
+                    var url = 'https://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no='+usgsSite+'&format=rdb';
+                    $( '<span style="color:orange">USGS no rating data <a href="'+url+'">Link</a><br></span>' ).prependTo( "#log" );
+                    return;
+                }
                 chartAdd.addSeries(ratingArray);
                 addMeasureQ_Rating(chartDiv,usgsSite,"curve");
                 chartAdd.yAxis[0].setExtremes(ratingArray['data'][0][1],ratingArray['data'][ratingArray['data'].length-1][1]);
@@ -1368,7 +1366,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
                         .add();
                     var minYear = 2100;
                     var maxYear = 1900;
-                    console.log(minYear,maxYear);
                     $.each(newSeries[0]['data'], function( index, value ) {
                         if(parseInt(moment(value.date).format('Y'))< minYear) minYear = parseInt(moment(value.date).format('Y'));
                         if(parseInt(moment(value.date).format('Y'))> maxYear) maxYear = parseInt(moment(value.date).format('Y'));
@@ -1399,7 +1396,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
 
 }
 
-function addPeakFlow(chartDiv,type){
+function addUSGSFF(chartDiv,type){
     if(type == null){
         type = 'wtd';
     }
@@ -1411,15 +1408,16 @@ function addPeakFlow(chartDiv,type){
     usgsID = chart.options.usgsID;
     $.ajax({
         url: "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID,
-        //url: "Flood_Stats.json",
         dataType: 'json',
         data: '',
         success: function(json){
+            $( '<span style="color:green">Success </span><span>USGS FF Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>' ).prependTo( "#log" );
+
             chart.yAxis[0].addPlotLine({
                 value: json[type+'2'],
                 color: 'green',
                 width:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 zIndex:2,
                 label:{
@@ -1431,7 +1429,7 @@ function addPeakFlow(chartDiv,type){
                 value: json[type+'5'],
                 color: 'yellow',
                 width:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 zIndex:2,
                 label:{
@@ -1444,7 +1442,7 @@ function addPeakFlow(chartDiv,type){
                 color: 'orange',
                 width:2,
                 zIndex:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 label:{
                     align: halign,
@@ -1456,7 +1454,7 @@ function addPeakFlow(chartDiv,type){
                 color: 'red',
                 width:2,
                 zIndex:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 label:{
                     align: halign,
@@ -1468,7 +1466,7 @@ function addPeakFlow(chartDiv,type){
                 color: 'cyan',
                 width:2,
                 zIndex:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 label:{
                     align: halign,
@@ -1480,11 +1478,23 @@ function addPeakFlow(chartDiv,type){
                 color: 'blue',
                 width:2,
                 zIndex:2,
-                id: 'ffline',
+                id: 'ffline'+type,
                 dashStyle: style,
                 label:{
                     align: halign,
                     text: '100 Yr ('+type+')'
+                }
+            });
+            chart.yAxis[0].addPlotLine({
+                value: json[type+'200'],
+                color: 'tan',
+                width:2,
+                zIndex:2,
+                id: 'ffline'+type,
+                dashStyle: style,
+                label:{
+                    align: halign,
+                    text: '200 Yr ('+type+')'
                 }
             });
           }
@@ -2770,9 +2780,7 @@ $('#nwmDown').click(function() {
 });
 
 
-// $('#addNWM2Stage').click(function() {
-//     addNWM2Stage('#dischargegraph','#stagegraph');
-// });
+
 
 
 $('#togglePeakLabels').click(function(){
@@ -2799,13 +2807,23 @@ $('#togglePeakLabels').click(function(){
 });
 
 
-$('#addFFlines').change(function() {
+$('#addFFlinesStation').change(function() {
   if($(this).is(':checked')){
-        addPeakFlow('dischargegraph','sta');
+        addUSGSFF('dischargegraph','sta');
     }
     else
     {
-      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('ffline');
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('fflinesta');
+  }
+});
+
+$('#addFFlinesWeighted').change(function() {
+  if($(this).is(':checked')){
+        addUSGSFF('dischargegraph','wtd');
+    }
+    else
+    {
+      $('#dischargegraph').highcharts().yAxis[0].removePlotBand('fflinewtd');
   }
 });
 
@@ -2869,8 +2887,11 @@ $('#loadQ').click(function(){
     addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph',state);
     addMeasureQ_Rating('dischargegraph',null,"series");
-    if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph','sta');
+    if($('#addFFlinesStation').is(':checked')){
+        addUSGSFF('dischargegraph','sta');
+    }
+    if($('#addFFlinesWeighted').is(':checked')){
+        addUSGSFF('dischargegraph','wtd');
     }
 
 });
@@ -2947,9 +2968,13 @@ function loadPage(site){
     graphHeatQ();
     annualHeatQ();
 
-    if($('#addFFlines').is(':checked')){
-        addPeakFlow('dischargegraph','sta');
+    if($('#addFFlinesStation').is(':checked')){
+        addUSGSFF('dischargegraph','sta');
     }
+    if($('#addFFlinesWeighted').is(':checked')){
+        addUSGSFF('dischargegraph','wtd');
+    }
+
 
 
 
