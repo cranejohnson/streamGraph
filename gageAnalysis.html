@@ -1642,8 +1642,6 @@ function addAnnualPeaks(chartDiv,state){
 function addStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID = chartAdd.options.usgsID;
-    //var d = new Date()
-    //var n = d.getTimezoneOffset()/60;
 
     if(usgsID === undefined) return;
 
@@ -1676,7 +1674,7 @@ function addStats(chartDiv){
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
-                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>90%: '+numberWithCommas(this.low) + ' cfs<br>Count: '+this.count+'</b>';
+                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br><b>90%: '+numberWithCommas(this.low) + ' cfs<br>Count: '+this.count+'</b>';
                     },
                 }
             },
@@ -1695,7 +1693,7 @@ function addStats(chartDiv){
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
-                        return '<b>10%: '+numberWithCommas(this.high) + ' cfs<br>Min: '+numberWithCommas(this.low) + ' cfs<br>';
+                        return '<b>10%: '+numberWithCommas(this.high) + ' cfs<br><b>Min: '+numberWithCommas(this.low) + ' cfs  ('+this.minYear+')<br>Count: '+this.count+'</b>';
                     },
                 },
                 point:{
@@ -1834,13 +1832,14 @@ function addStats(chartDiv){
             //Set year of max to calendar year from water year...if month is 10,11,12 subtract 1 year
             if(tdata[5] > 9) yearMax = yearMax-1;
 
-            var maxData = {dayOfYear:doy,y:max,high:max,low:per90,maxYear:yearMax,minYear:yearMin,count:tdata[9]};
+            var maxData = {dayOfYear:doy,y:max,high:max,low:per90,maxYear:yearMax,count:tdata[9]};
+            var minData = {dayOfYear:doy,y:per10,high:per10,low:min,minYear:yearMin,count:tdata[9]};
 
 
             annualSeries[0].data[doy] = maxData;
 
             //set min -  10% series
-            annualSeries[1].data[doy] = [min,per10];
+            annualSeries[1].data[doy] = minData;
             //set 10% -  25% series
             annualSeries[2].data[doy] = [per10,per25];
             //set 25% - 75% series
@@ -1875,13 +1874,26 @@ function addStats(chartDiv){
                     high:dat['high'],
                     low:dat['low'],
                     maxYear:dat['maxYear'],
-                    minYear:dat['minYear'],
                     count:dat['count']};
 
                 statsSeries[0].data.push(mData);
             }
+          //Push max and min data into series
+            var dat = annualSeries[1].data[doy];
+            if(typeof dat !== 'undefined'){
+                var mData = {
+                    dayOfYear:doy,
+                    y:dat['y'],
+                    x:parseInt(sdate.format("x")),
+                    high:dat['high'],
+                    low:dat['low'],
+                    minYear:dat['minYear'],
+                    count:dat['count']};
 
-            for(var j=1;j<=5;j++){
+                statsSeries[1].data.push(mData);
+            }
+
+            for(var j=2;j<=5;j++){
                 dat = annualSeries[j].data[doy];
                 if(typeof dat !== 'undefined'){
 
@@ -2711,7 +2723,7 @@ function plotHeatQ(usgsSite){
                     var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
                     $('<span style="color:orange">No USGS Daily Data </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
                     return;
-                };            
+                };
             if(json.value.timeSeries.length>0){
                 series.push({
                     data: heatData,
@@ -3506,7 +3518,7 @@ function graphRating(container,usgs,nws){
         },
         title: {
             text: 'Stage vs. Discharge'
-        },      
+        },
         xAxis: {
             type: 'logarithmic',
             crosshair: {
