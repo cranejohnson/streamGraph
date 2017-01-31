@@ -1676,7 +1676,7 @@ function addStats(chartDiv){
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
-                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>Min: '+numberWithCommas(this.low) + ' cfs ('+this.minYear+')<br>Count: '+this.count+'</b>';
+                        return '<b>Max: '+numberWithCommas(this.high) + ' cfs ('+this.maxYear+')<br>90%: '+numberWithCommas(this.low) + ' cfs<br>Count: '+this.count+'</b>';
                     },
                 }
             },
@@ -1694,6 +1694,9 @@ function addStats(chartDiv){
                 zIndex: 1,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
+                    pointFormatter: function (){
+                        return '<b>10%: '+numberWithCommas(this.high) + ' cfs<br>Min: '+numberWithCommas(this.low) + ' cfs<br>';
+                    },
                 },
                 point:{
                     events:{
