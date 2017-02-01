@@ -145,20 +145,45 @@ if (ol.Map.prototype.getLayer === undefined) {
 
 var osm_default = new ol.layer.Tile({
       source: new ol.source.XYZ({
-        //attributions: [attribution],
         url: 'https://txpub.usgs.gov/arcgis/rest/services/Mapping/HydroBaseMapForTerrain/MapServer/tile/{z}/{y}/{x}'
       })
     });
 
 var osm_default2 = new ol.layer.Tile({
       source: new ol.source.XYZ({
-        //attributions: [attribution],
         url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}'
       })
     });
 
+
+
+var vectorSource = new ol.source.Vector({
+    format: new ol.format.GML3(),
+    url: function(extent) {
+        return 'https://idpgis.ncep.noaa.gov/arcgis/services/NWS_Observations/ahps_riv_gauges/MapServer/WFSServer?'+
+            'service=WFS&version=1.1.0&request=GetFeature&typeName=Observed_River_Stages&srsname=EPSG:3857&'+
+            'bbox=' + extent.join(',') + ',EPSG:3857';
+        },
+    strategy: ol.loadingstrategy.bbox,
+    projection: 'EPSG:3857'
+});
+
+
+var vector = new ol.layer.Vector({
+    source: vectorSource,
+    style: new ol.style.Style({
+        stroke: new ol.style.Stroke({
+            color: 'rgba(0, 0, 255, 1.0)',
+            width: 10
+        })
+    })
+});
+
+console.log(vectorSource.getFeatures());
+
 var map = new ol.Map({
-    layers: [osm_default2,osm_default],
+    //layers: [osm_default2,osm_default,vector],
+    layers: [vector],
     target: 'map',
     view: new ol.View({
         center: ol.proj.transform([-100, 40], 'EPSG:4326', 'EPSG:3857'),
@@ -178,11 +203,8 @@ map.addControl(mousePosition);
 
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
-var NWS;
-var state;   //need to get rid of this one.
 new Clipboard('.btn');
 var CROSSWALKTABLE;
-//var FIPSCODES = {"02":"AK","01":"AL","05":"AR","60":"AS","04":"AZ","06":"CA","08":"CO","09":"CT","11":"DC","10":"DE","12":"FL","13":"GA","66":"GU","15":"HI","19":"IA","16":"ID","17":"IL","18":"IN","20":"KS","21":"KY","22":"LA","25":"MA","24":"MD","23":"ME","26":"MI","27":"MN","29":"MO","28":"MS","30":"MT","37":"NC","38":"ND","31":"NE","33":"NH","34":"NJ","35":"NM","32":"NV","36":"NY","39":"OH","40":"OK","41":"OR","42":"PA","72":"PR","44":"RI","45":"SC","46":"SD","47":"TN","48":"TX","49":"UT","51":"VA","78":"VI","50":"VT","53":"WA","55":"WI","54":"WV","56":"WY"  };
 var AJAXLOOKUPTABLE = [{
                 match:"crossWalk.json",
                 name:"USGS-NWS CrossWalk Table",
@@ -857,7 +879,7 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
                 series.name = "NWM "+typeName[0]+" term issued:"+forecast[0]["valid-time"];
                 $.each( forecast[0].data, function( key,point ) {
                     xVal = parseInt(moment.utc(point["forecast-time"]).format("x"));
-                    series.data.push([xVal,point.value]);
+                    series.data.push([xVal,Math.round(point.value)]);
                 })
                 if(series) chartAdd.addSeries(series);
 
@@ -1414,7 +1436,7 @@ function addUSGSFF(chartDiv,type){
         dataType: 'json',
         data: '',
         success: function(json){
-            $( '<span style="color:green">Success </span><span>USGS FF Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>' ).prependTo( "#log" );
+            $( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>' ).prependTo( "#log" );
 
             chart.yAxis[0].addPlotLine({
                 value: json[type+'2'],
@@ -1507,10 +1529,8 @@ function addUSGSFF(chartDiv,type){
 
 
 
-function addAnnualPeaks(chartDiv,state){
-    if (state === undefined) {
-        state = 'ak';
-    }
+function addAnnualPeaks(chartDiv){
+
     var chart = $('#'+chartDiv).highcharts();
     var usgsID = chart.options.usgsID;
     if(typeof(usgsID) == 'undefined'){
@@ -1520,10 +1540,8 @@ function addAnnualPeaks(chartDiv,state){
 
     $.ajax({
         url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks",
-        //&state="+state
         dataType: 'json',
 
-   // $.get("http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks&state="+state, function( data ) {
         success: function(data){
         var chart = $('#'+chartDiv).highcharts();
         var year = new Date().getFullYear();
@@ -2909,7 +2927,7 @@ $('#loadQ').click(function(){
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
-    addAnnualPeaks('dischargegraph',state);
+    addAnnualPeaks('dischargegraph');
     addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3010,19 +3028,20 @@ function loadPage(site){
             dataType: 'text',
             data: '',
             success: function(data){
+
                 addStats('dischargegraph');
                 addUSGSrating('ratinggraph',siteId.usgs);
                 addUSGS('stagegraph','stage','iv');
                 if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
                 if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
-                addAnnualPeaks('dischargegraph',state);
+                addAnnualPeaks('dischargegraph');
                 addMeasureQ_Rating('dischargegraph',null,"series");
                 siteInfo = getRDBSiteInfo(data);
+                console.log(siteInfo);
                 setupMap(siteInfo);
                 var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
                 addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
                 addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
-                state = FIPSCODES[siteInfo.state_cd].toLowerCase();
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
                 Highcharts.setOptions({
