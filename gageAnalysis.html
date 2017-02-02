@@ -182,8 +182,8 @@ var vector = new ol.layer.Vector({
 console.log(vectorSource.getFeatures());
 
 var map = new ol.Map({
-    //layers: [osm_default2,osm_default,vector],
-    layers: [vector],
+    layers: [osm_default2,osm_default],
+    //layers: [vector],
     target: 'map',
     view: new ol.View({
         center: ol.proj.transform([-100, 40], 'EPSG:4326', 'EPSG:3857'),
@@ -2362,6 +2362,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
     var nwsLid = chart.options.nwsLid;
     if(typeof AHPSjson[nwsLid] == 'undefined') return;
     if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
+
     var extremes = chart.yAxis[0].getExtremes();
     if(getAhps(nwsLid,AHPSjson) == false) return;
 
@@ -2418,7 +2419,7 @@ function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
     };
 
     $.each( colors, function( key, value ){
-        if(typeof AHPSjson[nwsLid].sigstages[key] != 'undefined'){
+        if(typeof AHPSjson[nwsLid].sigstages[key].__text != 'undefined'){
             if(parseFloat(AHPSjson[nwsLid].sigstages[key].__text) > maxY){
                 maxY = parseInt(AHPSjson[nwsLid].sigstages[key].__text);
             }
@@ -2871,14 +2872,7 @@ $('#addFFlinesWeighted').change(function() {
 
 
 
-// $('#loadAnnual').click(function(){
-//     var year = new Date().getFullYear();
-//     $('#dischargeStart').val(year+'-01-01');
-//     $('#dischargeEnd').val(year+'-12-31');
-//
-//     $( "#loadQ" ).trigger( "click" );
-//
-// });
+
 
 $('#getGDLhydro').click(function(){
 
@@ -3642,7 +3636,6 @@ function graphHeatQ(){
         title: {
             text: 'DAILY DATA'
         },
-
         plotOptions:{
             series:{
                 point: {
@@ -3724,6 +3717,13 @@ function graphHeatQ(){
         }
     }
     heatchart = new Highcharts.Chart(heatchartobj);
+    heatchart.renderer.text('Flow (cfs)', 270, 545)
+            .css({
+                color: 'black',
+                fontSize: '14px'
+            })
+            .add();
+
 }
 
 
