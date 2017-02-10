@@ -18,7 +18,7 @@
     <script src="https://www.weather.gov/source/aprfc/js/clipboard.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/xmlToJSON.min.js"></script>
     <script src="USGS_CODE.js"></script>
-   
+
     <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
 
     <style type="text/css">
@@ -73,8 +73,8 @@
             <td>
                 Graph Options:
                 <input type="checkbox" id="dischargeAxis" style="padding-left:20px" >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                Flood Frequency:<input type="checkbox" id="addFFlinesStation" style="padding-left:20px">Station
-                <input type="checkbox" id="addFFlinesWeighted" style="padding-left:20px" checked >Weighted<br>
+                Flood Frequency:<input type="checkbox" id="addFFlinesStation" style="padding-left:20px" checked>Station
+                <input type="checkbox" id="addFFlinesWeighted" style="padding-left:20px"  >Weighted<br>
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
                 <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
@@ -91,7 +91,10 @@
             </td>
             <td>
                 <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
-                <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages<br>
+                <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                Highlight measurements based on:
+                <input type="radio" name="markerHighlights" value = "age" checked>Age
+                <input type="radio" name="markerHighlights" value = "quality">Quality<br><br>
                 <div style="float:left;"><label for="months2show">Plot QMeas Between:</label>
                 <input type="text" id="months2show" readonly style="border:0;padding:4px; color:#f6931f; font-size: 14px; font-weight:bold;">
                 <div id="qmeas-range"  style="width: 200px;"></div></div>
@@ -1346,11 +1349,16 @@ function addAHPS(chartDiv,type){
 }
 
 
-function addMeasureQ_Rating(chartDiv,usgsID,type){
+function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
+    if (marker === undefined) {
+        marker = 'age';
+    }
     var chart = $('#'+chartDiv).highcharts();
     if(usgsID == null){
         usgsID = chart.options.usgsID;
     }
+
+
 
     if(typeof(usgsID) == 'undefined'){
         $( '<span style="color:orange">USGS measured Q (no id)<br></span>' ).prependTo( "#log" );
@@ -1361,29 +1369,36 @@ function addMeasureQ_Rating(chartDiv,usgsID,type){
         dataType: 'json',
         data: '',
         success: function(json){
-            var newSeries = qMeasJSON2HC_Rating(json,type);
+            var newSeries = qMeasJSON2HC_Rating(json,type,marker);
             if(json.error_info.error == 0){
                 newSeries[0].turboThreshold = 2000;
                 chart.addSeries(newSeries[0]);
+                var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
+
+                if(marker == 'quality'){
+                    htmlText = '<span style="color:Green">Excellent - Good</span><br><span style="color:#E7F317">Fair</span><br><span style="color:orange")">Poor</span>';
+                }
                 if(chartDiv == 'ratinggraph'){
                     text = chart.renderer.text(
-                        '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>',
+                        htmlText,
                         550,
                         400
                     ).attr({
-                        zIndex: 5
+                        zIndex: 5,
+                        class: 'Qnotes'
                     }).css({
                         color: 'black',
                         'text-align': 'center',
                         'font-weight': 'bold',
                         width:  400,
                         fontSize: '13px'
-                    }).add(),
+                    }).add();
                     box = text.getBBox();
                     chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
                         .attr({
                             fill: 'white',
                             stroke: 'gray',
+                            class: 'Qnotes',
                             'stroke-width': 1,
                             zIndex: 4
                         })
@@ -2121,7 +2136,7 @@ function dateFromDay(year, day){
 
 //Convert USGS measured Q json object to highcharts series (UTC)
 //and convert from local to UTC time
-function qMeasJSON2HC_Rating(json,type){
+function qMeasJSON2HC_Rating(json,type,marker){
 
     var usgsTZ = {
         'AKST' : 9,
@@ -2144,6 +2159,7 @@ function qMeasJSON2HC_Rating(json,type){
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
     var dtIndex = GetObjectKeyIndex(json.columns,"measurement_dt");
     var tzIndex = GetObjectKeyIndex(json.columns,"tz_cd");
+    var qaulIndex = GetObjectKeyIndex(json.columns,"measured_rating_diff");
     var xVal,yVal;
     var series = {
            data: [],
@@ -2156,7 +2172,7 @@ function qMeasJSON2HC_Rating(json,type){
             type: 'scatter',
             zIndex : 10,
             id:'qMeasured',
-            color: 'red',
+            color: 'blue',
             marker : {
                 enabled : true,
                 symbol : 'diamond'
@@ -2208,17 +2224,26 @@ function qMeasJSON2HC_Rating(json,type){
          }
 
 
-
-
         age = moment().diff(qDate,'years',true);
 
-        var mColor= 'rgba(0,0,205,0.3)';
-        if(age < 10) mColor= 'rgba(0,0,205,0.5)';
-        if(age < 5) mColor= 'rgba(0,0,205,0.7)';
-        if(age < 1 ) mColor = 'orange';
-        if(i+1 == len) mColor = 'red';
-        if(type != 'curve') mColor = 'red';
 
+        var aColor= 'rgba(0,0,205,0.3)';
+        if(age < 10) aColor= 'rgba(0,0,205,0.5)';
+        if(age < 5) aColor= 'rgba(0,0,205,0.7)';
+        if(age < 1 ) aColor = 'orange';
+        if(i+1 == len) aColor = 'red';
+        if(type != 'curve') aColor = 'red';
+
+        var quality = json.records[i][qaulIndex];
+        qColor = 'gray';
+        if(quality == 'EXCELLENT') qColor = 'Green';
+        if(quality == 'GOOD') qColor = '#2ED017';
+        if(quality == 'FAIR') qColor = '#E7F317';
+        if(quality == 'POOR') qColor = '#FFA200';
+        var mColor = qColor;
+        if(marker == 'age'){
+            var mColor = aColor;
+        }
 
         ratingInfo = $.extend({
             'x' : xVal,
@@ -2226,6 +2251,8 @@ function qMeasJSON2HC_Rating(json,type){
             'date':parseInt(qDate.format("x")),
             'age':age,
             'color': mColor,
+            'aColor':aColor,
+            'qColor':qColor,
             'name': localeDate.format('MMMM Do YYYY, h:mm:ss a')+' '+json.records[i][tzIndex],
             'marker':{
                 //'fillColor': mColor,
@@ -2697,6 +2724,70 @@ $('#showFloodStagesRating').change(function() {
         }
 });
 
+$(":input[name= 'markerHighlights']").on('change', function(){
+    var mType = $("input[name='markerHighlights']:checked").val();
+    var chart = $('#ratinggraph').highcharts();
+    var series = chart.get('qMeasured');
+    if(mType == 'quality'){
+        $.each(series.data, function(i, point) {
+            point.graphic.attr({
+                fill: this.qColor
+            });
+        });
+        $.each(series.userOptions.originalData,function(){
+            this.color =  this.qColor;
+        });
+     }
+     else{
+        $.each(series.data, function(i, point) {
+            point.graphic.attr({
+                fill: this.aColor
+            });
+        });
+        $.each(series.userOptions.originalData,function(){
+            this.color =  this.aColor;
+        });
+
+    }
+
+
+    var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
+
+    if(mType == 'quality'){
+        htmlText = '<span style="color:Green">Excellent - Good</span><br><span style="color:#E7F317">Fair</span><br><span style="color:orange")">Poor</span>';
+    }
+
+
+    $(".Qnotes").remove();
+
+    text = chart.renderer.text(
+        htmlText,
+        550,
+        400
+    ).attr({
+        zIndex: 5,
+        class: 'Qnotes'
+    }).css({
+        color: 'black',
+        'text-align': 'center',
+        'font-weight': 'bold',
+        width:  400,
+        fontSize: '13px'
+    }).add();
+    box = text.getBBox();
+    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
+        .attr({
+            fill: 'white',
+            stroke: 'gray',
+            class: 'Qnotes',
+            'stroke-width': 1,
+            zIndex: 4
+        })
+        .add();
+    //addMeasureQ_Rating('ratinggraph',chart.USGSid,"curve",$("input[name='markerHighlights']:checked").val());
+
+
+});
 
 
 function swapAxis(allSeries){
