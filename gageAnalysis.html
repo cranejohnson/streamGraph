@@ -2730,6 +2730,7 @@ $(":input[name= 'markerHighlights']").on('change', function(){
     var series = chart.get('qMeasured');
     if(mType == 'quality'){
         $.each(series.data, function(i, point) {
+            if(typeof(point.graphic) == 'undefined') return true;
             point.graphic.attr({
                 fill: this.qColor
             });
@@ -2740,6 +2741,7 @@ $(":input[name= 'markerHighlights']").on('change', function(){
      }
      else{
         $.each(series.data, function(i, point) {
+            if(typeof(point.graphic) == 'undefined') return true;
             point.graphic.attr({
                 fill: this.aColor
             });
