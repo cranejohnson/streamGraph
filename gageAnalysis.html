@@ -2236,10 +2236,10 @@ function qMeasJSON2HC_Rating(json,type,marker){
 
         var quality = json.records[i][qaulIndex];
         qColor = 'gray';
-        if(quality == 'EXCELLENT') qColor = 'Green';
-        if(quality == 'GOOD') qColor = '#2ED017';
-        if(quality == 'FAIR') qColor = '#E7F317';
-        if(quality == 'POOR') qColor = '#FFA200';
+        if(quality.toUpperCase() == 'EXCELLENT') qColor = 'Green';
+        if(quality.toUpperCase() == 'GOOD') qColor = '#2ED017';
+        if(quality.toUpperCase() == 'FAIR') qColor = '#E7F317';
+        if(quality.toUpperCase() == 'POOR') qColor = '#FFA200';
         var mColor = qColor;
         if(marker == 'age'){
             var mColor = aColor;
