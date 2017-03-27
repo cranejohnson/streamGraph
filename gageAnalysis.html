@@ -1689,12 +1689,11 @@ function addAnnualPeaks(chartDiv){
         $.each(data.records,function(){
             var newD = this[2].split('-');
             //var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
-            var d = moment(this[2]);
+            var d = moment(this[2]).add(3,'months');
             d.add(12+n,'hours');
             var point = [d,this[4]];
             peakSeries[0].data.push([d,this[4]]);
             peaks.push(this[4]);
-            console.log(this[4]+" - "+moment(d).format('YYYY'));
             years.push(moment(d).format('YYYY'));
             d= Date.UTC(year,newD[1]-1,newD[2],12+n);
             point = {x:d,
@@ -1706,7 +1705,7 @@ function addAnnualPeaks(chartDiv){
 
           });
         mkS(peaks);
-        var corr = spearson.correlation.spearman(years, peaks);
+        var corr = spearson.correlation.spearman(years, peaks,true);
         var string = "";
         for(i=0;i<years.length;i++){
             string= string+years[i]+",";
@@ -1716,6 +1715,10 @@ function addAnnualPeaks(chartDiv){
             string= string+peaks[i]+",";
         }
         console.log(corr);
+        t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
+        console.log(t);
+        var pval = jStat.ttest(t,years.length);
+        console.log(pval);
         chart.addSeries(peakSeries[0]);
         chart.addSeries(peakSeries[1]);
 
