@@ -19,7 +19,9 @@
     <script src="https://www.weather.gov/source/aprfc/js/xmlToJSON.min.js"></script>
     <script src="USGS_CODE.js"></script>
 
-    <script src="https://openlayers.org/en/v3.19.0/build/ol.js" type="text/javascript"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.0.1/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/jstat/latest/jstat.min.js"></script>
+    <script src="spearson.js"></script>
 
     <style type="text/css">
         .success {
@@ -125,7 +127,6 @@
 
 
 <script type="text/javascript">
-
 
 
 
@@ -502,6 +503,35 @@ if (xMin === undefined) {
         }
     }
     return peak;
+}
+
+function mkS(dataArray){
+    var S = 0;
+    var end = dataArray.length-4;
+    dataArray = dataArray.slice(0, end);
+    var n = dataArray.length;
+    var revArray = dataArray.reverse();
+    for(i=0;i<n;i++){
+
+        for(j=i+1;j<n;j++){
+            if(revArray[i]>revArray[j]) S = S +1;
+            if(revArray[i]<revArray[j]) S = S -1;
+        }
+    }
+
+    var varS = (n*(n-1)*(2*n+5))/18;
+    var Z = 0;
+    if(S<0){
+        Z = (S+1)/(Math.sqrt(varS));
+    }
+    else if(S>0){
+        Z =  (S-1)/(Math.sqrt(varS));
+    }
+    var tau = S/(n*(n-1)/2)
+    p = jStat.ztest(Z,2);
+
+    console.log("n: "+n+" S: "+S+" varS: "+varS+" tau: "+tau+" Z: "+Z+" p: "+p);
+    return S;
 }
 
 
@@ -1642,13 +1672,19 @@ function addAnnualPeaks(chartDiv){
         //
         var d = new Date()
         var n = d.getTimezoneOffset()/60;
+        var peaks = [];
+        var years = [];
         if(typeof data.records == 'undefined') return false;
         $.each(data.records,function(){
             var newD = this[2].split('-');
-            var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
-
+            //var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
+            var d = moment(this[2]);
+            d.add(12+n,'hours');
             var point = [d,this[4]];
             peakSeries[0].data.push([d,this[4]]);
+            peaks.push(this[4]);
+            console.log(this[4]+" - "+moment(d).format('YYYY'));
+            years.push(moment(d).format('YYYY'));
             d= Date.UTC(year,newD[1]-1,newD[2],12+n);
             point = {x:d,
                      y:this[4],
@@ -1658,7 +1694,17 @@ function addAnnualPeaks(chartDiv){
             peakSeries[1].data.push(point);
 
           });
-
+        mkS(peaks);
+        var corr = spearson.correlation.spearman(years, peaks);
+        var string = "";
+        for(i=0;i<years.length;i++){
+            string= string+years[i]+",";
+        }
+        string = "";
+        for(i=0;i<years.length;i++){
+            string= string+peaks[i]+",";
+        }
+        console.log(corr);
         chart.addSeries(peakSeries[0]);
         chart.addSeries(peakSeries[1]);
 
