@@ -133,6 +133,11 @@
                 <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
             </td>
         </tr>
+        <tr>
+            <td></td>
+            <td>
+                 <div id="annualPeakGraph" style="width: 800px; height: 300px; margin: 0 auto;"></div>
+
     </table>
 <hr>
 
@@ -516,6 +521,23 @@ if (xMin === undefined) {
     return peak;
 }
 
+function sensSlope(x,y){
+
+    var n = x.length;
+    var sensSlopeArray = []
+
+    for(i=0;i<n;i++){
+
+        for(j=i+1;j<n;j++){
+            var slope = (y[j]-y[i])/(x[j]-x[i]);
+            sensSlopeArray.push(slope);
+
+        }
+    }
+
+    return jStat.median(sensSlopeArray);
+}
+
 function mkS(dataArray){
     var S = 0;
     var end = dataArray.length-4;
@@ -527,6 +549,7 @@ function mkS(dataArray){
         for(j=i+1;j<n;j++){
             if(revArray[i]>revArray[j]) S = S +1;
             if(revArray[i]<revArray[j]) S = S -1;
+
         }
     }
 
@@ -1584,19 +1607,20 @@ function addUSGSFF(chartDiv,type){
 
 
 
-function addAnnualPeaks(chartDiv){
-
+function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
-    var usgsID = chart.options.usgsID;
+
+    if(usgsID == null){
+        usgsID = chart.options.usgsID;
+    }
+
     if(typeof(usgsID) == 'undefined'){
         $( '<span style="color:orange">USGS Annual peaks (no id)<br></span>' ).prependTo( "#log" );
         return false;
     }
-
     $.ajax({
         url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks",
         dataType: 'json',
-
         success: function(data){
         var chart = $('#'+chartDiv).highcharts();
         var year = new Date().getFullYear();
@@ -1688,11 +1712,10 @@ function addAnnualPeaks(chartDiv){
         if(typeof data.records == 'undefined') return false;
         $.each(data.records,function(){
             var newD = this[2].split('-');
-            //var d= Date.UTC(newD[0],newD[1]-1,newD[2],12+n);
             var d = moment(this[2]).add(3,'months');
             d.add(12+n,'hours');
             var point = [d,this[4]];
-            peakSeries[0].data.push([d,this[4]]);
+            peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
             peaks.push(this[4]);
             years.push(moment(d).format('YYYY'));
             d= Date.UTC(year,newD[1]-1,newD[2],12+n);
@@ -1702,10 +1725,11 @@ function addAnnualPeaks(chartDiv){
                      year:newD[0]
                      }
             peakSeries[1].data.push(point);
-
           });
         mkS(peaks);
         var corr = spearson.correlation.spearman(years, peaks,true);
+        var sslope = sensSlope(years,peaks);
+        console.log('SensSlope= '+sslope);
         var string = "";
         for(i=0;i<years.length;i++){
             string= string+years[i]+",";
@@ -1721,10 +1745,10 @@ function addAnnualPeaks(chartDiv){
         console.log(pval);
         chart.addSeries(peakSeries[0]);
         chart.addSeries(peakSeries[1]);
-
-    }
+        }
     })
 }
+
 
 
 
@@ -2007,29 +2031,6 @@ function addStats(chartDiv){
         });
       });
 }
-
-
-function initializeNWS() {
-  NWS = {
-            maxY : -9999,
-            nwsTitle: '',
-            usgsTitle:'',
-            forecastStage: [],
-            observedStage: [],
-            forecastDischarge: [],
-            observedDischarge: [],
-            sources:[],
-            stageSeries: [],
-            dailyUSGS: [],
-            ratingsSeries:[],
-            dischargeSeries: [],
-            forecastIssued : ''
-  }
-
-}
-
-
-
 
 
 
@@ -3074,6 +3075,7 @@ $('#loadQ').click(function(){
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
     addAHPS('dischargegraph','discharge');
     addAnnualPeaks('dischargegraph');
+
     addMeasureQ_Rating('dischargegraph',null,"series");
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3144,7 +3146,7 @@ function loadPage(site){
     var year = new Date().getFullYear();
     $('#dischargeStart').val(year+'-01-01');
     $('#dischargeEnd').val(year+'-12-31');
-    initializeNWS();
+    //initializeNWS();
     var siteId = getBothIds(site);
     var siteInfo = {'dec_long_va': 0,
                      'dec_lat_va':0};
@@ -3155,6 +3157,7 @@ function loadPage(site){
     graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
     graphHeatQ();
     annualHeatQ();
+    graphAnnualPeaks();
 
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3286,12 +3289,6 @@ function setupMap(siteInfo){
 function graphStage(container,minDate,maxDate,usgs,nws){
 
     var title;
-    if(NWS.usgsTitle.length>0){
-        title = NWS.usgsTitle;
-    }else{
-      title = NWS.nwsTitle;
-    }
-
     stagechartobj= {
         usgsID:usgs,
         nwsLid:nws,
@@ -3443,6 +3440,37 @@ function graphStage(container,minDate,maxDate,usgs,nws){
     }
   chart = new Highcharts.Chart(stagechartobj);
 }
+
+function graphAnnualPeaks(){
+    annualPeakchartobj = {
+        credits: {
+            enabled: false
+        },
+       chart: {
+            renderTo: 'annualPeakGraph',
+            zoomType: 'x',
+            marginTop: 40,
+            marginLeft:80,
+
+        },
+        title:{
+            text: 'Annual Peaks'
+        },
+        xaxis: {
+            title: {
+                text: 'Year'
+            },
+            type: 'datetime',
+        },
+
+        series : [{data:[null,null],
+                    visible:false,
+                    showInLegend:false}]
+    }
+
+    new Highcharts.Chart(annualPeakchartobj);
+  }
+
 
 function graphDischarge(container,minDate,maxDate,usgs,nws){
     ////////////////////////////////////Discharge Graph////////////////////////////////
@@ -3879,7 +3907,7 @@ function graphHeatQ(){
 }
 
 
-function annualHeatQ(NWS){
+function annualHeatQ(){
 
 
     var start;
