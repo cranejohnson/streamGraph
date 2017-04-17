@@ -11,7 +11,8 @@
     <script src="https://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/jquery.ui.slider.custom.js"></script>
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-    <script src="https://rawgithub.com/highslide-software/draggable-points/master/draggable-points.js"></script>
+    <script src="draggable-points.js"></script>
+
 
     <script src="https://www.openlayers.org/api/OpenLayers.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/moment.js"></script>
@@ -859,7 +860,7 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
     if(reachID == 0){
          $.ajax({
                 type: "GET",
-                url: "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
+                url: "http://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
                 data: params,
                 async: false,
                 contentType: "application/json; charset=utf-8",
