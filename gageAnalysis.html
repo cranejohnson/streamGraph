@@ -1713,11 +1713,12 @@ function addAnnualPeaks(chartDiv,usgsID){
         if(typeof data.records == 'undefined') return false;
         $.each(data.records,function(){
             var newD = this[2].split('-');
-            var d = moment(this[2]).add(3,'months');
+            var d = moment(this[2]);
             d.add(12+n,'hours');
             var point = [d,this[4]];
             peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
             peaks.push(this[4]);
+            d.add(3,'months');
             years.push(moment(d).format('YYYY'));
             d= Date.UTC(year,newD[1]-1,newD[2],12+n);
             point = {x:d,
