@@ -860,7 +860,7 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
     if(reachID == 0){
          $.ajax({
                 type: "GET",
-                url: "http://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
+                url: "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
                 data: params,
                 async: false,
                 contentType: "application/json; charset=utf-8",
@@ -937,7 +937,7 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
                   source: 'NWS-NWM',};
     $.ajax({
             type: "GET",
-            url: "http://nwmdata.nohrsc.noaa.gov/0.2/forecasts/"+forecastType+"/streamflow",
+            url: "https://nwmdata.nohrsc.noaa.gov/0.2/forecasts/"+forecastType+"/streamflow",
             data: params,
             contentType: "application/json; charset=utf-8",
             headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
@@ -1266,7 +1266,7 @@ function getAhps(site,AHPS){
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
             //url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=json&site="+site,
-            url: "http://water.weather.gov/ahps2/hydrograph_to_xml.php?output=xml&gage="+site,
+            url: "https://water.weather.gov/ahps2/hydrograph_to_xml.php?output=xml&gage="+site,
             dataType: 'xml',
             data: data,
             async: false,
