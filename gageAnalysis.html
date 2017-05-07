@@ -1157,7 +1157,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
     var lineIndex = 2;
     if(dv_iv == 'dv'){
         durLabel = 'USGS Daily';
-        lineColor = 'darkgreen';
+        //lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
         usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
@@ -1173,7 +1173,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
                     data: USGStoHC(json,"00060"),
                     name: nwsID.toUpperCase()+' '+durLabel,
                     zIndex:lineIndex,
-                    color: lineColor,
+                    //color: lineColor,
                     dashStyle:style,
                     qual: 'Observed',
                     id: seriesId,
@@ -2398,8 +2398,12 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
       var d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
-
+      //Set the hour to noon
+      d.setHours(12);
       newYear = d.getFullYear();
+
+      //If it's a new year calculate the average annual (calendar) discharge if more
+      //than 330 good values exist
       if(newYear != oldYear){
             if(oldYear != 1800){
                 if(numInYear > 330){
@@ -2418,8 +2422,7 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
       var diff = d - start;
       var oneDay = 1000 * 60 * 60 * 24;
       var day = Math.floor(diff / oneDay);
-      val = usgsObj.value.timeSeries[QRarr].values[0].value[i].value
-      val = parseFloat(val);
+      var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
       if(val < 1) val  = 1;
       data.push([parseInt(day),parseInt(newYear),val])
       annualSum = annualSum + val;
