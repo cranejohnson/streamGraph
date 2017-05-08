@@ -3,7 +3,7 @@
 
 
 
-$wsdl = "http://www.wcc.nrcs.usda.gov/awdbWebService/services?WSDL";
+$wsdl = "https://www.wcc.nrcs.usda.gov/awdbWebService/services?WSDL";
 $client = new SoapClient($wsdl, array(
                                         'trace' => true, //to debug
                                         ));
@@ -67,9 +67,6 @@ try {
         'getFlags'=> 'false',
         'beginDate'=>'1900-1-1',
         'endDate'=> '2020-1-1',
-//        'heightDepth'=> array(
-//              'unitCd' => 'in',
-//              'value' =>-2              ),
         'alwaysReturnDailyFeb29' => false
     );
 
@@ -105,6 +102,7 @@ $allSeries = array();
 $start = strtotime($result->return->beginDate)+12*3600;
 $series['name'] = date('Y',$start)."-".date('Y',$start+365*24*3600);
 $series['data'] = array();
+$series['marker']['enabled'] = false;
 $base = $start;
 foreach($result->return->values as $val){
     if(date('m',$start)==8 && date('d',$start)==1) {
@@ -114,10 +112,11 @@ foreach($result->return->values as $val){
         $base = $start;
 
     }
-    $sameYear = strtotime('2015-8-1')+($start-$base);
+    $sameYear = strtotime('2016-8-1')+($start-$base);
     $series['data'][] = array($sameYear*1000,intval($val));
     $start = $start+3600*24;
 }
+
 
 $allSeries[] = $series;
 
