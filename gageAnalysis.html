@@ -40,8 +40,8 @@
             color: #228B22;
         }
         .map {
-          height: 300px;
-          width: 400px;
+          height: 400px;
+          width: 500px;
         }
         #heatMapQ,
         #annualMapQ{
@@ -75,12 +75,15 @@
                 <input type="button" id="nwmUp" class = "hasNWM" value="NWM Upstream Results">
                 <input type="button" id="nwmDown" class = "hasNWM" value="NWM Downstream Results">
             </td>
-            <td>
+            <td align="center">
                 <div id='usgsSiteInfo'></div>
-            </td>
+                 <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
+                 <div id="MannKendallResults"></div>
+                 <div id="spearmanResults"></div>
+
         </tr>
     </table>
-
+<hr>
 
     <table>
         <tr>
@@ -134,10 +137,6 @@
                 <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
             </td>
         </tr>
-        <tr>
-            <td></td>
-            <td>
-                 <div id="annualPeakGraph" style="width: 800px; height: 300px; margin: 0 auto;"></div>
 
     </table>
 <hr>
@@ -223,6 +222,7 @@ map.addControl(mousePosition);
 
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
+var USGSjson = {};    //GLOBAL USGS JSON DATA BY SITE
 new Clipboard('.btn');
 var CROSSWALKTABLE;
 var AJAXLOOKUPTABLE = [{
@@ -541,6 +541,7 @@ function sensSlope(x,y){
 
 function mkS(dataArray){
     var S = 0;
+    var result = {};
     var end = dataArray.length-4;
     dataArray = dataArray.slice(0, end);
     var n = dataArray.length;
@@ -564,9 +565,28 @@ function mkS(dataArray){
     }
     var tau = S/(n*(n-1)/2)
     p = jStat.ztest(Z,2);
-
-    console.log("n: "+n+" S: "+S+" varS: "+varS+" tau: "+tau+" Z: "+Z+" p: "+p);
-    return S;
+    result = {
+        'n' : n,
+        'S' : S,
+        'varS' : varS,
+        'tau' : tau.toFixed(3),
+        'Z': Z,
+        'p' : p.toFixed(3),
+    }
+    var summary = "<strong>Mann-Kendal Trend Test:</strong> Tau "+result.tau+" <i>p</i> "+result.p;
+    if(result.p <0.05){
+        if(Z>0){
+            summary = summary + " Significant increasing trend detected";
+        }
+        else{
+            summary = summary + " Significant decreasing trend detected";
+        }
+    }
+    else{
+        summary = summary + ' No trend detected';
+    }
+    $('#MannKendallResults').html(summary);
+    return result;
 }
 
 
@@ -1705,11 +1725,13 @@ function addAnnualPeaks(chartDiv,usgsID){
                 },
                 showInLegend:true
             }];
-        //
+
         var d = new Date()
         var n = d.getTimezoneOffset()/60;
         var peaks = [];
         var years = [];
+        var begin = '1800-1-1';
+        var end = '2100-1-1';
         if(typeof data.records == 'undefined') return false;
         $.each(data.records,function(){
             var newD = this[2].split('-');
@@ -1728,32 +1750,67 @@ function addAnnualPeaks(chartDiv,usgsID){
                      }
             peakSeries[1].data.push(point);
           });
-        mkS(peaks);
-        var corr = spearson.correlation.spearman(years, peaks,true);
-        var sslope = sensSlope(years,peaks);
-        console.log('SensSlope= '+sslope);
-        var string = "";
-        for(i=0;i<years.length;i++){
-            string= string+years[i]+",";
-        }
-        string = "";
-        for(i=0;i<years.length;i++){
-            string= string+peaks[i]+",";
-        }
-        console.log(corr);
-        t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
-        console.log(t);
-        var pval = jStat.ttest(t,years.length);
-        console.log(pval);
+
         chart.addSeries(peakSeries[0]);
         chart.addSeries(peakSeries[1]);
+        checkTrends(peakSeries[1],begin,end);
+
+
         }
     })
 }
 
 
+function checkTrends(series,begin,end){
 
+    var peakChart = $('#annualPeakGraph').highcharts();
+    series.color = 'black';
+    series.marker.symbol = 'diamond';
+    series.dataLabels.enabled = false;
 
+    var peaks = [];
+    var years = [];
+    var startTime = moment(begin,"YYYY-MM-DD");
+    var endTime = moment(end,"YYYY-MM-DD");
+
+    $.each(series.data,function(){
+        var curDate = moment(this.peakDate,"YYYY-MM-DD");
+        this.x = parseInt(curDate.format("x"));
+        if((curDate > startTime) & (curDate < endTime)){
+            peaks.push(this.y);
+            years.push(this.year);
+        }
+    });
+
+    peakChart.addSeries(series);
+    var mkSresult = mkS(peaks);
+
+    var corr = spearson.correlation.spearman(years, peaks,true).toFixed(3);
+    var sslope = sensSlope(years,peaks);
+    var string = "";
+    for(i=0;i<years.length;i++){
+        string= string+years[i]+",";
+    }
+    string = "";
+    for(i=0;i<years.length;i++){
+        string= string+peaks[i]+",";
+    }
+    t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
+    var pval = jStat.ttest(t,years.length).toFixed(4);
+    var summary = "<strong>Spearman Trend Test:</strong>";
+    if(pval <0.05){
+        if(sslope>0){
+            summary = summary + " Significant increasing trend detected";
+        }
+        else{
+            summary = summary + " Significant decreasing trend detected";
+        }
+    }
+    else{
+        summary = summary + " No trend detected"
+    }
+    $('#spearmanResults').html(summary);
+}
 
 
 
@@ -3454,18 +3511,32 @@ function graphAnnualPeaks(){
        chart: {
             renderTo: 'annualPeakGraph',
             zoomType: 'x',
-            marginTop: 40,
-            marginLeft:80,
+            marginTop: 5,
+            marginLeft:70,
 
         },
         title:{
             text: 'Annual Peaks'
         },
-        xaxis: {
+        xAxis: {
             title: {
                 text: 'Year'
             },
             type: 'datetime',
+            tickInterval: 5 * 365 * 24 * 36e5, // one week
+            labels: {
+                format: '{value:%Y}',
+                align: 'right',
+                rotation: -30
+        }
+        },
+        yAxis: {
+            title: {
+                text: 'Peak Annual Discharge (cfs)'
+            }
+        },
+        legend: {
+            enabled : false
         },
 
         series : [{data:[null,null],
