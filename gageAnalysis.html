@@ -540,10 +540,13 @@ function sensSlope(x,y){
 }
 
 function mkS(dataArray){
+    //Results verified against the 'R' package for sites WLWA2 and MHBC1
+
     var S = 0;
     var result = {};
     var end = dataArray.length-4;
     dataArray = dataArray.slice(0, end);
+
     var n = dataArray.length;
     var revArray = dataArray.reverse();
     for(i=0;i<n;i++){
@@ -576,10 +579,10 @@ function mkS(dataArray){
     var summary = "<strong>Mann-Kendal Trend Test:</strong> Tau "+result.tau+" <i>p</i> "+result.p;
     if(result.p <0.05){
         if(Z>0){
-            summary = summary + " Significant increasing trend detected";
+            summary = summary + " Significant increasing trend detected at 0.05";
         }
         else{
-            summary = summary + " Significant decreasing trend detected";
+            summary = summary + " Significant decreasing trend detected at 0.05";
         }
     }
     else{
@@ -1109,6 +1112,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     source: 'USGS',
                     timeShift: true,
                     id: seriesId+'_'+workingYear,
+                    zIndex:3,
                     calcVol: true,
                     USGSid:usgsID,
                     originalDates:origDate,
@@ -1782,6 +1786,10 @@ function checkTrends(series,begin,end){
         }
     });
 
+    csvContent = peaks.join(',');
+    console.log(csvContent);
+    csvContent = years.join(',');
+    console.log(csvContent);
     peakChart.addSeries(series);
     var mkSresult = mkS(peaks);
 
@@ -1796,14 +1804,17 @@ function checkTrends(series,begin,end){
         string= string+peaks[i]+",";
     }
     t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
+    console.log(t);
+
     var pval = jStat.ttest(t,years.length).toFixed(4);
+    console.log(pval);
     var summary = "<strong>Spearman Trend Test:</strong>";
     if(pval <0.05){
         if(sslope>0){
-            summary = summary + " Significant increasing trend detected";
+            summary = summary + " Significant increasing trend detected at 0.05";
         }
         else{
-            summary = summary + " Significant decreasing trend detected";
+            summary = summary + " Significant decreasing trend detected at 0.05";
         }
     }
     else{
@@ -1864,7 +1875,7 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#8B0000',
                 fillOpacity: 0.2,
-                zIndex: 1,
+                zIndex: 0,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                     pointFormatter: function (){
@@ -1888,7 +1899,7 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#B8860B',
                 fillOpacity: 0.2,
-                zIndex: 1,
+                zIndex: 0,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                 },
@@ -1909,7 +1920,7 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#006400',
                 fillOpacity: 0.3,
-                zIndex: 2,
+                zIndex: 0,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                 },
@@ -1930,7 +1941,7 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#008B8B',
                 fillOpacity: 0.3,
-                zIndex: 2,
+                zIndex: 0,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                 },
@@ -1945,7 +1956,7 @@ function addStats(chartDiv){
                 linkedTo: ':previous',
                 color: '#D1D0CE',
                 data: [],
-                zIndex: 3,
+                zIndex: 2,
                 tooltip:{
                     headerFormat:'<b>{point.x:%b %e}</b><br>',
                 }

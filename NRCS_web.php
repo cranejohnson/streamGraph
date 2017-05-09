@@ -100,17 +100,40 @@ $allSeries = array();
 
 
 $start = strtotime($result->return->beginDate)+12*3600;
-$series['name'] = date('Y',$start)."-".date('Y',$start+365*24*3600);
+$series['name'] = "Spring: ".date('Y',$start+365*24*3600);
+$opacity = 1-(2018-intval(date('Y',$start+365*24*3600)))/10;
 $series['data'] = array();
 $series['marker']['enabled'] = false;
+$series['color'] = 'rgba(51, 171, 240,'.$opacity.')';
+$series['lineWidth'] = 2;
+
 $base = $start;
 foreach($result->return->values as $val){
     if(date('m',$start)==8 && date('d',$start)==1) {
         $allSeries[] = $series;
-        $series['name'] = date('Y',$start)."-".date('Y',$start+365*24*3600);
+        $series['name'] = 'Spring: '.date('Y',$start+365*24*3600);
         $series['data'] = array();
-        $base = $start;
+        $opacity = 1-(2018-intval(date('Y',$start+365*24*3600)))/10;
+        echo $opacity;
+        $series['color'] = 'rgba('.($opacity*100).', 171, 240,'.$opacity.')';
 
+        $base = $start;
+        if(date('Y',$start+365*24*3600) == '2017'){
+            $series['color'] = 'black';
+            $series['lineWidth'] = 2;
+         }
+        if(date('Y',$start+365*24*3600) == '2016'){
+            $series['color'] = 'rgba(51, 171, 240,1)';
+            $series['lineWidth'] = 2;
+         }
+        if(date('Y',$start+365*24*3600) == '2015'){
+            $series['color'] = 'rgba(51, 171, 240,0.7)';
+            $series['lineWidth'] = 2;
+         }
+        if(date('Y',$start+365*24*3600) == '2014'){
+            $series['color'] = 'rgba(51, 171, 240,0.5)';
+            $series['lineWidth'] = 2;
+         }
     }
     $sameYear = strtotime('2016-8-1')+($start-$base);
     $series['data'][] = array($sameYear*1000,intval($val));
