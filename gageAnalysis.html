@@ -225,7 +225,8 @@ var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
 var USGSjson = {};    //GLOBAL USGS JSON DATA BY SITE
 new Clipboard('.btn');
 var CROSSWALKTABLE;
-var AJAXLOOKUPTABLE = [{
+var AJAXLOOKUPTABLE = [
+                {
                 match:"crossWalk.json",
                 name:"USGS-NWS CrossWalk Table",
                 },
@@ -1533,13 +1534,18 @@ function addUSGSFF(chartDiv,type){
 
 
     var chart = $('#'+chartDiv).highcharts();
-    usgsID = chart.options.usgsID;
+    var usgsID = chart.options.usgsID;
+    var url = "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID;
     $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID,
+
+        url: url,
         dataType: 'json',
         data: '',
+        beforeSend: function(json){
+            $( '<span style="color:red" id="'+url.replace(/\W/g, '')+'">Loading....</span> USGS Flood Freq. Info:  <a href="'+url+'" target="_blank">Data Link</a><br>').prependTo( "#log" );
+       },
         success: function(json){
-            $( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>' ).prependTo( "#log" );
+            $( "#"+url.replace(/\W/g, '')).html( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>');
 
             chart.yAxis[0].addPlotLine({
                 value: json[type+'2'],
@@ -1625,7 +1631,10 @@ function addUSGSFF(chartDiv,type){
                     text: '200 Yr ('+type+')'
                 }
             });
-          }
+          },
+          error: function(json){
+            $( "#"+url.replace(/\W/g, '')).html( '<span style="color:red">Error </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>');
+        }
     });
 
 }
@@ -1787,9 +1796,7 @@ function checkTrends(series,begin,end){
     });
 
     csvContent = peaks.join(',');
-    console.log(csvContent);
     csvContent = years.join(',');
-    console.log(csvContent);
     peakChart.addSeries(series);
     var mkSresult = mkS(peaks);
 
@@ -1804,10 +1811,10 @@ function checkTrends(series,begin,end){
         string= string+peaks[i]+",";
     }
     t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
-    console.log(t);
+    //console.log(t);
 
     var pval = jStat.ttest(t,years.length).toFixed(4);
-    console.log(pval);
+    //console.log(pval);
     var summary = "<strong>Spearman Trend Test:</strong>";
     if(pval <0.05){
         if(sslope>0){
