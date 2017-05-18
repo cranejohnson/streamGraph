@@ -1542,7 +1542,7 @@ function addUSGSFF(chartDiv,type){
         dataType: 'json',
         data: '',
         beforeSend: function(json){
-            $( '<span style="color:red" id="'+url.replace(/\W/g, '')+'">Loading....</span> USGS Flood Freq. Info:  <a href="'+url+'" target="_blank">Data Link</a><br>').prependTo( "#log" );
+            $( '<span id="'+url.replace(/\W/g, '')+'"><span style="color:red">Loading....</span> USGS Flood Freq. Info:  <a href="'+url+'" target="_blank">Data Link</a></span><br>').prependTo( "#log" );
        },
         success: function(json){
             $( "#"+url.replace(/\W/g, '')).html( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>');
