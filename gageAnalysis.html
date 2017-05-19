@@ -1545,7 +1545,7 @@ function addUSGSFF(chartDiv,type){
             $( '<span id="'+url.replace(/\W/g, '')+'"><span style="color:red">Loading....</span> USGS Flood Freq. Info:  <a href="'+url+'" target="_blank">Data Link</a></span><br>').prependTo( "#log" );
        },
         success: function(json){
-            $( "#"+url.replace(/\W/g, '')).html( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span><br>');
+            $( "#"+url.replace(/\W/g, '')).html( '<span style="color:green">Success </span><span>USGS Flood Freq. Info: <a href="https://streamstatsags.cr.usgs.gov/gagepages/html/'+usgsID+'.htm" target="_blank">Source Data</a></span>');
 
             chart.yAxis[0].addPlotLine({
                 value: json[type+'2'],
