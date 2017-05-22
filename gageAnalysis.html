@@ -22,6 +22,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.0.1/ol.js"></script>
     <script src="https://cdn.jsdelivr.net/jstat/latest/jstat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/spearson.js"></script>
 
     <script>
@@ -95,7 +96,7 @@
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
                 <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
-                USGS Data:  <input type="checkbox" id ="getDv"> Daily
+                USGS Data:  <input type="checkbox" id ="getDv" checked> Daily
                 <input type="checkbox" id="getIv" checked> Instantaneous<br>
                 Start Date:<input type="text" id="dischargeStart" length=10>
                 End Date:<input type="text" id="dischargeEnd" length=10>
@@ -103,7 +104,7 @@
                 Comparison:<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
                 <input type="button" id="zoomToStage" value="Quick Zoom">
-                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph">
+                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'66ccff'}" style="width:30px; height:10px;"></button>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
@@ -700,6 +701,9 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
         peakDataId:flowData.options.id,
         zIndex:4,
         draggableX: true,
+        marker:{
+            enabled: true
+        },
         dataGrouping: {
              	enabled: false
         },
@@ -958,6 +962,9 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
                   calcVol: true,
                   zIndex:zVal,
                   nwmJSON:stream,
+                  marker: {
+                    enabled:false
+                  },
                   source: 'NWS-NWM',};
     $.ajax({
             type: "GET",
@@ -1021,6 +1028,9 @@ function addNWM2Stage(dischargeGraph,stageGraph){
                   showInLegend: false,
                   id: item,
                   color:oldSeries.color,
+                  marker: {
+                    enabled:false
+                  },
                   zIndex:oldSeries.zIndex,
                   source: 'NWS-NWM',};
 
@@ -1198,7 +1208,6 @@ function addUSGS(chartDiv,type,dv_iv,site){
                     data: USGStoHC(json,"00060"),
                     name: nwsID.toUpperCase()+' '+durLabel,
                     zIndex:lineIndex,
-                    //color: lineColor,
                     dashStyle:style,
                     qual: 'Observed',
                     id: seriesId,
@@ -1734,7 +1743,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                 color: 'black',
                 marker : {
                     enabled : true,
-                    radius : 4
+                    radius : 3
                 },
                 showInLegend:true
             }];
@@ -3208,8 +3217,8 @@ $('#loadComparison').click(function(){
     });
 
     if (year > 0){
-        addAnnualData('dischargegraph','iv',year,site);
-        addAnnualData('dischargegraph','dv',year,site);
+        if(document.getElementById('getIv').checked) addAnnualData('dischargegraph','iv',year,site);
+        if(document.getElementById('getDv').checked) addAnnualData('dischargegraph','dv',year,site);
     }
     else{
         if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv',site);
@@ -3592,9 +3601,18 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
             series:{
                 stickyTracking : false,
                 turboThreshold: 0,
+                marker:{
+                    enabled: false
+                },
                 point: {
                     events: {
-                        click: function() {
+                        click: function(e) {
+                            if (e.shiftKey) {
+                                this.series.update({
+                                    color: $('#setColor').css('backgroundColor')
+                                });
+                                return;
+                            }
                             chart = this.series.chart;
                             if($("input[name=Qfunction]:checked").val() == 'base'){
                                 if(this.series.userOptions.calcVol  == true){
