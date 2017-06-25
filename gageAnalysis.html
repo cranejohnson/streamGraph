@@ -2481,10 +2481,10 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
 
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
-      var d = new Date(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
+      var d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime).add(92,"days");
       //Set the hour to noon
-      d.setHours(12);
-      newYear = d.getFullYear();
+      d.hour("12");
+      newYear = d.format("YYYY");
 
       //If it's a new year calculate the average annual (calendar) discharge if more
       //than 330 good values exist
@@ -2502,13 +2502,10 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
             numInYear = 1;
       }
 
-      var start = new Date(newYear,0,0);
-      var diff = d - start;
-      var oneDay = 1000 * 60 * 60 * 24;
-      var day = Math.floor(diff / oneDay);
+      var doy = d.format("DDD");
       var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
       if(val < 1) val  = 1;
-      data.push([parseInt(day),parseInt(newYear),val])
+      data.push([parseInt(doy),parseInt(newYear),val])
       annualSum = annualSum + val;
       numInYear = numInYear + 1;
     }
@@ -3964,14 +3961,14 @@ function graphHeatQ(){
             },
             min: 0,
             max: 365,
-            tickPositions: [1,32, 60,91, 121,152, 182,213, 244,274,305,335,380],
+            tickPositions: [1,32, 62,93, 124,152, 183,213, 244,274,305,336,380],
             labels: {
                 align: 'left',
                 x: 5,
                 y: 14,
                 formatter: function (){
                     if(this.value == 370) return 'Annual';
-                    return $.datepicker.formatDate(' M ',dateFromDay('2015',this.value));
+                    return moment("2015 "+this.value, "YYYY DDD").subtract(92, 'days').format("MMM");
                  }
             },
             showLastLabel: true,
@@ -4001,7 +3998,7 @@ function graphHeatQ(){
         tooltip: {
             headerFormat: 'Daily Discharge<br>',
             formatter: function (){
-                return '<b>' + $.datepicker.formatDate('M d yy',dateFromDay(this.point.y,this.point.x))+' - '+numberWithCommas(this.point.value) + ' cfs </b>';
+                return '<b>' + moment(this.point.y+" "+this.point.x, "YYYY DDD").subtract(92, 'days').format("MMM Do") + moment(this.point.y+" "+this.point.x, "YYYY DDD").format(" [wy]YYYY") + ' - '+numberWithCommas(this.point.value) + ' cfs </b>';;
             },
             positioner: function () {
                     return { x: 300, y: 15 };
