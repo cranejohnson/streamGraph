@@ -138,7 +138,12 @@
                 <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
             </td>
         </tr>
-
+        <tr>
+            <td></td>
+            <td>
+                <div id="annualVolume" style="width: 800px; height: 550px; margin: 0 auto"></div></div>
+            </td>
+        </tr>
     </table>
 <hr>
 
@@ -3244,6 +3249,7 @@ function loadPage(site){
     graphHeatQ();
     annualHeatQ();
     graphAnnualPeaks();
+    annualVolume();
 
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3274,9 +3280,12 @@ function loadPage(site){
                 siteInfo = getRDBSiteInfo(data);
                 console.log(siteInfo);
                 setupMap(siteInfo);
-                var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
-                addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
-                addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
+                //Skip NWM if the site is in Alaska
+                if(siteInfo.state_cd != "02"){
+                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
+                }
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
                 Highcharts.setOptions({
@@ -4015,6 +4024,67 @@ function graphHeatQ(){
 
 }
 
+function annualVolume(){
+
+    var start;
+    volchartobj= {
+        chart: {
+            renderTo: 'annualVolume',
+            type: 'line',
+            zoomType: 'xy',
+            marginRight: 0,
+            marginTop:40,
+            marginBottom:100,
+            marginLeft:50
+
+        },
+        credits: {
+            enabled: false
+        },
+        title: {
+            text: 'Cumulative Volume'
+        },
+
+       xAxis: {
+            title: {
+                text: 'Day of Year'
+            },
+            min: 0,
+            max: 365,
+            tickPositions: [1,32, 62,93, 124,152, 183,213, 244,274,305,336,380],
+            labels: {
+                align: 'left',
+                x: 5,
+                y: 14,
+                formatter: function (){
+                    if(this.value == 370) return 'Annual';
+                    return moment("2015 "+this.value, "YYYY DDD").subtract(92, 'days').format("MMM");
+                 }
+            },
+            showLastLabel: true,
+            tickLength: 10
+        },
+
+        yAxis: {
+            title: {
+                text: 'Volume (acre-ft)'
+            },
+            minPadding: 0,
+            maxPadding: 0,
+        },
+
+        tooltip: {
+            headerFormat: 'Cumulative Volume<br>',
+            formatter: function (){
+                //return '<b>' + moment(this.point.y+" "+this.point.x, "YYYY DDD").subtract(92, 'days').format("MMM Do") + moment(this.point.y+" "+this.point.x, "YYYY DDD").format(" [wy]YYYY") + ' - '+numberWithCommas(this.point.value) + ' cfs </b>';;
+            },
+            positioner: function () {
+                    return { x: 300, y: 15 };
+             }
+        }
+    }
+    volchart = new Highcharts.Chart(volchartobj);
+}
 
 function annualHeatQ(){
 
@@ -4084,7 +4154,7 @@ function annualHeatQ(){
         tooltip: {
             formatter: function (){
                 if(this.point.value == null) return 'No Avg.<br>Available';
-                return '<b>Avg.<br>' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
+                return '<b>Avg.<br>WY' + this.point.y +'<br>'+numberWithCommas(parseInt(this.point.value)) + ' cfs </b>';
             },
             positioner: function () {
                     return { x: 0, y: 0 };
