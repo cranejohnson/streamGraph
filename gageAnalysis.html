@@ -141,7 +141,7 @@
         <tr>
             <td></td>
             <td>
-                <div id="annualVolume" style="width: 800px; height: 550px; margin: 0 auto"></div></div>
+                <div id="annualVolume" style="width: 800px; height: 650px; margin: 0 auto"></div></div>
             </td>
         </tr>
     </table>
@@ -2840,13 +2840,30 @@ $('#showFloodStages').change(function() {
     nwsLid = chart.NWSid;
 
     if($(this).is(':checked')){
+        chart.update({
+            chart: {
+                marginBottom:175,
+            },
+            legend: {
+                y:-100,
+            },
+        });
         addNWSBands('stagegraph',AHPSjson,true,'band',true);
+
     }else{
         $(".nwsLegend").remove();
         $("#removeLegend").attr('value', 'Add Flood Stages');
         chart.yAxis[0].removePlotBand('plotBand');
         chart.yAxis[0].removePlotLine('plotLine');
         extremes = chart.yAxis[0].getExtremes();
+        chart.update({
+            chart: {
+                marginBottom:80,
+            },
+            legend: {
+                y:-5,
+            },
+        });
 
         chart.yAxis[0].update({
             tickPositioner: function () {
@@ -4081,7 +4098,10 @@ function annualVolume(){
             positioner: function () {
                     return { x: 300, y: 15 };
              }
-        }
+        },
+        series : [{data:[null,null],
+            visible:false,
+            showInLegend:false}]
     }
     volchart = new Highcharts.Chart(volchartobj);
 }
