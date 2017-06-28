@@ -2988,6 +2988,7 @@ function swapAxis(allSeries){
         return allSeries;
 }
 
+
 function plotHeatQ(usgsSite){
     var chart = $('#heatMapQ').highcharts();
     var annualChart = $('#annualMapQ').highcharts();
@@ -3008,6 +3009,7 @@ function plotHeatQ(usgsSite){
                 series.push({
                     data: heatData,
                     name:'USGS Daily Data',
+                    id:'Daily',
                     //borderWidth: 0,
                     zIndex:2,
                     nwsType: 'observed',
@@ -3177,7 +3179,7 @@ $('#loadQ').click(function(){
     var nwsLid = chart.options.nwsLid;
     var usgsID = chart.options.usgsID;
     chart.destroy;
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
+    setupGraphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
     addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
     if(document.getElementById('getDv').checked) addUSGS('dischargegraph','discharge','dv');
@@ -3260,13 +3262,13 @@ function loadPage(site){
                      'dec_lat_va':0};
 
     //Set up empty graphs
-    graphRating('ratinggraph',siteId.usgs,siteId.nws);
-    graphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
-    graphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
-    graphHeatQ();
-    annualHeatQ();
-    graphAnnualPeaks();
-    annualVolume();
+    setupGraphRating('ratinggraph',siteId.usgs,siteId.nws);
+    setupGraphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
+    setupGraphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
+    setupGraphHeatQ();
+    setupAnnualHeatQ();
+    setupGraphAnnualPeaks();
+    setupAnnualVolumeGraph();
 
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3398,7 +3400,7 @@ function setupMap(siteInfo){
     map.addLayer(vLayer);
 }
 
-function graphStage(container,minDate,maxDate,usgs,nws){
+function setupGraphStage(container,minDate,maxDate,usgs,nws){
 
     var title;
     stagechartobj= {
@@ -3553,7 +3555,7 @@ function graphStage(container,minDate,maxDate,usgs,nws){
   chart = new Highcharts.Chart(stagechartobj);
 }
 
-function graphAnnualPeaks(){
+function setupGraphAnnualPeaks(){
     annualPeakchartobj = {
         credits: {
             enabled: false
@@ -3598,7 +3600,7 @@ function graphAnnualPeaks(){
   }
 
 
-function graphDischarge(container,minDate,maxDate,usgs,nws){
+function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
     ////////////////////////////////////Discharge Graph////////////////////////////////
     var first_line = true;
     var shift;
@@ -3827,7 +3829,7 @@ function graphDischarge(container,minDate,maxDate,usgs,nws){
 
 
 
-function graphRating(container,usgs,nws){
+function setupGraphRating(container,usgs,nws){
     ////////////////////////////////////Rating Graph////////////////////////////////
     ratingchartobj= {
       credits: {
@@ -3927,7 +3929,7 @@ $('#ratingLog').change(function() {
 });
 
 
-function graphHeatQ(){
+function setupGraphHeatQ(){
     var ratingchart = $('#ratinggraph').highcharts();
 
     var title;
@@ -4033,15 +4035,15 @@ function graphHeatQ(){
     }
     heatchart = new Highcharts.Chart(heatchartobj);
     heatchart.renderer.text('Flow (cfs)', 270, 545)
-            .css({
-                color: 'black',
-                fontSize: '14px'
-            })
-            .add();
+        .css({
+            color: 'black',
+            fontSize: '14px'
+        })
+        .add();
 
 }
 
-function annualVolume(){
+function setupAnnualVolumeGraph(){
 
     var start;
     volchartobj= {
@@ -4106,7 +4108,7 @@ function annualVolume(){
     volchart = new Highcharts.Chart(volchartobj);
 }
 
-function annualHeatQ(){
+function setupAnnualHeatQ(){
 
 
     var start;
@@ -4180,87 +4182,82 @@ function annualHeatQ(){
                     return { x: 0, y: 0 };
              }
         },
-
-
     }
-
-
     annualheatchart = new Highcharts.Chart(annualheatchartobj);
-
 }
 
 
 
-    /**
-     * Display a temporary label on the chart
-     */
-    function toast(chart, text) {
-        chart.toast = chart.renderer.label(text, 100, 120)
-            .attr({
-                fill: Highcharts.getOptions().colors[0],
-                padding: 10,
-                r: 5,
-                zIndex: 8
-            })
-            .css({
-                color: '#FFFFFF'
-            })
-            .add();
+/**
+ * Display a temporary label on the chart
+ */
+function toast(chart, text) {
+    chart.toast = chart.renderer.label(text, 100, 120)
+        .attr({
+            fill: Highcharts.getOptions().colors[0],
+            padding: 10,
+            r: 5,
+            zIndex: 8
+        })
+        .css({
+            color: '#FFFFFF'
+        })
+        .add();
 
-        setTimeout(function () {
-            chart.toast.fadeOut();
-        }, 2000);
-        setTimeout(function () {
-            chart.toast = chart.toast.destroy();
-        }, 2500);
+    setTimeout(function () {
+        chart.toast.fadeOut();
+    }, 2000);
+    setTimeout(function () {
+        chart.toast = chart.toast.destroy();
+    }, 2500);
+}
+
+/**
+ * Custom selection handler that selects points and cancels the default zoom behaviour
+ */
+function selectPointsByDrag(e) {
+    if($("input[name=stageDrag]:checked").val() == 'zoom'){
+        return true;
     }
 
-    /**
-     * Custom selection handler that selects points and cancels the default zoom behaviour
-     */
-    function selectPointsByDrag(e) {
-        if($("input[name=stageDrag]:checked").val() == 'zoom'){
-            return true;
-        }
+    // Select points
+    Highcharts.each(this.series, function (series) {
+        Highcharts.each(series.points, function (point) {
+            if (point.x >= e.xAxis[0].min && point.x <= e.xAxis[0].max &&
+                    point.y >= e.yAxis[0].min && point.y <= e.yAxis[0].max) {
+                //point.select(true, true);
+                if (point.series.visible === true) point.update([point.x,null]);
 
-        // Select points
-        Highcharts.each(this.series, function (series) {
-            Highcharts.each(series.points, function (point) {
-                if (point.x >= e.xAxis[0].min && point.x <= e.xAxis[0].max &&
-                        point.y >= e.yAxis[0].min && point.y <= e.yAxis[0].max) {
-                    //point.select(true, true);
-                    if (point.series.visible === true) point.update([point.x,null]);
-
-                }
-            });
+            }
         });
+    });
 
-        // Fire a custom event
-       // Highcharts.fireEvent(this, 'selectedpoints', { points: this.getSelectedPoints() });
-        chart.redraw();
-        return false; // Don't zoom
-    }
+    // Fire a custom event
+   // Highcharts.fireEvent(this, 'selectedpoints', { points: this.getSelectedPoints() });
+    chart.redraw();
+    return false; // Don't zoom
+}
 
-    /**
-     * The handler for a custom event, fired from selection event
-     */
-    function selectedPoints(e) {
-        // Show a label
-        toast(this, '<b>' + e.points.length + ' points selected.</b>' +
-            '<br>Click on empty space to deselect.');
-    }
+/**
+ * The handler for a custom event, fired from selection event
+ */
+function selectedPoints(e) {
+    // Show a label
+    toast(this, '<b>' + e.points.length + ' points selected.</b>' +
+        '<br>Click on empty space to deselect.');
+}
 
-    /**
-     * On click, unselect all points
-     */
-    function unselectByClick() {
-        var points = this.getSelectedPoints();
-        if (points.length > 0) {
-            Highcharts.each(points, function (point) {
-                point.select(false);
-            });
-        }
+/**
+ * On click, unselect all points
+ */
+function unselectByClick() {
+    var points = this.getSelectedPoints();
+    if (points.length > 0) {
+        Highcharts.each(points, function (point) {
+            point.select(false);
+        });
     }
+}
 
 
 
