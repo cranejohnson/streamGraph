@@ -2468,10 +2468,18 @@ function USGStoHC(usgsObj,TSvalue){
     return data;
 }
 
-function USGSDailytoHCHeat(usgsObj,TSvalue){
+function USGSDailytoAnnualVolume(usgsObj,TSvalue){
+
+}
+
+
+function processUSGSDaily(usgsObj,TSvalue){
     len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
-    data = new Array()
+    heatData = new Array();
+    volData = new Array();
+    volYear = new Array();
+
     QRarr = 0;
     for (var i = 0; i < len; i++) {
       if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
@@ -2483,6 +2491,15 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
     var newYear = 1800;
     var annualSum = 0;
     var numInYear = 0;
+    var curVol = 0;
+    var minYear = Array();
+    var maxYear = Array();
+
+    for(var i = 0;i<366;i++){
+        maxYear[i] = 0;
+        minYear[i] = 0;
+    }
+
 
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
@@ -2496,10 +2513,17 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
       if(newYear != oldYear){
             if(oldYear != 1800){
                 if(numInYear > 330){
-                    data.push([parseInt(375),parseInt(oldYear),(annualSum/numInYear)]);
+                    heatData.push([parseInt(375),parseInt(oldYear),(annualSum/numInYear)]);
+                    var volSeries = {name: oldYear,
+                                    showInLegend: false,
+                                     data: volYear};
+                    volData.push(volSeries);
+                    //console.log(volSeries);
+                    volYear = [];
+                    curVol = 0;
                 }
                 else{
-                    data.push([parseInt(375),parseInt(oldYear),null]);
+                    heatData.push([parseInt(375),parseInt(oldYear),null]);
                 }
             }
             oldYear = newYear;
@@ -2507,14 +2531,22 @@ function USGSDailytoHCHeat(usgsObj,TSvalue){
             numInYear = 1;
       }
 
-      var doy = d.format("DDD");
+      var doy = parseInt(d.format("DDD"));
       var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
+      curVol = parseInt(curVol + (val*3600*24)/1000000);
+      d.year(2000);
+      if(minYear[doy] == 0) minYear[doy]= curVol;
+      if(curVol > maxYear[doy]) maxYear[doy] = curVol;
+      if(curVol < minYear[doy]) minYear[doy] = curVol;
+
+      volYear.push(curVol);
       if(val < 1) val  = 1;
-      data.push([parseInt(doy),parseInt(newYear),val])
+      heatData.push([doy,parseInt(newYear),val])
       annualSum = annualSum + val;
       numInYear = numInYear + 1;
     }
-    return data
+      console.log(maxYear,minYear);
+    return [heatData,volData];
 }
 
 
@@ -2989,9 +3021,14 @@ function swapAxis(allSeries){
 }
 
 
+
+
+
+
 function plotHeatQ(usgsSite){
     var chart = $('#heatMapQ').highcharts();
     var annualChart = $('#annualMapQ').highcharts();
+    var volChart = $('#annualVolume').highcharts();
     if(usgsSite === undefined) return;
     $.ajax({
         url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
@@ -2999,15 +3036,15 @@ function plotHeatQ(usgsSite){
         data: '',
         success: function(json){
             var series = [];
-            var heatData = USGSDailytoHCHeat(json,"00060");
-            if(heatData == null){
+            var heatData = processUSGSDaily(json,"00060");
+            if(heatData[0] == null){
                     var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
                     $('<span style="color:orange">No USGS Daily Data </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
                     return;
                 };
             if(json.value.timeSeries.length>0){
                 series.push({
-                    data: heatData,
+                    data: heatData[0],
                     name:'USGS Daily Data',
                     id:'Daily',
                     //borderWidth: 0,
@@ -3017,6 +3054,11 @@ function plotHeatQ(usgsSite){
                     });
 
                 chart.addSeries(series[0]);
+                for(var i = 0; i < heatData[1].length; i++){
+                    console.log(heatData[1][i].name);
+                    volChart.addSeries(heatData[1][i]);
+                }
+
             };
             var annualSeries= [{
                 data: [],
@@ -4086,7 +4128,7 @@ function setupAnnualVolumeGraph(){
 
         yAxis: {
             title: {
-                text: 'Volume (acre-ft)'
+                text: 'Volume (million cuft)'
             },
             minPadding: 0,
             maxPadding: 0,
