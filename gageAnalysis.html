@@ -25,6 +25,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/spearson.js"></script>
 
+     <!---
     <script>
       (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
       (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
@@ -35,7 +36,7 @@
       ga('send', 'pageview');
 
     </script>
-
+     --->
     <style type="text/css">
         .success {
             color: #228B22;
@@ -104,7 +105,7 @@
                 Comparison:<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
                 <input type="button" id="zoomToStage" value="Quick Zoom">
-                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'66ccff'}" style="width:30px; height:10px;"></button>
+                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
@@ -141,6 +142,7 @@
         <tr>
             <td></td>
             <td>
+                <input type="checkbox" id="volumeLog" style="padding-left:20px" checked >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 <div id="annualVolume" style="width: 800px; height: 650px; margin: 0 auto"></div></div>
             </td>
         </tr>
@@ -1845,6 +1847,112 @@ function checkTrends(series,begin,end){
 }
 
 
+//function addVolumeStates
+
+function addVolumeStats(chartDiv){
+    console.log('here');
+    var chartAdd = $('#'+chartDiv).highcharts();
+    var usgsID = chartAdd.options.usgsID;
+
+    if(usgsID === undefined) return;
+
+    $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=p25,p50,p75&parameterCd=00060', function( data ) {
+
+        var lines = data.split('\n');
+        var bandSeries =
+            {
+                name: 'P 25% - 75%',
+                data: [],
+                trackByArea: true,
+                type: 'arearange',
+                lineWidth: 0,
+                visible:false,
+                color: '#006400',
+                fillOpacity: 0.2,
+                zIndex: 3,
+            };
+        var medianSeries =
+            {
+                name: 'Cumulative of Daily Median',
+                color: 'black',
+                data: [],
+                zIndex: 2,
+            };
+
+        var annualSeries =[
+            {
+                data:[]
+             },
+            {
+                data:[]
+             }
+             ];
+
+
+
+        var doy = 0;
+
+        $.each(lines, function(){
+        if (this.substring(0, 4) == "USGS") {
+            var tdata = this.split('\t');
+
+            for(i=0;i<tdata.length;i++){
+                if(parseInt(tdata[i]) == 0 ) tdata[i]= 1;
+                if(parseInt(tdata[i]) > 0 ) tdata[i]= parseInt(tdata[i]);
+                if(tdata[i].length == 0) tdata[i] = null;
+            }
+
+            var vdate = moment("2016-"+tdata[5]+"-"+tdata[6],"YYYY-MM-DD");
+            doy = vdate.format('DDD');
+            //console.log(doy);
+
+            var per25 = (tdata[10] < 0 ) ? null: tdata[10];
+            var median =  (tdata[11] < 0 ) ? null: tdata[11];
+            var per75 = (tdata[12] < 0 ) ? null: tdata[12];
+
+
+            //set 25% - 75% series
+            annualSeries[1].data[doy] = [per25,per75];
+            //set median
+            annualSeries[0].data[doy] = median;
+           //set max-min
+
+        }
+
+        });
+        var cumulativeMedian = 0;
+        var cumulative25 = 0;
+        var cumulative75 = 0;
+
+        for(var i=275;i<=doy;i++){
+            cumulativeMedian = cumulativeMedian + parseInt(annualSeries[0].data[i]*24*3600/1000000);
+            medianSeries.data.push(cumulativeMedian);
+            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
+            cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
+            bandSeries.data.push([cumulative25,cumulative75]);
+        }
+
+
+        for(var i=1;i<275;i++){
+            cumulativeMedian = cumulativeMedian + parseInt(annualSeries[0].data[i]*24*3600/1000000);
+            medianSeries.data.push(cumulativeMedian);
+            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
+            cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
+            bandSeries.data.push([cumulative25,cumulative75]);
+        }
+
+
+
+        console.log(bandSeries);
+
+
+        chartAdd.addSeries(medianSeries);
+        chartAdd.addSeries(bandSeries);
+
+      });
+}
+
+
 
 function addStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
@@ -2469,17 +2577,93 @@ function USGStoHC(usgsObj,TSvalue){
 }
 
 function USGSDailytoAnnualVolume(usgsObj,TSvalue){
+    len = usgsObj.value.timeSeries.length;
+    if(len == 0) return data = null;
 
+    QRarr = 0;
+    for (var i = 0; i < len; i++) {
+        if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
+            QRarr = i;
+            break;
+        }
+    }
+
+    var volData = new Array();
+    var volYear = new Array();
+    var oldYear = 1800;
+    var newYear = 1800;
+    var oldDoy = 0;
+    var doy = 1;
+    var curVol = 0;
+    var oldVal = 0;
+    var daysEstimated=0;
+
+    numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
+    for (var i = 0; i < numQ; i++) {
+        var d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime).add(92,"days");
+        var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
+
+        //Set the hour to noon
+        d.hour("12");
+        doy = parseInt(d.format("DDD"));
+        newYear = d.format("YYYY");
+        if(newYear != oldYear){
+            if(oldYear != 1800){
+                    var volSeries = {name: oldYear +"  ("+ daysEstimated + " days estimated)" ,
+                                    showInLegend: false,
+                                    color: 'LightGray',
+                                    zIndex:1,
+                                    lineWidth: 2,
+                                    marker:{
+                                        enabled: false
+                                    },
+                                    data: volYear};
+                    volData.push(volSeries);
+                    volYear = [];
+                    curVol = 0;
+                    daysEstimated = 0;
+            }
+            oldYear = newYear;
+        }
+        var gap = doy - oldDoy;
+        for(var j=1;j<gap;j++){
+            curVol = parseInt(curVol + oldVal*3600*24/1000000);
+            daysEstimated = daysEstimated + 1;
+            volYear.push(curVol);
+        }
+        oldDoy = doy;
+        var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
+
+        if(val < 0){
+            curVol = parseInt(curVol + oldVal*3600*24/1000000);
+            daysEstimated = daysEstimated + 1;
+            volYear.push(curVol);
+        }
+        else{
+            curVol = parseInt(curVol + (val*3600*24)/1000000);
+            volYear.push(curVol);
+            oldVal = val;
+        }
+        if(val < 1) val  = 1;
+    }
+    var volSeries = {
+        name: newYear +"  ("+ daysEstimated + " days estimated)" ,
+        showInLegend: true,
+        zIndex:10,
+        color: 'red',
+        marker:{
+            enabled: false
+        },
+        data: volYear};
+    volData.push(volSeries);
+    return volData;
 }
 
 
 function processUSGSDaily(usgsObj,TSvalue){
     len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
-    heatData = new Array();
-    volData = new Array();
-    volYear = new Array();
-
+    data = new Array()
     QRarr = 0;
     for (var i = 0; i < len; i++) {
       if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
@@ -2491,64 +2675,36 @@ function processUSGSDaily(usgsObj,TSvalue){
     var newYear = 1800;
     var annualSum = 0;
     var numInYear = 0;
-    var curVol = 0;
-    var minYear = Array();
-    var maxYear = Array();
-
-    for(var i = 0;i<366;i++){
-        maxYear[i] = 0;
-        minYear[i] = 0;
-    }
-
-
     numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
     for (var i = 0; i < numQ; i++) {
       var d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime).add(92,"days");
       //Set the hour to noon
       d.hour("12");
       newYear = d.format("YYYY");
-
       //If it's a new year calculate the average annual (calendar) discharge if more
       //than 330 good values exist
       if(newYear != oldYear){
             if(oldYear != 1800){
                 if(numInYear > 330){
-                    heatData.push([parseInt(375),parseInt(oldYear),(annualSum/numInYear)]);
-                    var volSeries = {name: oldYear,
-                                    showInLegend: false,
-                                     data: volYear};
-                    volData.push(volSeries);
-                    //console.log(volSeries);
-                    volYear = [];
-                    curVol = 0;
+                    data.push([parseInt(375),parseInt(oldYear),(annualSum/numInYear)]);
                 }
                 else{
-                    heatData.push([parseInt(375),parseInt(oldYear),null]);
+                    data.push([parseInt(375),parseInt(oldYear),null]);
                 }
             }
             oldYear = newYear;
             annualSum = 0;
             numInYear = 1;
       }
-
-      var doy = parseInt(d.format("DDD"));
+      var doy = d.format("DDD");
       var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
-      curVol = parseInt(curVol + (val*3600*24)/1000000);
-      d.year(2000);
-      if(minYear[doy] == 0) minYear[doy]= curVol;
-      if(curVol > maxYear[doy]) maxYear[doy] = curVol;
-      if(curVol < minYear[doy]) minYear[doy] = curVol;
-
-      volYear.push(curVol);
       if(val < 1) val  = 1;
-      heatData.push([doy,parseInt(newYear),val])
+      data.push([parseInt(doy),parseInt(newYear),val])
       annualSum = annualSum + val;
       numInYear = numInYear + 1;
     }
-      console.log(maxYear,minYear);
-    return [heatData,volData];
+    return data
 }
-
 
 /**
  * Add the NWS flood level bands to the chart
@@ -3037,6 +3193,7 @@ function plotHeatQ(usgsSite){
         success: function(json){
             var series = [];
             var heatData = processUSGSDaily(json,"00060");
+            var volData = USGSDailytoAnnualVolume(json,"00060");
             if(heatData[0] == null){
                     var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
                     $('<span style="color:orange">No USGS Daily Data </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
@@ -3044,7 +3201,7 @@ function plotHeatQ(usgsSite){
                 };
             if(json.value.timeSeries.length>0){
                 series.push({
-                    data: heatData[0],
+                    data: heatData,
                     name:'USGS Daily Data',
                     id:'Daily',
                     //borderWidth: 0,
@@ -3054,11 +3211,7 @@ function plotHeatQ(usgsSite){
                     });
 
                 chart.addSeries(series[0]);
-                for(var i = 0; i < heatData[1].length; i++){
-                    console.log(heatData[1][i].name);
-                    volChart.addSeries(heatData[1][i]);
-                }
-
+                setupAnnualVolumeGraph(volData,usgsSite);
             };
             var annualSeries= [{
                 data: [],
@@ -3072,6 +3225,7 @@ function plotHeatQ(usgsSite){
                 }
             }
             annualChart.addSeries(annualSeries[0]);
+            addVolumeStats("annualVolume");
 
         },
         error : function(XMLHttpRequest, textStatus, errorThrown) {
@@ -3310,7 +3464,6 @@ function loadPage(site){
     setupGraphHeatQ();
     setupAnnualHeatQ();
     setupGraphAnnualPeaks();
-    setupAnnualVolumeGraph();
 
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3958,6 +4111,16 @@ $('#dischargeAxis').change(function() {
   }
 });
 
+$('#volumeLog').change(function() {
+  if($(this).is(':checked')){
+    $('#annualVolume').highcharts().yAxis[0].update({ type: 'logarithmic'});
+    }
+    else
+    {
+      $('#annualVolume').highcharts().yAxis[0].update({ type: 'linear'});
+  }
+});
+
 $('#ratingLog').change(function() {
   if($(this).is(':checked')){
         $('#ratinggraph').highcharts().yAxis[0].update({ type: 'logarithmic'});
@@ -4085,7 +4248,8 @@ function setupGraphHeatQ(){
 
 }
 
-function setupAnnualVolumeGraph(){
+
+function setupAnnualVolumeGraph(seriesData,usgs){
 
     var start;
     volchartobj= {
@@ -4093,14 +4257,39 @@ function setupAnnualVolumeGraph(){
             renderTo: 'annualVolume',
             type: 'line',
             zoomType: 'xy',
-            marginRight: 0,
+            marginRight: 20,
             marginTop:40,
             marginBottom:100,
-            marginLeft:50
+            marginLeft:80
 
         },
+        usgsID: usgs,
         credits: {
             enabled: false
+        },
+        plotOptions:{
+            series:{
+                stickyTracking : false,
+                turboThreshold: 0,
+                marker:{
+                    enabled: false
+                },
+                point: {
+                    events: {
+                        click: function(e) {
+                                this.series.update({
+                                    color: $('#setColor').css('backgroundColor'),
+                                    showInLegend: true
+                                });
+                                this.series.update({
+                                    zIndex : 99
+                                });
+
+                                return;
+                         }
+                   }
+               }
+            }
         },
         title: {
             text: 'Cumulative Volume'
@@ -4132,23 +4321,26 @@ function setupAnnualVolumeGraph(){
             },
             minPadding: 0,
             maxPadding: 0,
+            type: 'logarithmic',
         },
 
         tooltip: {
             headerFormat: 'Cumulative Volume<br>',
-            formatter: function (){
-                //return '<b>' + moment(this.point.y+" "+this.point.x, "YYYY DDD").subtract(92, 'days').format("MMM Do") + moment(this.point.y+" "+this.point.x, "YYYY DDD").format(" [wy]YYYY") + ' - '+numberWithCommas(this.point.value) + ' cfs </b>';;
-            },
             positioner: function () {
-                    return { x: 300, y: 15 };
-             }
+                    return { x: 100, y: 30 };
+             },
+            formatter: function (){
+                return this.series.name+'<br><b>' + moment("2017 1 1", "YYYY MM DD").add(this.point.x-92,"days").format("MMM Do") + ' - '+numberWithCommas(this.point.y) + '  million cuft</b>';
+            },
+
         },
-        series : [{data:[null,null],
-            visible:false,
-            showInLegend:false}]
+        series : seriesData
     }
     volchart = new Highcharts.Chart(volchartobj);
 }
+
+
+
 
 function setupAnnualHeatQ(){
 
