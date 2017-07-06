@@ -1874,6 +1874,7 @@ function addVolumeStats(chartDiv){
             {
                 name: 'Cumulative of Daily Median',
                 color: 'black',
+                visible:false,
                 data: [],
                 zIndex: 2,
             };
@@ -2617,7 +2618,7 @@ function USGSDailytoAnnualVolume(usgsObj,TSvalue){
                                         enabled: false
                                     },
                                     data: volYear};
-                    volData.push(volSeries);
+                    if(daysEstimated < 60) volData.push(volSeries);
                     volYear = [];
                     curVol = 0;
                     daysEstimated = 0;
