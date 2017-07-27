@@ -1095,7 +1095,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
-        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&statCd=00003&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     };
 
     $.ajax({
@@ -1203,7 +1203,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
         //lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
         lineIndex = 3;
-        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
+        usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&statCd=00003&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
     if(style == 'dashed')lineColor = '';
     $.ajax({
@@ -3192,7 +3192,7 @@ function plotHeatQ(usgsSite){
     var volChart = $('#annualVolume').highcharts();
     if(usgsSite === undefined) return;
     $.ajax({
-        url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
+        url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&statCd=00003&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
         dataType: 'json',
         data: '',
         success: function(json){
@@ -3200,7 +3200,7 @@ function plotHeatQ(usgsSite){
             var heatData = processUSGSDaily(json,"00060");
             var volData = USGSDailytoAnnualVolume(json,"00060");
             if(heatData[0] == null){
-                    var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
+                    var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&statCd=00003&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
                     $('<span style="color:orange">No USGS Daily Data </span><a href='+url+' target="_blank">USGS Link</a><br>').prependTo( "#log" );
                     return;
                 };
