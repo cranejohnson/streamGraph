@@ -982,7 +982,7 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
             headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
             dataType: "json",
             success: function (forecast) {
-                series.name = "NWM "+typeName[0]+" term issued:"+forecast[0]["valid-time"];
+                series.name = "NWM "+typeName[0]+" term issued:"+forecast[0]["reference-time"];
                 $.each( forecast[0].data, function( key,point ) {
                     xVal = parseInt(moment.utc(point["forecast-time"]).format("x"));
                     series.data.push([xVal,Math.round(point.value)]);
