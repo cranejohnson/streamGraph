@@ -1493,7 +1493,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
                     text = chart.renderer.text(
                         htmlText,
                         550,
-                        400
+                        250
                     ).attr({
                         zIndex: 5,
                         class: 'Qnotes'
@@ -1855,7 +1855,6 @@ function checkTrends(series,begin,end){
 //function addVolumeStates
 
 function addVolumeStats(chartDiv){
-    console.log('here');
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID = chartAdd.options.usgsID;
 
@@ -2278,6 +2277,7 @@ function GetObjectKeyIndex(obj, keyToFind) {
 
 
 function curveLookup(curve,value,type){
+
     if (type === undefined) {
         type = 'discharge';
     }
@@ -2321,11 +2321,12 @@ function curveLookup(curve,value,type){
                 highy = val.y;
                 lowx = curve[key-1].x;
                 lowy =  curve[key-1].y;
-                lookupValue = (((value - lowy)/(highy-lowy))*(highx-lowx)+lowx).toFixed(0);
+                lookupValue = parseInt((((value - lowy)/(highy-lowy))*(highx-lowx)+lowx).toFixed(0));
                 return false;
             }
         });
     }
+
     return lookupValue;
 }
 
@@ -2712,6 +2713,97 @@ function processUSGSDaily(usgsObj,TSvalue){
     return data
 }
 
+
+/**
+ * Add the NWS flood level bands to the rating chart
+ *
+ */
+
+function addFloodStageRating(graphId,AHPSjson){
+    var chart = $('#'+graphId).highcharts();
+    var nwsLid = chart.options.nwsLid;
+    if(typeof AHPSjson[nwsLid] == 'undefined') return;
+    if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
+
+    var Yextremes = chart.yAxis[0].getExtremes();
+    var Xextremes = chart.xAxis[0].getExtremes();
+    if(getAhps(nwsLid,AHPSjson) == false) return;
+
+    var maxY = Yextremes.dataMax;
+
+    var colors = {
+        major : 'rgba(204,51,255,0.7)',
+        moderate : 'rgba(255,0,0,0.7)',
+        flood : 'rgba(255,153,0,0.7)',
+        action : 'rgba(255,255,0,0.7)',
+        record: 'rgba(102,178,255,0.7)',
+    };
+
+    var ratingSeries = chart.get('nwsCurve');
+
+    $.each( colors, function( key, value ){
+        if(typeof AHPSjson[nwsLid].sigstages[key].__text != 'undefined'){
+            var stage = parseFloat(AHPSjson[nwsLid].sigstages[key].__text);
+            if(stage > maxY){
+                maxY = stage;
+            }
+            var discharge = curveLookup(ratingSeries.data,stage,'stage');
+            var plotData = [];
+            if(typeof(discharge) == 'undefined'){
+                 discharge = Xextremes.max;
+                 plotData = [[1,stage],[discharge,stage]]
+            }
+            else{
+                plotData = [[1,stage],[discharge,stage],[discharge,1]];
+            }
+            var series = {
+                data: plotData,
+                marker: {
+                    enabled: false
+                },
+                lineWidth: 2,
+                //linkedTo: ":previous",
+                showInLegend: false,
+                id: 'floodStageLine_'+key,
+                color: value};
+            chart.addSeries(series);
+            chart.yAxis[0].addPlotLine({
+                    color: 'black',
+                    width: 0,
+                    zIndex:6,
+                    id:'plotLine',
+                    value: AHPSjson[nwsLid].sigstages[key].__text,
+                    label: {
+                        text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,
+                        textAlign: 'left',
+                        fontWeight: 'bold',
+                        y:-2
+                    }
+            })
+            if(discharge != Xextremes.max){
+                chart.xAxis[0].addPlotLine({
+                        color: 'black',
+                        width: 0,
+                        zIndex:6,
+                        value: discharge,
+                        id:'plotLine',
+                        label: {
+                            text: "        "+key.capitalize()+': '+parseInt(discharge)+' cfs ',
+                            verticalAlign: "bottom",
+                            y:-125,
+                            fontWeight: 'bold',
+
+                        }
+                })
+            }
+        }
+
+    });
+}
+
+
+
+
 /**
  * Add the NWS flood level bands to the chart
  *
@@ -2719,16 +2811,6 @@ function processUSGSDaily(usgsObj,TSvalue){
 function addNWSBands(graphId,AHPSjson,addTable,type,setTicks){
     //console.log(AHPSjson);
 
-
-    if (addTable === undefined) {
-        addTable = true;
-    }
-    if (type === undefined) {
-        type = 'band';
-    }
-    if (setTicks === undefined) {
-        setTicks = true;
-    }
 
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
@@ -3073,17 +3155,21 @@ $('#showFloodStages').change(function() {
             }
         });
     }
-   // addNWSRender('stagegraph');
 });
 
 $('#showFloodStagesRating').change(function() {
     var chart = $('#ratinggraph').highcharts();
         nwsLid = chart.NWSid;
-
         if($(this).is(':checked')){
-            addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+            addFloodStageRating('ratinggraph',AHPSjson);
         }else{
             chart.yAxis[0].removePlotLine('plotLine');
+            chart.xAxis[0].removePlotLine('plotLine');
+            chart.get('floodStageLine_action').remove();
+            chart.get('floodStageLine_moderate').remove();
+            chart.get('floodStageLine_record').remove();
+            chart.get('floodStageLine_major').remove();
+            chart.get('floodStageLine_flood').remove();
         }
 });
 
@@ -3128,7 +3214,7 @@ $(":input[name= 'markerHighlights']").on('change', function(){
     text = chart.renderer.text(
         htmlText,
         550,
-        400
+        250
     ).attr({
         zIndex: 5,
         class: 'Qnotes'
@@ -3149,7 +3235,6 @@ $(":input[name= 'markerHighlights']").on('change', function(){
             zIndex: 4
         })
         .add();
-    //addMeasureQ_Rating('ratinggraph',chart.USGSid,"curve",$("input[name='markerHighlights']:checked").val());
 
 
 });
@@ -3545,12 +3630,13 @@ function loadPage(site){
         if($('#showFloodStages').is(':checked')){
             addNWSBands('stagegraph',AHPSjson,true,'band',true);
         }
+        addAHPSrating('ratinggraph',siteId.nws);
 
         if($('#showFloodStagesRating').is(':checked')){
-            addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+            //addNWSBands('ratinggraph',AHPSjson,false,'line',false);
+            addFloodStageRating('ratinggraph',AHPSjson);
         }
 
-        addAHPSrating('ratinggraph',siteId.nws);
     }
 
     $(document).ajaxStop(function () {
