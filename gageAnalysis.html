@@ -246,24 +246,12 @@ var AJAXLOOKUPTABLE = [
                 name: "USGS Site Information"
                 },
                 {
-                match:"rdbajax.php.+rating",
-                name: "USGS Rating Curve"
-                },
-                {
                 match:"hydrograph_to_xml.php",
                 name: "NWS AHPS Data"
                 },
                 {
                 match:"get_ahps_data.php.+rss",
                 name: "AHPS RSS Data"
-                },
-                {
-                match:"rdbajax.php.+annualPeaks",
-                name: "USGS Annual Peaks"
-                },
-                {
-                match:"rdbajax.php.+qmeas",
-                name: "USGS Discharge Measurements"
                 },
                 {
                 match:"\/nwis\/stat",
@@ -1241,19 +1229,25 @@ function addUSGSrating(chartDiv,usgsSite){
       }
     var chartAdd = $('#'+chartDiv).highcharts();
     var ratingArray=[];
+    var url = "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating";
     $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating",
+        url: url,
         dataType: 'json',
         data: '',
+        beforeSend: function(json){
+            $( '<span id="usgsRatingLog"><span style="color:red">Loading....</span>USGS Rating  Curve:  <a href="'+url+'" target="_blank">Data Link</a></span><br>').prependTo( "#log" );
+       },
         success: function(json){
+
             if(json.error_info.error == 0){
                 ratingArray = ratingJSON2HC(json);
 
                 if(ratingArray.data.length == 0) {
                     var url = 'https://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no='+usgsSite+'&format=rdb';
-                    $( '<span style="color:orange">USGS no rating data <a href="'+url+'">Link</a><br></span>' ).prependTo( "#log" );
+                    $( "#usgsRatingLog").html( '<span style="color:orange">Error</span> no USGS rating <a href="'+url+'">Source Data</a>');
                     return;
                 }
+                $( "#usgsRatingLog").html( '<span style="color:green">Success </span><span>USGS Rating  Curve:  <a href="https://waterdata.usgs.gov/nwisweb/get_ratings?site_no='+usgsSite+'&file_type=exsa" target="_blank">Source Data</a></span>');
                 chartAdd.addSeries(ratingArray);
                 addMeasureQ_Rating(chartDiv,usgsSite,"curve");
                 chartAdd.yAxis[0].setExtremes(ratingArray['data'][0][1],ratingArray['data'][ratingArray['data'].length-1][1]);
@@ -1261,6 +1255,9 @@ function addUSGSrating(chartDiv,usgsSite){
 
             }
         },
+        error: function(){
+            $( "#usgsRatingLog").html( '<span style="color:red">Error </span><span>USGS Rating  Curve:  <a href="https://waterdata.usgs.gov/nwisweb/get_ratings?site_no='+usgsSite+'&file_type=exsa" target="_blank">Source Data</a></span>');
+        }
     });
 }
 
@@ -1475,11 +1472,17 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
         $( '<span style="color:orange">USGS measured Q (no id)<br></span>' ).prependTo( "#log" );
         return false;
     }
+    var url = "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas";
     $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas&rand="+Math.floor((Math.random() * 100000) + 1),
+        url: url,
         dataType: 'json',
         data: '',
+        beforeSend: function(json){
+            $( '<span id="qMeasLog'+chartDiv+'"><span style="color:red">Loading....</span>USGS Discharge Measurements:  <a href="'+url+'" target="_blank">Data Link</a></span><br>').prependTo( "#log" );
+       },
         success: function(json){
+            $( "#qMeasLog"+chartDiv).html( '<span style="color:green">Success </span><span>USGS Discharge Measurements <a href="https://waterdata.usgs.gov/nwis/measurements/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
+
             var newSeries = qMeasJSON2HC_Rating(json,type,marker);
             if(json.error_info.error == 0){
                 newSeries[0].turboThreshold = 2000;
@@ -1540,6 +1543,9 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
                        " - " + $("#qmeas-years" ).dragslider( "values", 1 ));
                 }
             }
+        },
+        error: function(){
+            $( "#qMeasLog"+chartDiv).html( '<span style="color:red">Error </span><span>USGS Discharge Measurements <a href="https://waterdata.usgs.gov/nwis/measurements/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
         }
     });
 
@@ -1673,123 +1679,134 @@ function addAnnualPeaks(chartDiv,usgsID){
         $( '<span style="color:orange">USGS Annual peaks (no id)<br></span>' ).prependTo( "#log" );
         return false;
     }
+    var url =  "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks";
+
     $.ajax({
-        url: "http://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks",
+        url: url,
         dataType: 'json',
+        beforeSend: function(json){
+            $( '<span id="aPeaksLog'+chartDiv+'"><span style="color:red">Loading....</span>USGS Annual Peaks: <a href="'+url+'" target="_blank">Data Link</a></span><br>').prependTo( "#log" );
+       },
+
         success: function(data){
-        var chart = $('#'+chartDiv).highcharts();
-        var year = new Date().getFullYear();
-        var peakSeries = [
-            {
-                name: 'Annual Peaks',
-                tooltip: {
-                    headerFormat:'<b>Peak Annual Flow<br>{point.x:%b %e %Y}</b><br>',
-                    pointFormatter: function (){
-                        return '<b>' +numberWithCommas(this.y) + ' cfs</b>';
+            $( "#aPeaksLog"+chartDiv).html( '<span style="color:green">Success</span> USGS Annual Peaks: <a href="https://nwis.waterdata.usgs.gov/ak/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
+
+            var chart = $('#'+chartDiv).highcharts();
+            var year = new Date().getFullYear();
+            var peakSeries = [
+                {
+                    name: 'Annual Peaks',
+                    tooltip: {
+                        headerFormat:'<b>Peak Annual Flow<br>{point.x:%b %e %Y}</b><br>',
+                        pointFormatter: function (){
+                            return '<b>' +numberWithCommas(this.y) + ' cfs</b>';
+                        },
                     },
-                },
-                states: {
-                    hover: {
-                        enabled: false
-                    }
-                },
-                data:[],
-                visible: true,
-                lineWidth: 0,
-                type: 'scatter',
-                zIndex:15,
-                calcVol: false,
-                id:'annualPeaks',
-                color: 'orange',
-                dataLabels: {
-                    enabled: true,
-                    format: '{point.x:%Y-%m-%d}<br>{point.y} cfs',
-                    y: -3,
-                    style:{
-                         "fontSize": "9px",
-                    },
-                },
-                marker : {
-                    enabled : true,
-                    radius : 4
-                },
-                showInLegend:true
-            },
-            {
-                name: 'Annual Peaks',
-                tooltip: {
-                    headerFormat: 'Peak Annual Flow<br>',
-                    pointFormatter: function (){
-                        return '<b>' +this.peakDate+': '+numberWithCommas(this.y) + ' cfs</b>';
-                    },
-                },
-                states: {
-                    hover: {
-                        enabled: false
-                    }
-                },
-                data:[],
-                type: 'scatter',
-                visible: true,
-                id:'annualPeakYear',
-                calcVol: false,
-                lineWidth: 0,
-                padding:0,
-                point:{
-                    events:{
-                        click: function(){
-                            addAnnualData(chartDiv,'iv',this.year);
-                            addAnnualData(chartDiv,'dv',this.year);
+                    states: {
+                        hover: {
+                            enabled: false
                         }
-                     }
-                 },
-                dataLabels: {
-                    enabled: true,
-                    format: '{point.year}',
-                    y: -3,
-                    style:{
-                         "fontSize": "9px",
                     },
+                    data:[],
+                    visible: true,
+                    lineWidth: 0,
+                    type: 'scatter',
+                    zIndex:15,
+                    calcVol: false,
+                    id:'annualPeaks',
+                    color: 'orange',
+                    dataLabels: {
+                        enabled: true,
+                        format: '{point.x:%Y-%m-%d}<br>{point.y} cfs',
+                        y: -3,
+                        style:{
+                             "fontSize": "9px",
+                        },
+                    },
+                    marker : {
+                        enabled : true,
+                        radius : 4
+                    },
+                    showInLegend:true
                 },
-                zIndex:15,
-                color: 'black',
-                marker : {
-                    enabled : true,
-                    radius : 3
-                },
-                showInLegend:true
-            }];
+                {
+                    name: 'Annual Peaks',
+                    tooltip: {
+                        headerFormat: 'Peak Annual Flow<br>',
+                        pointFormatter: function (){
+                            return '<b>' +this.peakDate+': '+numberWithCommas(this.y) + ' cfs</b>';
+                        },
+                    },
+                    states: {
+                        hover: {
+                            enabled: false
+                        }
+                    },
+                    data:[],
+                    type: 'scatter',
+                    visible: true,
+                    id:'annualPeakYear',
+                    calcVol: false,
+                    lineWidth: 0,
+                    padding:0,
+                    point:{
+                        events:{
+                            click: function(){
+                                addAnnualData(chartDiv,'iv',this.year);
+                                addAnnualData(chartDiv,'dv',this.year);
+                            }
+                         }
+                     },
+                    dataLabels: {
+                        enabled: true,
+                        format: '{point.year}',
+                        y: -3,
+                        style:{
+                             "fontSize": "9px",
+                        },
+                    },
+                    zIndex:15,
+                    color: 'black',
+                    marker : {
+                        enabled : true,
+                        radius : 3
+                    },
+                    showInLegend:true
+                }];
 
-        var d = new Date()
-        var n = d.getTimezoneOffset()/60;
-        var peaks = [];
-        var years = [];
-        var begin = '1800-1-1';
-        var end = '2100-1-1';
-        if(typeof data.records == 'undefined') return false;
-        $.each(data.records,function(){
-            var newD = this[2].split('-');
-            var d = moment(this[2]);
-            d.add(12+n,'hours');
-            var point = [d,this[4]];
-            peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
-            peaks.push(this[4]);
-            d.add(3,'months');
-            years.push(moment(d).format('YYYY'));
-            d= Date.UTC(year,newD[1]-1,newD[2],12+n);
-            point = {x:d,
-                     y:this[4],
-                     peakDate:this[2],
-                     year:newD[0]
-                     }
-            peakSeries[1].data.push(point);
-          });
+            var d = new Date()
+            var n = d.getTimezoneOffset()/60;
+            var peaks = [];
+            var years = [];
+            var begin = '1800-1-1';
+            var end = '2100-1-1';
+            if(typeof data.records == 'undefined') return false;
+            $.each(data.records,function(){
+                var newD = this[2].split('-');
+                var d = moment(this[2]);
+                d.add(12+n,'hours');
+                var point = [d,this[4]];
+                peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
+                peaks.push(this[4]);
+                d.add(3,'months');
+                years.push(moment(d).format('YYYY'));
+                d= Date.UTC(year,newD[1]-1,newD[2],12+n);
+                point = {x:d,
+                         y:this[4],
+                         peakDate:this[2],
+                         year:newD[0]
+                         }
+                peakSeries[1].data.push(point);
+              });
 
-        chart.addSeries(peakSeries[0]);
-        chart.addSeries(peakSeries[1]);
-        checkTrends(peakSeries[1],begin,end);
+            chart.addSeries(peakSeries[0]);
+            chart.addSeries(peakSeries[1]);
+            checkTrends(peakSeries[1],begin,end);
 
 
+        },
+        error:  function(){
+            $( "#aPeaksLog").html( '<span style="color:red">Error</span>USGS Annual Peaks :  <a href="https://nwis.waterdata.usgs.gov/ak/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span><br>');
         }
     })
 }
@@ -3282,8 +3299,10 @@ function plotHeatQ(usgsSite){
         dataType: 'json',
         data: '',
         success: function(json){
+            if(json.value.timeSeries.length == 0) return;
             var series = [];
             var heatData = processUSGSDaily(json,"00060");
+
             var volData = USGSDailytoAnnualVolume(json,"00060");
             if(heatData[0] == null){
                     var url = "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&statCd=00003&sites=" + usgsSite + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19";
