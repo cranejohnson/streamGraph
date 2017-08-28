@@ -999,12 +999,15 @@ function addNWM2Stage(dischargeGraph,stageGraph){
     var rCurve;
     if(typeof(ratingchart.get('curve')) != 'undefined'){
         rCurve = ratingchart.get('curve');
+        $( '<span id="usgsRatingLog"><span style="color:Green">Using USGS Rating Curve for NWM2Stage</span><br>').prependTo( "#log" );
     }
     else if(typeof(ratingchart.get('nwsCurve')) != 'undefined'){
         rCurve = ratingchart.get('nwsCurve');
+        $( '<span id="usgsRatingLog"><span style="color:Green">Using NWS Rating Curve for NWM2Stage</span><br>').prependTo( "#log" );
     }
     else {
         console.log("Can't add nwm to stage chart");
+        $( '<span id="usgsRatingLog"><span style="color:Red">No Rating Curve for NWM2Stage</span><br>').prependTo( "#log" );
         return;
     }
     if(typeof(dischargePlt.get("NWMshort")) == 'undefined') return;
