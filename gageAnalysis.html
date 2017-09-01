@@ -112,8 +112,7 @@
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
-                <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale
-                <input type="checkbox" id="showFloodStagesRating" checked>Show Flood Stages&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <input type="checkbox" id="ratingLog" style="padding-left:20px" >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 Highlight measurements based on:
                 <input type="radio" name="markerHighlights" value = "age" checked>Age
                 <input type="radio" name="markerHighlights" value = "quality">Quality<br><br>
@@ -1536,10 +1535,10 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
                         rangeDrag: true, // Enable range dragging.
                         step: 1,
                         values: [parseInt(minYear),parseInt(maxYear)],
-                        slide: function( event, ui ) {
-                            $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-                            showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
-                        },
+ //                        slide: function( event, ui ) {
+//                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
+//                             showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
+//                         },
                         stop: function( event, ui ) {
                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
                             showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
@@ -2764,6 +2763,9 @@ function addFloodStageRating(graphId,AHPSjson){
 
     var ratingSeries = chart.get('nwsCurve');
 
+    link = null;
+    show = true;
+
     $.each( colors, function( key, value ){
         if(typeof AHPSjson[nwsLid].sigstages[key].__text != 'undefined'){
             var stage = parseFloat(AHPSjson[nwsLid].sigstages[key].__text);
@@ -2781,12 +2783,54 @@ function addFloodStageRating(graphId,AHPSjson){
             }
             var series = {
                 data: plotData,
+
                 marker: {
                     enabled: false
                 },
                 lineWidth: 2,
-                //linkedTo: ":previous",
-                showInLegend: false,
+                linkedTo: link,
+                showInLegend: show,
+                name: 'Flood Stages',
+                events:{
+                    hide:function () {
+                        this.chart.yAxis[0].removePlotLine('plotLine');
+                        this.chart.xAxis[0].removePlotLine('plotLine');
+                    },
+                    show:function(){
+                        this.chart.yAxis[0].addPlotLine({
+                            color: 'black',
+                            width: 0,
+                            zIndex:6,
+                            id:'plotLine',
+                            value: AHPSjson[nwsLid].sigstages[key].__text,
+                            label: {
+                                text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,
+                                textAlign: 'left',
+                                fontWeight: 'bold',
+                                y:-2
+                            }
+                        });
+                            if(discharge != Xextremes.max){
+                                this.chart.xAxis[0].addPlotLine({
+                                    color: 'black',
+                                    width: 0,
+                                    zIndex:6,
+                                    value: discharge,
+                                    id:'plotLine',
+                                    label: {
+                                        text: "        "+key.capitalize()+': '+parseInt(discharge)+' cfs ',
+                                        verticalAlign: "bottom",
+                                        y:-125,
+                                        fontWeight: 'bold',
+
+                                    }
+                                })
+                            }
+
+
+
+                    },
+                },
                 id: 'floodStageLine_'+key,
                 color: value};
             chart.addSeries(series);
@@ -2820,7 +2864,8 @@ function addFloodStageRating(graphId,AHPSjson){
                 })
             }
         }
-
+        link = ":previous";
+        show = false;
     });
 }
 
@@ -3180,21 +3225,7 @@ $('#showFloodStages').change(function() {
     }
 });
 
-$('#showFloodStagesRating').change(function() {
-    var chart = $('#ratinggraph').highcharts();
-        nwsLid = chart.NWSid;
-        if($(this).is(':checked')){
-            addFloodStageRating('ratinggraph',AHPSjson);
-        }else{
-            chart.yAxis[0].removePlotLine('plotLine');
-            chart.xAxis[0].removePlotLine('plotLine');
-            chart.get('floodStageLine_action').remove();
-            chart.get('floodStageLine_moderate').remove();
-            chart.get('floodStageLine_record').remove();
-            chart.get('floodStageLine_major').remove();
-            chart.get('floodStageLine_flood').remove();
-        }
-});
+
 
 $(":input[name= 'markerHighlights']").on('change', function(){
     var mType = $("input[name='markerHighlights']:checked").val();
@@ -3657,10 +3688,7 @@ function loadPage(site){
         }
         addAHPSrating('ratinggraph',siteId.nws);
 
-        if($('#showFloodStagesRating').is(':checked')){
-            //addNWSBands('ratinggraph',AHPSjson,false,'line',false);
-            addFloodStageRating('ratinggraph',AHPSjson);
-        }
+        addFloodStageRating('ratinggraph',AHPSjson);
 
     }
 
@@ -4717,10 +4745,10 @@ $(function () {
         step: 1,
         values: [0,11],
         rangeDrag: true, // Enable range dragging.
-        slide: function( event, ui ) {
-            $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
-            showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
-        },
+//         slide: function( event, ui ) {
+//             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
+//             showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
+//         },
         stop: function( event, ui ) {
             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
             showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
