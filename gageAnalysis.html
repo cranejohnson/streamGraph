@@ -1010,6 +1010,7 @@ function addNWM2Stage(dischargeGraph,stageGraph){
         $( '<span id="usgsRatingLog"><span style="color:Red">No Rating Curve for NWM2Stage</span><br>').prependTo( "#log" );
         return;
     }
+
     if(typeof(dischargePlt.get("NWMshort")) == 'undefined') return;
 
     stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
@@ -1488,7 +1489,9 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
 
             var newSeries = qMeasJSON2HC_Rating(json,type,marker);
             if(json.error_info.error == 0){
-                newSeries[0].turboThreshold = 2000;
+                //Upped the turboThreshold to accomodate omhn1 which has over 5000 measurements available.
+                newSeries[0].turboThreshold = 10000;
+                console.log(newSeries[0]);
                 chart.addSeries(newSeries[0]);
                 var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
 
