@@ -3521,7 +3521,10 @@ $('#loadQ').click(function(){
     var chart = $('#dischargegraph').highcharts();
     var nwsLid = chart.options.nwsLid;
     var usgsID = chart.options.usgsID;
+    console.log('before');
     chart.destroy;
+    console.log('after');
+
     setupGraphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),usgsID,nwsLid);
     addStats('dischargegraph');
     if(document.getElementById('getIv').checked) addUSGS('dischargegraph','discharge','iv');
