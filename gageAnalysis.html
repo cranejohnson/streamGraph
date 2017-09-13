@@ -1317,15 +1317,26 @@ function getAhps(site,AHPS){
                 xmlString = (new XMLSerializer()).serializeToString(data);
                 var x2js = new X2JS();
                 var jsonObj = x2js.xml_str2json( xmlString );
-                AHPS[site] = jsonObj.site;
-                result = true;
-                },
+                if(xmlString.match(/No results found for this gage./g)){
+                    AHPS[site] = false;
+                    result = false;
+                }
+                else{
+                    AHPS[site] = jsonObj.site;
+                    result = true;
+                 }
+            },
             error: function(){
                     result = false;
                 }
         })
     }else{
-        result = true;
+        if(AHPS[site] == false){
+            result = false;
+        }
+        else{
+            result = true;
+        }
     }
     return result;
 }
@@ -1346,12 +1357,14 @@ function addAHPS(chartDiv,type){
     //Load AHPS data if it is not already loaded
     if(getAhps(nwsLid,AHPSjson) == true){
         issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
+        if(chartAdd.title.textStr == 'Chart') chartAdd.setTitle({ text: AHPSjson[nwsLid]._name});
      }
      else{
         issued = 'No forecast';
      }
 
-    if(chartAdd.title.textStr == 'test') chartAdd.setTitle({ text: AHPSjson[nwsLid]._name});
+    //Check if AHPS data exists, if not return
+    if(AHPSjson[nwsLid] == false) return;
 
     var stageArray = [];
     var dischargeArray = [];
@@ -4654,7 +4667,7 @@ $(function () {
 
     Highcharts.setOptions({
         title: {
-                text:'test'
+                text:'Chart'
         },
         global: {
             //useUTC: false,
