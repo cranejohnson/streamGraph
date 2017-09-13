@@ -2775,6 +2775,8 @@ function addFloodStageRating(graphId,AHPSjson){
     };
 
     var ratingSeries = chart.get('nwsCurve');
+    
+    if(typeof ratingSeries == 'undefined') return;
 
     link = null;
     show = true;
