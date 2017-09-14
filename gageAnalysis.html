@@ -1707,7 +1707,7 @@ function addAnnualPeaks(chartDiv,usgsID){
        },
 
         success: function(data){
-            $( "#aPeaksLog"+chartDiv).html( '<span style="color:green">Success</span> USGS Annual Peaks: <a href="https://nwis.waterdata.usgs.gov/ak/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
+            $( "#aPeaksLog"+chartDiv).html( '<span style="color:green">Success</span> USGS Annual Peaks: <a href="https://nwis.waterdata.usgs.gov/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
 
             var chart = $('#'+chartDiv).highcharts();
             var year = new Date().getFullYear();
@@ -2775,7 +2775,7 @@ function addFloodStageRating(graphId,AHPSjson){
     };
 
     var ratingSeries = chart.get('nwsCurve');
-    
+
     if(typeof ratingSeries == 'undefined') return;
 
     link = null;
