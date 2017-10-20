@@ -874,52 +874,58 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
         returnGeometry : true,
         geometryType : 'esriGeometryPoint',
         mapExtent : (point2.lon-wd)+','+(point2.lat-ht)+','+(point2.lon+wd)+','+(point2.lat+ht),
-        imageDisplay : '1370,315,1',
+        imageDisplay : wd/100+','+ht/100+',1',
         f : 'json',
         sr : 102100,
         layers: 'top',
         geometry: '{ "x" : '+point2.lon+', "y" : '+point2.lat+' }'
     };
 
-
+    var foundOne = false;
     if(reachID == 0){
-         $.ajax({
-                type: "GET",
-                url: "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
-                data: params,
-                async: false,
-                contentType: "application/json; charset=utf-8",
-                headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
-                dataType: "json",
-                success: function (data) {
-                    if (data.results.length == 0) {
-                        $( '<span style="color:orange">No NWM reach found('+lat+','+lon+')<br></span>' ).prependTo( "#log" );
-                   }
-                    var stream = data.results[0];
-                    $.each( data.results, function( key, value ) {
-                        if(value.attributes.streamorder > stream.attributes.streamorder){
-                            stream = value;
+        for(i =1;i<30;i++){
+            params.tolerance = i;
+             $.ajax({
+                    type: "GET",
+                    url: "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/flowlines/Mapserver/identify",
+                    data: params,
+                    async: false,
+                    contentType: "application/json; charset=utf-8",
+                    headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    dataType: "json",
+                    success: function (data) {
+                        if (data.results.length == 0) {
+                            $( '<span style="color:orange">No NWM reach found('+lat+','+lon+')<br></span>' ).prependTo( "#log" );
+                            return false;
                         }
-                        if(value.attributes.streamorder == stream.attributes.streamorder){
-                            if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
+                        foundOne = true;
+                        var stream = data.results[0];
+
+                        $.each( data.results, function( key, value ) {
+                            if(value.attributes.streamorder > stream.attributes.streamorder){
                                 stream = value;
                             }
-                            if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
-                                stream = value;
+                            if(value.attributes.streamorder == stream.attributes.streamorder){
+                                if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
+                                    stream = value;
+                                }
+                                if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
+                                    stream = value;
+                                }
                             }
-                        }
-                    });
-                    if(typeof stream == 'undefined') return false;
-                    reachID = stream.attributes.reach_id;
-                    if(forecastType == 'short_range'){
-                        addReach2Map(map,stream.geometry.paths[0]);
-                    };
-                    plotNWM(chartDiv,reachID,forecastType,stream);
-                },
-                error: function (request, status, errorThrown) {
-                    console.log(status);
-                }
-        });
+                        });
+                        reachID = stream.attributes.reach_id;
+                        if(forecastType == 'short_range'){
+                            addReach2Map(map,stream.geometry.paths[0]);
+                        };
+                        plotNWM(chartDiv,reachID,forecastType,stream);
+                    },
+                    error: function (request, status, errorThrown) {
+                        console.log(status);
+                    }
+            });
+            if(foundOne) i = 30;
+        }
      }
      else{
         plotNWM(chartDiv,reachID,forecastType);
@@ -3662,6 +3668,7 @@ function loadPage(site){
                 //Skip NWM if the site is in Alaska
                 if(siteInfo.state_cd != "02"){
                     var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
+                    console.log('ReachID:'+reachID);
                     addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
                     addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
                 }
