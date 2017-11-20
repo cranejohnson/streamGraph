@@ -82,9 +82,10 @@
             </td>
             <td align="center">
                 <div id='usgsSiteInfo'></div>
-                 <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
-                 <div id="MannKendallResults"></div>
-                 <div id="spearmanResults"></div>
+                <p>Annual Peak Flows or Average Flow: Between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
+                <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
+                <div id="MannKendallResults"></div>
+                <div id="spearmanResults"></div>
 
         </tr>
     </table>
@@ -212,7 +213,6 @@ var vector = new ol.layer.Vector({
 
 var map = new ol.Map({
     layers: [osm_default2,osm_default],
-    //layers: [vector],
     target: 'map',
     view: new ol.View({
         center: ol.proj.transform([-100, 40], 'EPSG:4326', 'EPSG:3857'),
@@ -1314,7 +1314,6 @@ function getAhps(site,AHPS){
     var result;
     if (typeof AHPS[site] === 'undefined') {
         $.ajax({
-            //url: "http://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=json&site="+site,
             url: "https://water.weather.gov/ahps2/hydrograph_to_xml.php?output=xml&gage="+site,
             dataType: 'xml',
             data: data,
@@ -1695,6 +1694,7 @@ function addUSGSFF(chartDiv,type){
 function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
 
+
     if(usgsID == null){
         usgsID = chart.options.usgsID;
     }
@@ -1802,8 +1802,8 @@ function addAnnualPeaks(chartDiv,usgsID){
             var n = d.getTimezoneOffset()/60;
             var peaks = [];
             var years = [];
-            var begin = '1800-1-1';
-            var end = '2100-1-1';
+            var begin = 1800;
+            var end = 2100;
             if(typeof data.records == 'undefined') return false;
             $.each(data.records,function(){
                 var newD = this[2].split('-');
@@ -1822,10 +1822,14 @@ function addAnnualPeaks(chartDiv,usgsID){
                          }
                 peakSeries[1].data.push(point);
               });
-
             chart.addSeries(peakSeries[0]);
             chart.addSeries(peakSeries[1]);
-            checkTrends(peakSeries[1],begin,end);
+            peakSeries[0].dataLabels.enabled = false;
+            while($('#annualPeakGraph').highcharts().series.length > 0)
+                $('#annualPeakGraph').highcharts().series[0].remove(true);
+
+            $('#annualPeakGraph').highcharts().addSeries(peakSeries[0]);
+            checkTrends('annualPeakGraph',begin,end);
 
 
         },
@@ -1836,47 +1840,47 @@ function addAnnualPeaks(chartDiv,usgsID){
 }
 
 
-function checkTrends(series,begin,end){
+function checkTrends(chart,beginYear,endYear){
+    console.log('checking trends');
+    $('#spearmanResults').html("");
+    $('#MannKendallResults').html("");
 
-    var peakChart = $('#annualPeakGraph').highcharts();
-    series.color = 'black';
-    series.marker.symbol = 'diamond';
-    series.dataLabels.enabled = false;
-
-    var peaks = [];
+    var annualChart = $('#'+chart).highcharts();
+    if(typeof(annualChart.series[0]) == 'undefined') return;
+    series = annualChart.series[0];
+    console.log(series);
+    var annualData = [];
     var years = [];
-    var startTime = moment(begin,"YYYY-MM-DD");
-    var endTime = moment(end,"YYYY-MM-DD");
 
     $.each(series.data,function(){
-        var curDate = moment(this.peakDate,"YYYY-MM-DD");
-        this.x = parseInt(curDate.format("x"));
-        if((curDate > startTime) & (curDate < endTime)){
-            peaks.push(this.y);
-            years.push(this.year);
+        var curDate = moment(this.x);
+        var waterYear = parseInt(curDate.add(3,'months').format('YYYY'));
+        console.log(waterYear,beginYear);
+        if((waterYear >= beginYear) & (waterYear <= endYear)){
+            annualData.push(this.y);
+            years.push(waterYear);
         }
     });
 
-    csvContent = peaks.join(',');
+    console.log(annualData);
+    console.log(years);
+    csvContent = annualData.join(',');
     csvContent = years.join(',');
-    peakChart.addSeries(series);
-    var mkSresult = mkS(peaks);
+    var mkSresult = mkS(annualData);
 
-    var corr = spearson.correlation.spearman(years, peaks,true).toFixed(3);
-    var sslope = sensSlope(years,peaks);
+    var corr = spearson.correlation.spearman(years, annualData,true).toFixed(3);
+    var sslope = sensSlope(years,annualData);
     var string = "";
     for(i=0;i<years.length;i++){
         string= string+years[i]+",";
     }
     string = "";
     for(i=0;i<years.length;i++){
-        string= string+peaks[i]+",";
+        string= string+annualData[i]+",";
     }
     t = corr*(Math.sqrt((years.length-2)/(1-corr*corr)));
-    //console.log(t);
 
     var pval = jStat.ttest(t,years.length).toFixed(4);
-    //console.log(pval);
     var summary = "<strong>Spearman Trend Test:</strong>";
     if(pval <0.05){
         if(sslope>0){
@@ -1893,7 +1897,7 @@ function checkTrends(series,begin,end){
 }
 
 
-//function addVolumeStates
+//function addVolumeStats
 
 function addVolumeStats(chartDiv){
     var chartAdd = $('#'+chartDiv).highcharts();
@@ -2129,7 +2133,8 @@ function addStats(chartDiv){
             {
                 name: 'P 50% (median)',
                 linkedTo: ':previous',
-                color: '#D1D0CE',
+                color: '#B8B8B8',
+                dashStyle : 'ShortDash',
                 data: [],
                 zIndex: 2,
                 tooltip:{
@@ -2709,6 +2714,7 @@ function USGSDailytoAnnualVolume(usgsObj,TSvalue){
 
 
 function processUSGSDaily(usgsObj,TSvalue){
+
     len = usgsObj.value.timeSeries.length;
     if(len == 0) return data = null;
     data = new Array()
@@ -2751,8 +2757,67 @@ function processUSGSDaily(usgsObj,TSvalue){
       annualSum = annualSum + val;
       numInYear = numInYear + 1;
     }
-    return data
+    return data;
 }
+
+function getPeriodAverage(usgsObj,TSvalue,begin,end){
+    len = usgsObj.value.timeSeries.length;
+    if(len == 0) return data = null;
+    data = new Array()
+    QRarr = 0;
+    for (var i = 0; i < len; i++) {
+      if (usgsObj.value.timeSeries[i].variable.variableCode[0].value == TSvalue){
+        QRarr = i;
+        break;
+      }
+    }
+    var oldYear = 1800;
+    var newYear = 1800;
+    var periodSum = 0;
+    var numInYear = 0;
+    var start = begin.split("-");
+    var end = end.split("-");
+
+    var a = moment([2017, start[0]-1, start[1]]);
+    var b = moment([2017, end[0]-1, end[1]]);
+    var addYear = 0;
+    if(b.isBefore(a)) addYear = 1;
+
+    numQ = usgsObj.value.timeSeries[QRarr].values[0].value.length;
+    var calc = false;
+    var year = 1800;
+    for (var i = 0; i < numQ; i++) {
+        var d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
+        if(!calc) year  = parseInt(d.format('YYYY'));
+        var a = moment([year, start[0]-1, start[1]]).subtract(1, 'days');;
+
+        if(d.isAfter(a) && !calc){
+            b = moment([year+addYear,end[0]-1, end[1]]).add(1, 'days');
+            var rangeLength = b.diff(a, 'days')-1;   //
+        }
+
+        if(d.isBetween(a,b)){
+            periodSum = periodSum + parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
+            numInYear = numInYear + 1;
+            calc = true;
+        }
+        else{
+            if(numInYear > 1){
+                data.push([year+addYear,parseInt(periodSum/numInYear)]);
+            }
+            if(calc){
+                periodSum = 0;
+                numInYear = 0;
+                calc = false;
+                i=i-1;
+            }
+
+        }
+    }
+    return data;
+}
+
+
 
 
 /**
@@ -3357,6 +3422,8 @@ function plotHeatQ(usgsSite){
         dataType: 'json',
         data: '',
         success: function(json){
+
+            USGSjson[usgsSite]['daily'] = json;
             if(json.value.timeSeries.length == 0) return;
             var series = [];
             var heatData = processUSGSDaily(json,"00060");
@@ -3537,6 +3604,82 @@ $('#shefEncodeObserved').click(function(){
     $('#shefText').html(shefEncode(forecastSeries,true).replace(/(?:\r\n|\r|\n)/g, '<br />'));
 });
 
+
+$('#newAnnualTrend').click(function(){
+    var chart = $('#annualPeakGraph').highcharts();
+    $('#spearmanResults').html("");
+    $('#MannKendallResults').html("");
+    while(chart.series.length > 0)
+        chart.series[0].remove(true);
+
+    var usgsID = chart.options.usgsID;
+    var startDay = $('#aveStart').val();
+    var endDay = $('#aveEnd').val();
+    var dailyJson = {};
+    chart.setTitle({text: "Avg. Flow "+startDay+' to '+endDay+' Plotted'});
+
+    console.log(USGSjson[usgsID]['daily']);
+    dailyJson = USGSjson[usgsID]['daily'];
+    console.log(dailyJson);
+    if(typeof(USGSjson[usgsID]['daily']) == 'undefined'){
+        $.ajax({
+                url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&statCd=00003&sites=" + usgsID + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
+                dataType: 'json',
+                data: '',
+                async: false,
+                success: function(data){
+                    dailyJson = data;
+                }
+        });
+    }
+
+    if(dailyJson.value.timeSeries.length == 0) return;
+    var newAvg = getPeriodAverage(dailyJson,"00060",startDay,endDay);
+    var series = {
+        name: 'Average',
+        tooltip: {
+            headerFormat: 'Average Flow<br>',
+            pointFormatter: function (){
+                return '<b>' +this.year+': '+numberWithCommas(this.y) + ' cfs</b>';
+            },
+        },
+        states: {
+            hover: {
+                enabled: false
+            }
+        },
+        data:[],
+        type: 'scatter',
+        visible: true,
+        id:'annualPeakYear',
+        calcVol: false,
+        lineWidth: 0,
+        padding:0,
+        zIndex:15,
+        color: 'black',
+        marker : {
+            enabled : true,
+            radius : 3
+        },
+        showInLegend:true
+    };
+
+    var begin = '1800-1-1';
+    var end = '2100-1-1';
+    $.each(newAvg,function(){
+        var d= moment(this[0]+'-06-01');
+        var point = {x:parseInt(d.format("x")),
+                 y:this[1],
+                 peakDate:d.format("YYYY-M-D"),
+                 year:this[0]
+                 }
+        series.data.push(point);
+      });
+    chart.addSeries(series);
+    checkTrends('annualPeakGraph',1800,2100);
+});
+
+
 $('#loadQ').click(function(){
 
     var chart = $('#dischargegraph').highcharts();
@@ -3634,7 +3777,7 @@ function loadPage(site){
     setupGraphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
     setupGraphHeatQ();
     setupAnnualHeatQ();
-    setupGraphAnnualPeaks();
+    setupGraphAnnualPeaks(siteId.usgs);
 
     if($('#addFFlinesStation').is(':checked')){
         addUSGSFF('dischargegraph','sta');
@@ -3654,7 +3797,7 @@ function loadPage(site){
             dataType: 'text',
             data: '',
             success: function(data){
-
+                USGSjson[siteId.usgs] = {};
                 addStats('dischargegraph');
                 addUSGSrating('ratinggraph',siteId.usgs);
                 addUSGS('stagegraph','stage','iv');
@@ -3663,10 +3806,9 @@ function loadPage(site){
                 addAnnualPeaks('dischargegraph');
                 addMeasureQ_Rating('dischargegraph',null,"series");
                 siteInfo = getRDBSiteInfo(data);
-                console.log(siteInfo);
                 setupMap(siteInfo);
-                //Skip NWM if the site is in Alaska
-                if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72"){
+                //Skip NWM if the site is in Alaska, Hawaii or Puerto Rico
+                if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72" && siteInfo.state_cd != "15"){
                     var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
                     console.log('ReachID:'+reachID);
                     addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
@@ -3920,8 +4062,9 @@ function setupGraphStage(container,minDate,maxDate,usgs,nws){
   chart = new Highcharts.Chart(stagechartobj);
 }
 
-function setupGraphAnnualPeaks(){
+function setupGraphAnnualPeaks(usgs){
     annualPeakchartobj = {
+        usgsID:usgs,
         credits: {
             enabled: false
         },
@@ -3931,9 +4074,18 @@ function setupGraphAnnualPeaks(){
             marginTop: 5,
             marginLeft:70,
 
+
         },
         title:{
-            text: 'Annual Peaks'
+            text: 'Annual Peaks Plotted',
+            y: 0,
+            floating:true,
+            align:'center',
+            style: {
+                color: 'black',
+                fontWeight: 'bold',
+                "fontSize": "12px"
+            }
         },
         xAxis: {
             title: {
@@ -3949,7 +4101,7 @@ function setupGraphAnnualPeaks(){
         },
         yAxis: {
             title: {
-                text: 'Peak Annual Discharge (cfs)'
+                text: 'Discharge (cfs)'
             }
         },
         legend: {
