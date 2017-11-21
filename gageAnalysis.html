@@ -1841,29 +1841,24 @@ function addAnnualPeaks(chartDiv,usgsID){
 
 
 function checkTrends(chart,beginYear,endYear){
-    console.log('checking trends');
     $('#spearmanResults').html("");
     $('#MannKendallResults').html("");
 
     var annualChart = $('#'+chart).highcharts();
     if(typeof(annualChart.series[0]) == 'undefined') return;
     series = annualChart.series[0];
-    console.log(series);
     var annualData = [];
     var years = [];
 
     $.each(series.data,function(){
         var curDate = moment(this.x);
         var waterYear = parseInt(curDate.add(3,'months').format('YYYY'));
-        console.log(waterYear,beginYear);
         if((waterYear >= beginYear) & (waterYear <= endYear)){
             annualData.push(this.y);
             years.push(waterYear);
         }
     });
 
-    console.log(annualData);
-    console.log(years);
     csvContent = annualData.join(',');
     csvContent = years.join(',');
     var mkSresult = mkS(annualData);
@@ -1954,7 +1949,6 @@ function addVolumeStats(chartDiv){
 
             var vdate = moment("2016-"+tdata[5]+"-"+tdata[6],"YYYY-MM-DD");
             doy = vdate.format('DDD');
-            //console.log(doy);
 
             var per25 = (tdata[10] < 0 ) ? null: tdata[10];
             var median =  (tdata[11] < 0 ) ? null: tdata[11];
@@ -1993,7 +1987,6 @@ function addVolumeStats(chartDiv){
 
 
 
-        console.log(bandSeries);
 
 
         chartAdd.addSeries(medianSeries);
@@ -2762,6 +2755,7 @@ function processUSGSDaily(usgsObj,TSvalue){
 
 function getPeriodAverage(usgsObj,TSvalue,begin,end){
     len = usgsObj.value.timeSeries.length;
+    console.log(usgsObj);
     if(len == 0) return data = null;
     data = new Array()
     QRarr = 0;
@@ -2788,6 +2782,8 @@ function getPeriodAverage(usgsObj,TSvalue,begin,end){
     var year = 1800;
     for (var i = 0; i < numQ; i++) {
         var d = moment(usgsObj.value.timeSeries[QRarr].values[0].value[i].dateTime);
+        if(d.isAfter(moment())) break;
+
         if(!calc) year  = parseInt(d.format('YYYY'));
         var a = moment([year, start[0]-1, start[1]]).subtract(1, 'days');;
 
@@ -2802,7 +2798,7 @@ function getPeriodAverage(usgsObj,TSvalue,begin,end){
             calc = true;
         }
         else{
-            if(numInYear > 1){
+            if((numInYear > 1) && (parseInt(periodSum/numInYear) > 0)) {
                 data.push([year+addYear,parseInt(periodSum/numInYear)]);
             }
             if(calc){
@@ -3618,9 +3614,7 @@ $('#newAnnualTrend').click(function(){
     var dailyJson = {};
     chart.setTitle({text: "Avg. Flow "+startDay+' to '+endDay+' Plotted'});
 
-    console.log(USGSjson[usgsID]['daily']);
     dailyJson = USGSjson[usgsID]['daily'];
-    console.log(dailyJson);
     if(typeof(USGSjson[usgsID]['daily']) == 'undefined'){
         $.ajax({
                 url: "https://waterservices.usgs.gov/nwis/dv/?format=json,1.1&indent=on&statCd=00003&sites=" + usgsID + "&parameterCd=00060&startDT=1800-01-01&endDT=2100-01-19",
@@ -3640,7 +3634,7 @@ $('#newAnnualTrend').click(function(){
         tooltip: {
             headerFormat: 'Average Flow<br>',
             pointFormatter: function (){
-                return '<b>' +this.year+': '+numberWithCommas(this.y) + ' cfs</b>';
+                return '<b> CY:' +this.year+': '+numberWithCommas(this.y) + ' cfs</b>';
             },
         },
         states: {
