@@ -134,7 +134,7 @@
                 <input type="checkbox" id="showFloodStages" checked>Show Flood Stages<br>
                 <input type="button" id="shefEncodeForecast" value="Shef Encode Forecast">
                 <input type="button" id="shefEncodeObserved" value="Shef Encode Missing Obs">
-                <div id="stagegraph" style="width: 800px; height: 550px; margin: 0 auto"></div>
+                <div id="stagegraph" style="width: 800px; height: 550px; padding-left:20px"></div>
                 <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
                 <div id='shefText'></div>
             </td>
@@ -3585,7 +3585,7 @@ $('#zoomToStage').click(function(){
     var dischargeChart = $('#dischargegraph').highcharts();
     if(dischargeChart.get('dailyStats')) dischargeChart.get('dailyStats').hide();
     if(dischargeChart.get('annualPeakYear')) dischargeChart.get('annualPeakYear').hide();
-    dischargeChart.xAxis[0].setExtremes(new Date().getTime()-3600000*24*7, new Date().getTime()+3600000*24*4);
+    dischargeChart.xAxis[0].setExtremes(new Date().getTime()-3600000*24*7, new Date().getTime()+3600000*24*4,true,false);
     dischargeChart.showResetZoom();
 });
 
@@ -3918,7 +3918,7 @@ function setupGraphStage(container,minDate,maxDate,usgs,nws){
             zoomType: 'xy',
             marginTop: 80,
             marginBottom:175,
-            marginLeft:80,
+            marginLeft:90,
             events: {
                 selection: selectPointsByDrag,
                 redraw: function(){
@@ -4134,7 +4134,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
             zoomType: 'xy',
             marginTop: 40,
             //marginBottom:100,
-            marginLeft:80,
+            marginLeft:90,
         },
         plotOptions:{
             series:{
