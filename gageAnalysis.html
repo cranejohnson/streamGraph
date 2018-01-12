@@ -1019,7 +1019,7 @@ function addNWM2Stage(dischargeGraph,stageGraph){
 
     if(typeof(dischargePlt.get("NWMshort")) == 'undefined') return;
 
-    stagePlt.addSeries({data:null,name:'NWM Output',id:'NWMoutput'});
+    stagePlt.addSeries({data:null,name:'NWM Output (3)',color:'white',marker:{fillColor: 'white'},id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
         var oldSeries = dischargePlt.get(item);
@@ -2129,7 +2129,7 @@ function addStats(chartDiv){
             {
                 name: 'P 50% (median)',
                 linkedTo: ':previous',
-                color: '#B8B8B8',
+                color: '#778899',
                 dashStyle : 'ShortDash',
                 data: [],
                 zIndex: 2,
