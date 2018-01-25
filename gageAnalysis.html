@@ -1231,7 +1231,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
 
 }
 
-
+ 
 function addUSGSrating(chartDiv,usgsSite){
      if(typeof(usgsSite) == 'undefined'){
              $( '<span style="color:orange">USGS rating data (no id)<br></span>' ).prependTo( "#log" );
@@ -2021,7 +2021,8 @@ function addStats(chartDiv){
                 color: '#0000FF',
                 calcVol: false,
                 zIndex: 0,
-                showInLegend:true,
+//                showInLegend:true,
+                linkedTo: ':previous',
                 fillOpacity: 0.2,
                 point:{
                     events:{
@@ -2269,6 +2270,13 @@ function addStats(chartDiv){
         sdate.add(1, 'days');
         }
 
+       dummyStats = {
+                name: 'Daily Statistics',
+                color: 'white',
+                showInLegend:true,
+                data: [],
+            } 
+       statsSeries.unshift(dummyStats);
        $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
@@ -2463,6 +2471,12 @@ function qMeasJSON2HC_Rating(json,type,marker){
     if (type === undefined) {
          type = 'curve';
     }
+    
+    var legendColor = 'red';
+    if(type == 'curve'){
+        legendColor = 'blue'
+    }    
+       
 
     var indepIndex = GetObjectKeyIndex(json.columns,"discharge_va");
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
@@ -2481,7 +2495,7 @@ function qMeasJSON2HC_Rating(json,type,marker){
             type: 'scatter',
             zIndex : 10,
             id:'qMeasured',
-            color: 'blue',
+            color: legendColor,
             marker : {
                 enabled : true,
                 symbol : 'diamond'
