@@ -109,6 +109,9 @@
                 <input type="button" id="loadQ" value="Load Custom Range"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
                 Comparison:<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
+                Add Forecast:<input type="text" id="archiveForecast" length=20>
+                <input type="button" id="loadArchiveForecast" value="Load Forecasts"></br>
+
                 <input type="button" id="zoomToStage" value="Quick Zoom">
                 <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
@@ -651,6 +654,81 @@ function handleBaseFlow(chart,series,xMin,xMax){
          })
         .add();
 }
+
+
+/////////////////////////////////////
+//  Add older xml forecasts
+/////////////////////////////////////
+
+function addXmlAhpsForecasts(chartDiv,forecastDate){
+    var chart = $('#'+chartDiv).highcharts();
+    forecastDate = moment(forecastDate).add(3, 'days').format("YYYY-MM-DD");
+    var colors = ['#FF7F50','#6495ED','#00008B','#006400','#FFD700'];
+    chartType = chart.options.param;
+    nwsLid = chart.options.nwsLid;
+    var num = 0;
+    var seriesId = 'archiveForecast';
+    var inLegend = true;
+    for( var j = 0;j < 4;j++){
+        console.log("Loop:"+j);
+        $.ajax({
+            type: "GET",
+            url: "https://mesonet.agron.iastate.edu/plotting/auto/plot/160/station:"+nwsLid+"::dt:"+forecastDate+"::var:primary::dpi:100.csv",
+            dataType: "text",
+            async: false,
+            success: function(response){
+                newSeries ={
+                    name:'NWS Archive Forecasts',
+                    data: [],
+                    zIndex : 20,
+                    //showInLegend : false
+                };
+                var lines = response.split("\n");
+                var issued = "";
+                var id = 0;
+                var oldid = 0;
+                var data = [];
+                var y = 0;
+                for(var i=1;i<lines.length; i++){
+                    console.log(oldid,id);
+                    var pieces = lines[i].split(",");
+                    id = pieces[0];
+                    if((id != oldid) && (i > 1)){
+                        console.log(num);
+                        if(num>0){
+                            //newSeries.showInLegend = false;
+                            seriesId = 'forecasts';
+                            newSeries.linkedTo = 'archiveForecast';
+                        }
+                        newSeries.data = data;
+                        newSeries.id = seriesId;
+                        newSeries.color = colors[num % 5]
+                        if(newSeries.data.length > 0){
+                            chart.addSeries(newSeries);
+                            console.log(newSeries);
+                            data = [];
+                            num = num + 1;
+                       }
+                    }
+                    oldid = id;
+                    issued = pieces[1];
+                    xVal = moment(pieces[2]).format("x");
+                    if(chartType == 'discharge'){
+                        yVal = pieces[6]*1000;
+                    }
+                    else{
+                        yVal = pieces[3];
+                    }
+                    data.push([parseInt(xVal),yVal]);
+                }
+            }
+        });
+
+    //inLegend = false;
+    forecastDate = moment(forecastDate).add(4, 'days').format("YYYY-MM-DD");
+    }
+}
+
 
 ///////////////////////////////////
 //  Add straight line base flow to graph
@@ -1231,7 +1309,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
 
 }
 
- 
+
 function addUSGSrating(chartDiv,usgsSite){
      if(typeof(usgsSite) == 'undefined'){
              $( '<span style="color:orange">USGS rating data (no id)<br></span>' ).prependTo( "#log" );
@@ -2275,7 +2353,7 @@ function addStats(chartDiv){
                 color: 'white',
                 showInLegend:true,
                 data: [],
-            } 
+            }
        statsSeries.unshift(dummyStats);
        $.each(statsSeries,function(){
             this.marker = { enabled:false};
@@ -2471,12 +2549,12 @@ function qMeasJSON2HC_Rating(json,type,marker){
     if (type === undefined) {
          type = 'curve';
     }
-    
+
     var legendColor = 'red';
     if(type == 'curve'){
         legendColor = 'blue'
-    }    
-       
+    }
+
 
     var indepIndex = GetObjectKeyIndex(json.columns,"discharge_va");
     var depIndex = GetObjectKeyIndex(json.columns,"gage_height_va");
@@ -3744,6 +3822,14 @@ function isInteger(x) {
         return x % 1 === 0;
     }
 
+
+$('#loadArchiveForecast').click(function(){
+    var forecastDate = $('#archiveForecast').val();
+    console.log(forecastDate);
+    addXmlAhpsForecasts('dischargegraph',forecastDate);
+});
+
+
 $('#loadComparison').click(function(){
 
     var arr = $('#comparisonSite').val().split("-");
@@ -3924,6 +4010,7 @@ function setupGraphStage(container,minDate,maxDate,usgs,nws){
     stagechartobj= {
         usgsID:usgs,
         nwsLid:nws,
+        param:'stage',
         credits: {
             enabled: false
         },
@@ -4143,6 +4230,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
         },
         usgsID: usgs,
         nwsLid:nws,
+        param:'discharge',
         chart: {
             renderTo: container,
             zoomType: 'xy',
