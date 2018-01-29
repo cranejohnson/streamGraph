@@ -1890,6 +1890,9 @@ function addAnnualPeaks(chartDiv,usgsID){
                 var d = moment(str);
                 d.add(12+n,'hours');
                 var point = [d,this[4]];
+                if(this[4] == null) {
+                    return true;
+                }
                 peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
                 peaks.push(this[4]);
                 d.add(3,'months');
