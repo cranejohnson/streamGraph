@@ -106,10 +106,10 @@
                 <input type="checkbox" id="getIv" checked> Instantaneous<br>
                 Start Date:<input type="text" id="dischargeStart" length=10>
                 End Date:<input type="text" id="dischargeEnd" length=10>
-                <input type="button" id="loadQ" value="Load Custom Range"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
-                Comparison:<input type="text" id="comparisonSite" length=20>
-                <input type="button" id="loadComparison" value="Load Comparison Site or Year"></br>
-                Add Forecast:<input type="text" id="archiveForecast" length=20>
+                <input type="button" id="loadQ" value="Load Primary Data"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
+                Comparison (enter site or year):<input type="text" id="comparisonSite" length=20>
+                <input type="button" id="loadComparison" value="Load Comparison Data"></br>
+                Archive NWS Forecasts:<input type="text" id="archiveForecast" length=20>
                 <input type="button" id="loadArchiveForecast" value="Load Forecasts"></br>
 
                 <input type="button" id="zoomToStage" value="Quick Zoom">
@@ -669,6 +669,19 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
     var num = 0;
     var seriesId = 'archiveForecast';
     var inLegend = true;
+    var observedData= {};
+    var newSeries ={
+        name:'NWS Archive Forecasts',
+        data: [],
+        zIndex : 20,
+        issueDate : '',
+        tooltip: {
+            headerFormat:'<b>{point.x:%Y-%m-%d %H:%M}</b><br>',
+            pointFormatter: function (){
+                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Issued: '+moment(this.series.options.issueDate).format("YYYY-MM-DD H:mm")+')' ;
+            },
+        },
+    };
     for( var j = 0;j < 4;j++){
         console.log("Loop:"+j);
         $.ajax({
@@ -677,30 +690,24 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
             dataType: "text",
             async: false,
             success: function(response){
-                newSeries ={
-                    name:'NWS Archive Forecasts',
-                    data: [],
-                    zIndex : 20,
-                    //showInLegend : false
-                };
                 var lines = response.split("\n");
                 var issued = "";
                 var id = 0;
                 var oldid = 0;
                 var data = [];
                 var y = 0;
-                for(var i=1;i<lines.length; i++){
-                    console.log(oldid,id);
+                for(var i=1;i<lines.length-1; i++){
                     var pieces = lines[i].split(",");
+                    var flowIndex = pieces.indexOf("Flow")-1;
+                    var stageIndex = pieces.indexOf("Stage")-1;
                     id = pieces[0];
                     if((id != oldid) && (i > 1)){
-                        console.log(num);
                         if(num>0){
-                            //newSeries.showInLegend = false;
                             seriesId = 'forecasts';
                             newSeries.linkedTo = 'archiveForecast';
                         }
                         newSeries.data = data;
+                        newSeries.issueDate = issued;
                         newSeries.id = seriesId;
                         newSeries.color = colors[num % 5]
                         if(newSeries.data.length > 0){
@@ -711,22 +718,38 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
                        }
                     }
                     oldid = id;
-                    issued = pieces[1];
+                    issued = moment(pieces[1]);
                     xVal = moment(pieces[2]).format("x");
                     if(chartType == 'discharge'){
-                        yVal = pieces[6]*1000;
+                        yVal = pieces[flowIndex]*1000;
+                        if(pieces[9] != ''){
+                            obs = pieces[9]*1000;
+                         }
                     }
                     else{
-                        yVal = pieces[3];
+                        yVal = pieces[stageIndex];
+                        obs = pieces[10]*1000;
                     }
                     data.push([parseInt(xVal),yVal]);
+                    observedData[parseInt(xVal)] = obs;
                 }
             }
         });
 
-    //inLegend = false;
     forecastDate = moment(forecastDate).add(4, 'days').format("YYYY-MM-DD");
     }
+    var arrayData = [];
+    $.each( observedData, function( key, value ) {
+        arrayData.push([parseInt(key),value]);
+    });
+    newSeries.data = arrayData;
+    newSeries.color = 'blue';
+    newSeries.name = 'NWS Archive Observations';
+    newSeries.id = 'nwsObserved';
+    newSeries.linkedTo = null;
+    console.log(newSeries);
+    chart.addSeries(newSeries);
+
 }
 
 
@@ -1556,6 +1579,50 @@ function addAHPS(chartDiv,type){
     });
 }
 
+function addQNotes(chartDiv){
+    var chart = $('#'+chartDiv).highcharts();
+    note = $("input[name='markerHighlights']:checked").val();
+
+    var xLoc = 580;
+    var yLoc = 280;
+    if(chart.yAxis[0].isLog){
+        xLoc = 85;
+        yLoc = 210;
+    }
+
+    var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
+    if(note == 'quality'){
+        htmlText = '<span style="color:Green">Excellent - Good</span><br><span style="color:#E7F317">Fair</span><br><span style="color:orange")">Poor</span>';
+    }
+
+    $('.Qnotes').remove();
+
+    text = chart.renderer.text(
+            htmlText,
+            xLoc,
+            yLoc
+        ).attr({
+            zIndex: 5,
+            class: 'Qnotes'
+        }).css({
+            color: 'black',
+            'text-align': 'center',
+            'font-weight': 'bold',
+            width:  400,
+            fontSize: '13px'
+        }).add();
+    box = text.getBBox();
+    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
+        .attr({
+            fill: 'white',
+            stroke: 'gray',
+            class: 'Qnotes',
+            'stroke-width': 1,
+            zIndex: 4
+        })
+        .add();
+}
+
 
 function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
     if (marker === undefined) {
@@ -1587,38 +1654,10 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
             if(json.error_info.error == 0){
                 //Upped the turboThreshold to accomodate omhn1 which has over 5000 measurements available.
                 newSeries[0].turboThreshold = 10000;
-                console.log(newSeries[0]);
                 chart.addSeries(newSeries[0]);
-                var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
 
-                if(marker == 'quality'){
-                    htmlText = '<span style="color:Green">Excellent - Good</span><br><span style="color:#E7F317">Fair</span><br><span style="color:orange")">Poor</span>';
-                }
                 if(chartDiv == 'ratinggraph'){
-                    text = chart.renderer.text(
-                        htmlText,
-                        575,
-                        280
-                    ).attr({
-                        zIndex: 5,
-                        class: 'Qnotes'
-                    }).css({
-                        color: 'black',
-                        'text-align': 'center',
-                        'font-weight': 'bold',
-                        width:  400,
-                        fontSize: '13px'
-                    }).add();
-                    box = text.getBBox();
-                    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
-                        .attr({
-                            fill: 'white',
-                            stroke: 'gray',
-                            class: 'Qnotes',
-                            'stroke-width': 1,
-                            zIndex: 4
-                        })
-                        .add();
+                    addQNotes(chartDiv);
                     var minYear = 2100;
                     var maxYear = 1900;
                     $.each(newSeries[0]['data'], function( index, value ) {
@@ -1632,7 +1671,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
                         rangeDrag: true, // Enable range dragging.
                         step: 1,
                         values: [parseInt(minYear),parseInt(maxYear)],
- //                        slide: function( event, ui ) {
+//                        slide: function( event, ui ) {
 //                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
 //                             showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
 //                         },
@@ -3412,8 +3451,10 @@ $(":input[name= 'markerHighlights']").on('change', function(){
     var chart = $('#ratinggraph').highcharts();
     var series = chart.get('qMeasured');
     if(mType == 'quality'){
+        addQNotes('ratinggraph');
         $.each(series.data, function(i, point) {
             if(typeof(point.graphic) == 'undefined') return true;
+            if(point.graphic == null) return true;
             point.graphic.attr({
                 fill: this.qColor
             });
@@ -3423,8 +3464,10 @@ $(":input[name= 'markerHighlights']").on('change', function(){
         });
      }
      else{
+        addQNotes('ratinggraph');
         $.each(series.data, function(i, point) {
             if(typeof(point.graphic) == 'undefined') return true;
+            if(point.graphic == null) return true;
             point.graphic.attr({
                 fill: this.aColor
             });
@@ -3434,42 +3477,6 @@ $(":input[name= 'markerHighlights']").on('change', function(){
         });
 
     }
-
-
-    var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
-
-    if(mType == 'quality'){
-        htmlText = '<span style="color:Green">Excellent - Good</span><br><span style="color:#E7F317">Fair</span><br><span style="color:orange")">Poor</span>';
-    }
-
-
-    $(".Qnotes").remove();
-
-    text = chart.renderer.text(
-        htmlText,
-        550,
-        280
-    ).attr({
-        zIndex: 5,
-        class: 'Qnotes'
-    }).css({
-        color: 'black',
-        'text-align': 'center',
-        'font-weight': 'bold',
-        width:  400,
-        fontSize: '13px'
-    }).add();
-    box = text.getBBox();
-    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
-        .attr({
-            fill: 'white',
-            stroke: 'gray',
-            class: 'Qnotes',
-            'stroke-width': 1,
-            zIndex: 4
-        })
-        .add();
-
 
 });
 
@@ -4456,6 +4463,7 @@ function setupGraphRating(container,usgs,nws){
         },
         usgsID: usgs,
         nwsLid:nws,
+        QMeasDisplay : 'age',
 
         chart: {
           renderTo: container,
@@ -4549,11 +4557,14 @@ $('#ratingLog').change(function() {
   if($(this).is(':checked')){
         $('#ratinggraph').highcharts().yAxis[0].update({ type: 'logarithmic'});
         $('#ratinggraph').highcharts().xAxis[0].update({ type: 'logarithmic'});
+        addQNotes('ratinggraph');
     }
     else
     {
         $('#ratinggraph').highcharts().yAxis[0].update({ type: 'linear'});
         $('#ratinggraph').highcharts().xAxis[0].update({ type: 'linear'});
+        addQNotes('ratinggraph');
+
   }
 });
 
