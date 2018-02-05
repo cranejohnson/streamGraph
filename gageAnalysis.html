@@ -110,7 +110,7 @@
                 Comparison (enter site or year):<input type="text" id="comparisonSite" length=20>
                 <input type="button" id="loadComparison" value="Load Comparison Data"></br>
                 Archive NWS Forecasts:<input type="text" id="archiveForecast" length=20>
-                <input type="button" id="loadArchiveForecast" value="Load Forecasts"></br>
+                <input type="button" id="loadArchiveForecast" value="Load Forecasts - Blank to load most recent"></br>
 
                 <input type="button" id="zoomToStage" value="Quick Zoom">
                 <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
@@ -662,6 +662,8 @@ function handleBaseFlow(chart,series,xMin,xMax){
 
 function addXmlAhpsForecasts(chartDiv,forecastDate){
     var chart = $('#'+chartDiv).highcharts();
+    if(forecastDate == '') forecastDate = moment().subtract(10, 'days').format("YYYY-MM-DD");
+    console.log(forecastDate);
     forecastDate = moment(forecastDate).add(3, 'days').format("YYYY-MM-DD");
     var colors = ['#FF7F50','#6495ED','#00008B','#006400','#FFD700'];
     chartType = chart.options.param;
@@ -674,6 +676,7 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
         name:'NWS Archive Forecasts',
         data: [],
         zIndex : 20,
+        dashStyle: 'dash',
         issueDate : '',
         tooltip: {
             headerFormat:'<b>{point.x:%Y-%m-%d %H:%M}</b><br>',
@@ -683,7 +686,6 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
         },
     };
     for( var j = 0;j < 4;j++){
-        console.log("Loop:"+j);
         $.ajax({
             type: "GET",
             url: "https://mesonet.agron.iastate.edu/plotting/auto/plot/160/station:"+nwsLid+"::dt:"+forecastDate+"::var:primary::dpi:100.csv",
@@ -701,6 +703,7 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
                     var flowIndex = pieces.indexOf("Flow")-1;
                     var stageIndex = pieces.indexOf("Stage")-1;
                     id = pieces[0];
+                    if( i == lines.length-2) oldid = 'last';
                     if((id != oldid) && (i > 1)){
                         if(num>0){
                             seriesId = 'forecasts';
@@ -724,14 +727,15 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
                         yVal = pieces[flowIndex]*1000;
                         if(pieces[9] != ''){
                             obs = pieces[9]*1000;
+                            observedData[parseInt(xVal)] = obs;
                          }
                     }
                     else{
                         yVal = pieces[stageIndex];
                         obs = pieces[10]*1000;
+                        observedData[parseInt(xVal)] = obs;
                     }
                     data.push([parseInt(xVal),yVal]);
-                    observedData[parseInt(xVal)] = obs;
                 }
             }
         });
@@ -744,6 +748,7 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
     });
     newSeries.data = arrayData;
     newSeries.color = 'blue';
+    newSeries.dashStyle ='dot';
     newSeries.name = 'NWS Archive Observations';
     newSeries.id = 'nwsObserved';
     newSeries.linkedTo = null;
@@ -2971,20 +2976,29 @@ function addFloodStageRating(graphId,AHPSjson){
     var maxY = Yextremes.dataMax;
 
     var colors = {
-        major : 'rgba(204,51,255,0.7)',
-        moderate : 'rgba(255,0,0,0.7)',
-        flood : 'rgba(255,153,0,0.7)',
         action : 'rgba(255,255,0,0.7)',
+        flood : 'rgba(255,153,0,0.7)',
+        moderate : 'rgba(255,0,0,0.7)',
+        major : 'rgba(204,51,255,0.7)',
         record: 'rgba(102,178,255,0.7)',
     };
+
+    var labelX = {
+        action : 0,
+        flood :  0,
+        moderate : 0,
+        major : 0,
+        record: 0
+    };
+
 
     var ratingSeries = chart.get('nwsCurve');
 
     if(typeof ratingSeries == 'undefined') return;
 
-    link = null;
-    show = true;
-
+    var link = null;
+    var show = true;
+    var oldPixel = 9999;
     $.each( colors, function( key, value ){
         if(typeof AHPSjson[nwsLid].sigstages[key].__text != 'undefined'){
             var stage = parseFloat(AHPSjson[nwsLid].sigstages[key].__text);
@@ -3000,6 +3014,12 @@ function addFloodStageRating(graphId,AHPSjson){
             else{
                 plotData = [[1,stage],[discharge,stage],[discharge,1]];
             }
+            var pixel = chart.yAxis[0].toPixels(AHPSjson[nwsLid].sigstages[key].__text)
+
+            if(Math.abs(oldPixel - pixel) < 10){
+                labelX[key] = 1;
+            }
+            oldPixel = pixel;
             var series = {
                 data: plotData,
 
@@ -3021,33 +3041,32 @@ function addFloodStageRating(graphId,AHPSjson){
                             width: 0,
                             zIndex:6,
                             id:'plotLine',
-                            value: AHPSjson[nwsLid].sigstages[key].__text,
+                            value: stage,
                             label: {
                                 text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,
                                 textAlign: 'left',
                                 fontWeight: 'bold',
+                                x:labelX[key]*100,
                                 y:-2
                             }
                         });
-                            if(discharge != Xextremes.max){
-                                this.chart.xAxis[0].addPlotLine({
-                                    color: 'black',
-                                    width: 0,
-                                    zIndex:6,
-                                    value: discharge,
-                                    id:'plotLine',
-                                    label: {
-                                        text: "        "+key.capitalize()+': '+parseInt(discharge)+' cfs ',
-                                        verticalAlign: "bottom",
-                                        y:-125,
-                                        fontWeight: 'bold',
+                        if(discharge != Xextremes.max){
+                            this.chart.xAxis[0].addPlotLine({
+                                color: 'black',
+                                width: 0,
+                                zIndex:6,
+                                value: discharge,
+                                id:'plotLine',
+                                label: {
+                                    text: "        "+key.capitalize()+': '+parseInt(discharge)+' cfs ',
+                                    verticalAlign: "bottom",
+                                    y:-125,
+                                    x:labelX[key]*6,
+                                    fontWeight: 'bold',
 
-                                    }
-                                })
-                            }
-
-
-
+                                }
+                            })
+                        }
                     },
                 },
                 id: 'floodStageLine_'+key,
@@ -3063,6 +3082,7 @@ function addFloodStageRating(graphId,AHPSjson){
                         text: key.capitalize()+': '+AHPSjson[nwsLid].sigstages[key].__text+' '+AHPSjson[nwsLid].sigstages[key]._units,
                         textAlign: 'left',
                         fontWeight: 'bold',
+                        x:labelX[key]*100,
                         y:-2
                     }
             })
@@ -3077,6 +3097,7 @@ function addFloodStageRating(graphId,AHPSjson){
                             text: "        "+key.capitalize()+': '+parseInt(discharge)+' cfs ',
                             verticalAlign: "bottom",
                             y:-125,
+                            x:labelX[key]*6,
                             fontWeight: 'bold',
 
                         }
