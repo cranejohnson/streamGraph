@@ -1607,7 +1607,7 @@ function addQNotes(chartDiv){
             xLoc,
             yLoc
         ).attr({
-            zIndex: 5,
+            zIndex: 10,
             class: 'Qnotes'
         }).css({
             color: 'black',
@@ -1623,7 +1623,7 @@ function addQNotes(chartDiv){
             stroke: 'gray',
             class: 'Qnotes',
             'stroke-width': 1,
-            zIndex: 4
+            zIndex: 8
         })
         .add();
 }
@@ -4084,7 +4084,7 @@ function setupGraphStage(container,minDate,maxDate,usgs,nws){
             plotBands: [{
                 from: 0,
                 to: new Date().getTime(),
-                color: 'rgba(248,248,248,0.4)',
+                color: 'rgba(248,248,248,0.7)',
                 zIndex:2,
                 id: 'plot-band-observed'
             }]
