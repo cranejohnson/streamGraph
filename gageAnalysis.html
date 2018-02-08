@@ -706,7 +706,7 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
                     if( i == lines.length-2) oldid = 'last';
                     if((id != oldid) && (i > 1)){
                         if(num>0){
-                            seriesId = 'forecasts';
+                            //seriesId = 'forecasts';
                             newSeries.linkedTo = 'archiveForecast';
                         }
                         newSeries.data = data;
@@ -754,6 +754,9 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
     newSeries.linkedTo = null;
     console.log(newSeries);
     chart.addSeries(newSeries);
+    chart.redraw();
+    chart.get('archiveForecast').hide()
+    chart.get('archiveForecast').show()
 
 }
 
@@ -2991,11 +2994,13 @@ function addFloodStageRating(graphId,AHPSjson){
         record: 0
     };
 
-
     var ratingSeries = chart.get('nwsCurve');
 
-    if(typeof ratingSeries == 'undefined') return;
 
+    if(typeof ratingSeries == 'undefined'){
+         ratingSeries = chart.get('curve');
+         if(typeof ratingSeries == 'undefined') return;
+    }
     var link = null;
     var show = true;
     var oldPixel = 9999;
@@ -3983,12 +3988,12 @@ function loadPage(site){
         }
         addAHPSrating('ratinggraph',siteId.nws);
 
-        addFloodStageRating('ratinggraph',AHPSjson);
 
     }
 
     $(document).ajaxStop(function () {
         addNWM2Stage('#dischargegraph','#stagegraph');
+        addFloodStageRating('ratinggraph',AHPSjson);
     });
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
