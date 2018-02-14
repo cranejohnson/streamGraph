@@ -2649,7 +2649,9 @@ function qMeasJSON2HC_Rating(json,type,marker){
 
         //Check if stage is included and if discharge is not zero
         if((json.records[i][depIndex]=== null) && (type == 'curve')) continue;
-        if(Math.abs(json.records[i][indepIndex])=== 0) continue;
+        if(json.records[i][indepIndex] <= 0){
+            continue;
+        }
 
         var ratingInfo = {}
         var j = 0;
