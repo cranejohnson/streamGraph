@@ -54,9 +54,9 @@
         }
         .box-table-a{font-family:"Lucida Sans Unicode", "Lucida Grande", Sans-Serif;font-size:12px;width:480px;text-align:left;border-collapse:collapse;margin:20px;}.box-table-a th{font-size:13px;font-weight:normal;background:#b9c9fe;border-top:4px solid #aabcfe;border-bottom:1px solid #fff;color:#039;padding:8px;}.box-table-a td{background:#e8edff;border-bottom:1px solid #fff;color:#669;border-top:1px solid transparent;padding:8px;}.box-table-a tr:hover td{background:#d0dafd;color:#339;}
 
-	.ui-slider .ui-slider-handle{
-    		width:10px;
-	}
+    .ui-slider .ui-slider-handle{
+            width:10px;
+    }
 
 
     </style>
@@ -107,7 +107,7 @@
                 Start Date:<input type="text" id="dischargeStart" length=10>
                 End Date:<input type="text" id="dischargeEnd" length=10>
                 <input type="button" id="loadQ" value="Load Primary Data"> <!-- or <input type="button" id="loadAnnual" value="Current Year"> --></br>
-                Comparison (enter site or year):<input type="text" id="comparisonSite" length=20>
+                Comparison Site:<input type="text" id="comparisonSite" length=20 size = 10>Year:<input type="text" id="comparisonYear" length=4 size=4>
                 <input type="button" id="loadComparison" value="Load Comparison Data"></br>
                 Archive NWS Forecasts:<input type="text" id="archiveForecast" length=20>
                 <input type="button" id="loadArchiveForecast" value="Load Forecasts - Blank to load most recent"></br>
@@ -812,7 +812,7 @@ function addBaseFlowSeries(chart,flowData,xMin,xMax){
             enabled: true
         },
         dataGrouping: {
-             	enabled: false
+                enabled: false
         },
         point: {
             events: {
@@ -1180,6 +1180,8 @@ function addAnnualData(chartDiv,dv_iv,year,site){
         usgsID = site.usgs;
         nwsID = site.nws;
     }
+
+
 
     if(usgsID === undefined) return;
 
@@ -3871,8 +3873,9 @@ $('#loadArchiveForecast').click(function(){
 $('#loadComparison').click(function(){
 
     var arr = $('#comparisonSite').val().split("-");
-    var year = 0;
-    var site;
+    var year = $('#comparisonYear').val();
+    var site = $('#comparisonSite').val();
+
     $.each(arr, function( index, value ) {
         if(isInteger(value)){
              year = value;
@@ -3882,6 +3885,7 @@ $('#loadComparison').click(function(){
         }
     });
 
+    console.log(site);
     if (year > 0){
         if(document.getElementById('getIv').checked) addAnnualData('dischargegraph','iv',year,site);
         if(document.getElementById('getDv').checked) addAnnualData('dischargegraph','dv',year,site);
