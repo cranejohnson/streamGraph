@@ -1172,7 +1172,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     if (year === undefined) {
         xMin = 'all';
     }
-    if (site === undefined) {
+    if ((site === undefined)|| (site == null)) {
         usgsID = chartAdd.options.usgsID;
         nwsID = chartAdd.options.nwsLid;
     }
@@ -1274,7 +1274,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
     if (type === undefined) {
         type = 'discharge';
     }
-    if (site === undefined) {
+    if ((site === undefined)|| (site == null)) {
         usgsID = chartAdd.options.usgsID;
         nwsID = chartAdd.options.nwsLid;
     }
@@ -3838,6 +3838,9 @@ $('#loadQ').click(function(){
 function getBothIds(site){
     var nwsLid = '';
     var usgsID = '';
+    if(site.length == 0) {
+        return null;
+    }
     if(site.length<=5){
         nwsLid = site.toLowerCase();
         usgsID = CROSSWALKTABLE[nwsLid];
@@ -3872,20 +3875,8 @@ $('#loadArchiveForecast').click(function(){
 
 $('#loadComparison').click(function(){
 
-    var arr = $('#comparisonSite').val().split("-");
     var year = $('#comparisonYear').val();
-    var site = $('#comparisonSite').val();
-
-    $.each(arr, function( index, value ) {
-        if(isInteger(value)){
-             year = value;
-        }
-        else{
-            site = getBothIds(value);
-        }
-    });
-
-    console.log(site);
+    var site = getBothIds($('#comparisonSite').val());
     if (year > 0){
         if(document.getElementById('getIv').checked) addAnnualData('dischargegraph','iv',year,site);
         if(document.getElementById('getDv').checked) addAnnualData('dischargegraph','dv',year,site);
@@ -4638,12 +4629,14 @@ function setupGraphHeatQ(){
                                 width: 1,
                                 id: 'vert_loc'
                             });
-                            ratingchart.yAxis[0].addPlotLine({
-                                value: curveLookup(ratingchart.get('curve').data,this.value),
-                                color: 'red',
-                                width: 1,
-                                id: 'horz_loc'
-                            });
+                            if(ratingchart.get('curve')){
+                                ratingchart.yAxis[0].addPlotLine({
+                                    value: curveLookup(ratingchart.get('curve').data,this.value),
+                                    color: 'red',
+                                    width: 1,
+                                    id: 'horz_loc'
+                                });
+                            }
                         },
                         mouseOut: function() {
                             ratingchart.xAxis[0].removePlotLine('vert_loc');
