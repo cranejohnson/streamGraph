@@ -1030,6 +1030,7 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                         plotNWM(chartDiv,reachID,forecastType,stream);
                     },
                     error: function (request, status, errorThrown) {
+                        console.log('Error getting NWM Reach ID');
                         console.log(status);
                     }
             });
