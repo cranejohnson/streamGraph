@@ -1350,7 +1350,7 @@ function addUSGSrating(chartDiv,usgsSite){
       }
     var chartAdd = $('#'+chartDiv).highcharts();
     var ratingArray=[];
-    var url = "https://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating";
+    var url = "https://www.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsSite+"&type=rating";
     $.ajax({
         url: url,
         dataType: 'json',
@@ -1649,7 +1649,7 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
         $( '<span style="color:orange">USGS measured Q (no id)<br></span>' ).prependTo( "#log" );
         return false;
     }
-    var url = "https://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas";
+    var url = "https://www.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=qmeas";
     $.ajax({
         url: url,
         dataType: 'json',
@@ -1713,7 +1713,7 @@ function addUSGSFF(chartDiv,type){
 
     var chart = $('#'+chartDiv).highcharts();
     var usgsID = chart.options.usgsID;
-    var url = "https://www.data.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID;
+    var url = "https://www.chenabasin.org/nws/streamGraph/get_peak_flow.php?site="+usgsID;
     $.ajax({
 
         url: url,
@@ -1831,7 +1831,7 @@ function addAnnualPeaks(chartDiv,usgsID){
         $( '<span style="color:orange">USGS Annual peaks (no id)<br></span>' ).prependTo( "#log" );
         return false;
     }
-    var url =  "https://www.data.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks";
+    var url =  "https://www.chenabasin.org/nws/streamGraph/rdbajax.php?site="+usgsID+"&type=annualPeaks";
 
     $.ajax({
         url: url,
@@ -3956,7 +3956,7 @@ function loadPage(site){
      }
      else{
         $.ajax({
-                url: "https://www.data.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=rss&site="+site,
+                url: "https://www.chenabasin.org/nws/streamGraph/get_ahps_data.php?format=rss&site="+site,
                 dataType: 'text',
                 data: '',
                 async: false,
