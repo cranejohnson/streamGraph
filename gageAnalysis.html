@@ -83,7 +83,7 @@
             </td>
             <td align="center">
                 <div id='usgsSiteInfo'></div>
-                <p>Annual Peak Flows or Average Flow: Between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
+                <p>Annual Peak Flows or <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
                 <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
                 <div id="MannKendallResults"></div>
                 <div id="spearmanResults"></div>
@@ -2902,9 +2902,8 @@ function processUSGSDaily(usgsObj,TSvalue){
     return data;
 }
 
-function getPeriodAverage(usgsObj,TSvalue,begin,end){
+function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
     len = usgsObj.value.timeSeries.length;
-    console.log(usgsObj);
     if(len == 0) return data = null;
     data = new Array()
     QRarr = 0;
@@ -2917,6 +2916,8 @@ function getPeriodAverage(usgsObj,TSvalue,begin,end){
     var oldYear = 1800;
     var newYear = 1800;
     var periodSum = 0;
+    var max = 0;
+    var min = 9999999;
     var numInYear = 0;
     var start = begin.split("-");
     var end = end.split("-");
@@ -2942,17 +2943,31 @@ function getPeriodAverage(usgsObj,TSvalue,begin,end){
         }
 
         if(d.isBetween(a,b)){
-            periodSum = periodSum + parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
+            var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value)
+            periodSum = periodSum + val;
             numInYear = numInYear + 1;
+            if(val > max) max = val;
+            if(val < min) min = val;
             calc = true;
         }
         else{
             if((numInYear > 1) && (parseInt(periodSum/numInYear) > 0)) {
-                data.push([year+addYear,parseInt(periodSum/numInYear)]);
+                if(dailyFunc == 'Avg'){
+                    data.push([year+addYear,parseInt(periodSum/numInYear)]);
+                }
+                if(dailyFunc == 'Max'){
+                    data.push([year+addYear,max]);
+                }
+                if(dailyFunc == 'Min'){
+                    data.push([year+addYear,min]);
+                }
+
             }
             if(calc){
                 periodSum = 0;
                 numInYear = 0;
+                max = 0;
+                min = 9999999;
                 calc = false;
                 i=i-1;
             }
@@ -3738,6 +3753,7 @@ $('#shefEncodeObserved').click(function(){
 
 $('#newAnnualTrend').click(function(){
     var chart = $('#annualPeakGraph').highcharts();
+    var dailyFunc = $('#maxMinAverage').val();
     $('#spearmanResults').html("");
     $('#MannKendallResults').html("");
     while(chart.series.length > 0)
@@ -3747,7 +3763,7 @@ $('#newAnnualTrend').click(function(){
     var startDay = $('#aveStart').val();
     var endDay = $('#aveEnd').val();
     var dailyJson = {};
-    chart.setTitle({text: "Avg. Flow "+startDay+' to '+endDay+' Plotted'});
+    chart.setTitle({text: dailyFunc+" Flow "+startDay+' to '+endDay+' Plotted'});
 
     dailyJson = USGSjson[usgsID]['daily'];
     if(typeof(USGSjson[usgsID]['daily']) == 'undefined'){
@@ -3763,7 +3779,7 @@ $('#newAnnualTrend').click(function(){
     }
 
     if(dailyJson.value.timeSeries.length == 0) return;
-    var newAvg = getPeriodAverage(dailyJson,"00060",startDay,endDay);
+    var newAvg = getPeriodAverage(dailyFunc,dailyJson,"00060",startDay,endDay);
     var series = {
         name: 'Average',
         tooltip: {
