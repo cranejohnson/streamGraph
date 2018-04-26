@@ -90,7 +90,7 @@ $string = file_get_contents("crossWalk.json");
 $json = json_decode($string, true);
 
 
-$url = "http://www.nws.noaa.gov/oh/hads/USGS/ALL_USGS-HADS_SITES.txt";
+$url = "https://hads.ncep.noaa.gov/USGS/ALL_USGS-HADS_SITES.txt";
 
 $HADS = file_get_contents($url);
 
