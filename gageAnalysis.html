@@ -4330,13 +4330,23 @@ function setupGraphAnnualPeaks(usgs){
         },
        chart: {
             renderTo: 'annualPeakGraph',
-            zoomType: 'x',
+            zoomType: 'xy',
             marginTop: 5,
             marginLeft:70,
-            alignTicks:true
-
-
+            alignTicks:true,
+            resetZoomButton: {
+                position: {
+                    x: 0,
+                    y: 220
+                }
+            },
         },
+        tooltip: {
+            positioner: function () {
+                    return { x: 0, y: 0 };
+             }
+        },
+
         title:{
             text: '',
         },
