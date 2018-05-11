@@ -61,7 +61,6 @@
 
     </style>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/3.19.0/ol.css" type="text/css">
 
 
     <title>NWS Gage Analysis</title>
@@ -84,7 +83,7 @@
             <td align="center">
                 <div id='usgsSiteInfo'></div>
                 <p>Annual Peak Flows or <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
-                <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
+                <div id="annualPeakGraph" style="width: 500px; height: 300px; margin: 0 auto;"></div>
                 <div id="MannKendallResults"></div>
                 <div id="spearmanResults"></div>
 
@@ -1878,7 +1877,8 @@ function addAnnualPeaks(chartDiv,usgsID){
                     },
                     marker : {
                         enabled : true,
-                        radius : 4
+                        radius : 3,
+                        symbol: 'circle'
                     },
                     showInLegend:true
                 },
@@ -1925,6 +1925,36 @@ function addAnnualPeaks(chartDiv,usgsID){
                         radius : 3
                     },
                     showInLegend:true
+                },
+                {
+                    name: 'Annual Peak Timing',
+                    tooltip: {
+                        headerFormat: 'Peak Annual Timing<br>',
+                        pointFormatter: function (){
+                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.peakFlow) + ' cfs</b>';
+                        },
+                    },
+                    states: {
+                        hover: {
+                            enabled: false
+                        }
+                    },
+                    data:[],
+                    type: 'scatter',
+                    visible: false,
+                    id:'annualPeakTiming',
+                    calcVol: false,
+                    yAxis: 1,
+                    lineWidth: 0,
+                    padding:0,
+                    zIndex:15,
+                    color: 'black',
+                    marker: {
+                        lineColor: 'white',
+                        symbol: 'circle',
+                        lineWidth:1
+                    },
+                    showInLegend:true
                 }];
 
             var d = new Date()
@@ -1934,6 +1964,11 @@ function addAnnualPeaks(chartDiv,usgsID){
             var begin = 1800;
             var end = 2100;
             if(typeof data.records == 'undefined') return false;
+            var max = 0
+            $.each(data.records,function(){
+                if (this[4] > max) max = this[4];
+            });
+
             $.each(data.records,function(){
                 var newD = this[2].split('-');
                 var str = this[2].replace('-00','-01');
@@ -1943,6 +1978,9 @@ function addAnnualPeaks(chartDiv,usgsID){
                 if(this[4] == null) {
                     return true;
                 }
+                var ptRadius = this[4]/max * 10;
+                var ptzIndex = Math.round(1/ptRadius * 10);
+                if (ptRadius < 2) ptRadius = 2;
                 peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
                 peaks.push(this[4]);
                 d.add(3,'months');
@@ -1953,7 +1991,19 @@ function addAnnualPeaks(chartDiv,usgsID){
                          peakDate:this[2],
                          year:newD[0]
                          }
+                point2 = {x:parseInt(moment(str).format('x')),
+                          y:parseInt(moment(str).format('DDD')),
+                          marker:{
+                            radius:ptRadius,
+                          },
+                          zIndex: ptzIndex,
+                          monthDay: moment(str).format('MMM D'),
+                          year: moment(str).format('YYYY'),
+                          peakDate:this[2],
+                          peakFlow:this[4]
+                          }
                 peakSeries[1].data.push(point);
+                peakSeries[2].data.push(point2);
               });
             chart.addSeries(peakSeries[0]);
             chart.addSeries(peakSeries[1]);
@@ -1962,7 +2012,8 @@ function addAnnualPeaks(chartDiv,usgsID){
                 $('#annualPeakGraph').highcharts().series[0].remove(true);
 
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[0]);
-            console.log('annualpeaks',peakSeries[0]);
+            $('#annualPeakGraph').highcharts().addSeries(peakSeries[2]);
+            console.log('annualpeaks',peakSeries[2]);
             checkTrends('annualPeakGraph',begin,end);
 
 
@@ -2919,6 +2970,8 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
     var periodSum = 0;
     var max = 0;
     var min = 9999999;
+    var maxDate;
+    var minDate;
     var numInYear = 0;
     var start = begin.split("-");
     var end = end.split("-");
@@ -2947,20 +3000,48 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
             var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value)
             periodSum = periodSum + val;
             numInYear = numInYear + 1;
-            if(val > max) max = val;
-            if(val < min) min = val;
+            if(val > max) {
+                max = val;
+                maxDate = d.format('YYYY-M-D');
+            }
+            if(val < min) {
+                min = val;
+                minDate = d.format('YYYY-M-D');
+            }
             calc = true;
         }
         else{
             if((numInYear > 1) && (parseInt(periodSum/numInYear) > 0)) {
                 if(dailyFunc == 'Avg'){
-                    data.push([year+addYear,parseInt(periodSum/numInYear)]);
+                    var point = {
+                        year:year+addYear,
+                        x:parseInt(d.format("x")),
+                        y:parseInt(periodSum/numInYear),
+                        flow:parseInt(periodSum/numInYear)
+                    };
+                    data.push(point);
                 }
                 if(dailyFunc == 'Max'){
-                    data.push([year+addYear,max]);
+                     var point = {
+                        year:year+addYear,
+                        x:parseInt(d.format("x")),
+                        doy:parseInt(moment(maxDate).format("DDD")),
+                        flow:max,
+                        y:max,
+                        pointDate:maxDate
+                    };
+                    data.push(point);
                 }
                 if(dailyFunc == 'Min'){
-                    data.push([year+addYear,min]);
+                     var point = {
+                        year:year+addYear,
+                        x:parseInt(d.format("x")),
+                        flow:min,
+                        y:min,
+                        doy:parseInt(moment(minDate).format("DDD")),
+                        pointDate:maxDate
+                    };
+                    data.push(point);
                 }
 
             }
@@ -2975,6 +3056,7 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
 
         }
     }
+    console.log(data);
     return data;
 }
 
@@ -3764,7 +3846,6 @@ $('#newAnnualTrend').click(function(){
     var startDay = $('#aveStart').val();
     var endDay = $('#aveEnd').val();
     var dailyJson = {};
-    chart.setTitle({text: dailyFunc+" Flow "+startDay+' to '+endDay+' Plotted'});
 
     dailyJson = USGSjson[usgsID]['daily'];
     if(typeof(USGSjson[usgsID]['daily']) == 'undefined'){
@@ -3782,11 +3863,11 @@ $('#newAnnualTrend').click(function(){
     if(dailyJson.value.timeSeries.length == 0) return;
     var newAvg = getPeriodAverage(dailyFunc,dailyJson,"00060",startDay,endDay);
     var series = {
-        name: 'Average',
+        name: dailyFunc+ ' Flow ('+startDay+' to '+endDay+')',
         tooltip: {
-            headerFormat: 'Average Flow<br>',
+            headerFormat: 'Flow<br>',
             pointFormatter: function (){
-                return '<b> CY:' +this.year+': '+numberWithCommas(this.y) + ' cfs</b>';
+                return '<b> CY:' +this.peakDate+': '+numberWithCommas(this.y) + ' cfs</b>';
             },
         },
         states: {
@@ -3802,26 +3883,55 @@ $('#newAnnualTrend').click(function(){
         lineWidth: 0,
         padding:0,
         zIndex:15,
+        color: 'orange',
+        marker : {
+            enabled : true,
+            radius : 3,
+        },
+        showInLegend:true
+    };
+    var timingSeries = {
+        name: dailyFunc+ ' Timing ('+startDay+' to '+endDay+')',
+        tooltip: {
+            headerFormat: 'Flow<br>',
+            pointFormatter: function (){
+                return '<b>' +this.pointDate+': '+numberWithCommas(this.flow) + ' cfs</b>';
+            },
+        },
+        states: {
+            hover: {
+                enabled: false
+            }
+        },
+        data:[],
+        type: 'scatter',
+        visible: false,
+        id:'annualPeakYearTiming',
+        calcVol: false,
+        yAxis: 1,
+        lineWidth: 0,
+        padding:0,
         color: 'black',
         marker : {
             enabled : true,
-            radius : 3
+            radius : 3,
         },
         showInLegend:true
     };
 
     var begin = '1800-1-1';
     var end = '2100-1-1';
-    $.each(newAvg,function(){
-        var d= moment(this[0]+'-06-01');
-        var point = {x:parseInt(d.format("x")),
-                 y:this[1],
-                 peakDate:d.format("YYYY-M-D"),
-                 year:this[0]
-                 }
-        series.data.push(point);
-      });
+
+    series.data = newAvg;
     chart.addSeries(series);
+
+    var timeData = newAvg.slice();;
+    $.each(timeData,function(){
+        this.y = this.doy;
+    });
+    timingSeries.data = timeData;
+    console.log(timeData);
+    chart.addSeries(timingSeries);
     checkTrends('annualPeakGraph',1800,2100);
 });
 
@@ -4223,19 +4333,12 @@ function setupGraphAnnualPeaks(usgs){
             zoomType: 'x',
             marginTop: 5,
             marginLeft:70,
+            alignTicks:true
 
 
         },
         title:{
-            text: 'Annual Peaks Plotted',
-            y: 0,
-            floating:true,
-            align:'center',
-            style: {
-                color: 'black',
-                fontWeight: 'bold',
-                "fontSize": "12px"
-            }
+            text: '',
         },
         xAxis: {
             title: {
@@ -4249,13 +4352,37 @@ function setupGraphAnnualPeaks(usgs){
                 rotation: -30
         }
         },
-        yAxis: {
+        yAxis: [
+        {
             title: {
-                text: 'Discharge (cfs)'
+                text: 'Discharge (cfs)',
+                style: {
+                    color: 'orange'
+                }
+            },
+            labels: {
+                style: {
+                    color: 'orange'
+                }
             }
         },
+        {
+            title: {
+                text: 'Day of Year',
+                style: {
+                    color: 'black'
+                }
+            },
+            opposite: true,
+            gridLineWidth:0,
+            labels: {
+                style: {
+                    color: 'black'
+                }
+            }
+        }],
         legend: {
-            enabled : false
+            enabled : true
         },
 
         series : [{data:[null,null],
