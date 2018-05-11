@@ -61,7 +61,7 @@
 
     </style>
 
-    <link rel="stylesheet" href="https://openlayers.org/en/v3.19.0/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/3.19.0/ol.css" type="text/css">
 
 
     <title>NWS Gage Analysis</title>
@@ -1473,8 +1473,9 @@ function addAHPS(chartDiv,type){
 
     //Load AHPS data if it is not already loaded
     if(getAhps(nwsLid,AHPSjson) == true){
+        console.log(AHPSjson)
         issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
-        if(chartAdd.title.textStr == 'Chart') chartAdd.setTitle({ text: AHPSjson[nwsLid]._name});
+        if(chartAdd.title.textStr == 'Chart') chartAdd.setTitle({ text: AHPSjson[nwsLid]._name+"  ("+nwsLid.toUpperCase()+")"});
      }
      else{
         issued = 'No forecast';
@@ -3914,6 +3915,7 @@ function loadPage(site){
     $('#dischargeEnd').val(year+'-12-31');
     //initializeNWS();
     var siteId = getBothIds(site);
+    console.log(siteId);
     var siteInfo = {'dec_long_va': 0,
                      'dec_lat_va':0};
 
@@ -3962,9 +3964,10 @@ function loadPage(site){
                 }
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
+                console.log(siteInfo.station_nm);
                 Highcharts.setOptions({
                     title: {
-                        text:siteInfo.station_nm
+                        text:siteInfo.station_nm 
                     }
                 });
             },
