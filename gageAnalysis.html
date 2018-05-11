@@ -84,7 +84,7 @@
             <td align="center">
                 <div id='usgsSiteInfo'></div>
                 <p>Annual Peak Flows or <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
-                <div id="annualPeakGraph" style="width: 500px; height: 225px; margin: 0 auto;"></div>
+                <div id="annualPeakGraph" style="width: 500px; height: 300px; margin: 0 auto;"></div>
                 <div id="MannKendallResults"></div>
                 <div id="spearmanResults"></div>
 
@@ -1924,6 +1924,35 @@ function addAnnualPeaks(chartDiv,usgsID){
                         radius : 3
                     },
                     showInLegend:true
+                },
+                {
+                    name: 'Annual Peak Timing',
+                    tooltip: {
+                        headerFormat: 'Peak Annual Timing<br>',
+                        pointFormatter: function (){
+                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.peakFlow) + ' cfs</b>';
+                        },
+                    },
+                    states: {
+                        hover: {
+                            enabled: false
+                        }
+                    },
+                    data:[],
+                    type: 'scatter',
+                    visible: false,
+                    id:'annualPeakTiming',
+                    calcVol: false,
+                    yAxis: 1,
+                    lineWidth: 0,
+                    padding:0,
+                    zIndex:15,
+                    color: 'black',
+                    marker : {
+                        enabled : true,
+                        radius : 3
+                    },
+                    showInLegend:true
                 }];
 
             var d = new Date()
@@ -1952,7 +1981,15 @@ function addAnnualPeaks(chartDiv,usgsID){
                          peakDate:this[2],
                          year:newD[0]
                          }
+                point2 = {x:parseInt(moment(str).format('x')),
+                          y:parseInt(moment(str).format('DDD')),
+                          monthDay: moment(str).format('MMM D'),
+                          year: moment(str).format('YYYY'),
+                          peakDate:this[2],
+                          peakFlow:this[4]
+                          }
                 peakSeries[1].data.push(point);
+                peakSeries[2].data.push(point2);
               });
             chart.addSeries(peakSeries[0]);
             chart.addSeries(peakSeries[1]);
@@ -1961,7 +1998,8 @@ function addAnnualPeaks(chartDiv,usgsID){
                 $('#annualPeakGraph').highcharts().series[0].remove(true);
 
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[0]);
-            console.log('annualpeaks',peakSeries[0]);
+            $('#annualPeakGraph').highcharts().addSeries(peakSeries[2]);
+            console.log('annualpeaks',peakSeries[2]);
             checkTrends('annualPeakGraph',begin,end);
 
 
@@ -4246,13 +4284,22 @@ function setupGraphAnnualPeaks(usgs){
                 rotation: -30
         }
         },
-        yAxis: {
+        yAxis: [
+        {
             title: {
                 text: 'Discharge (cfs)'
             }
         },
+        {
+            title: {
+                text: 'Timing'
+            },
+            opposite: true,
+            min:0,
+            max:365
+        }],
         legend: {
-            enabled : false
+            enabled : true
         },
 
         series : [{data:[null,null],
