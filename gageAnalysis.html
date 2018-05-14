@@ -84,6 +84,7 @@
                 <div id='usgsSiteInfo'></div>
                 <p>Annual Peak Flows or <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
                 <div id="annualPeakGraph" style="width: 500px; height: 300px; margin: 0 auto;"></div>
+                <div id="trendTitle"></div>
                 <div id="MannKendallResults"></div>
                 <div id="spearmanResults"></div>
 
@@ -1817,7 +1818,29 @@ function addUSGSFF(chartDiv,type){
 
 }
 
+function adjustRadius(series){
 
+    var max = 0;
+    $.each(series.data,function(){
+
+        if (this.flow > max) max = this.flow;
+    });
+    console.log('max flow='+max);
+    $.each(series.data,function(){
+        var ptRadius = this.flow/max * 10;
+        var ptzIndex = Math.round(1/ptRadius * 10);
+        if (ptRadius < 2) ptRadius = 2;
+        this.marker = {};
+        this.marker.radius=ptRadius;
+        this.marker.lineColor='white';
+        this.marker.symbol = 'circle';
+        this.marker.lineWidth = 1;
+        this.zIndex=ptzIndex;
+    });
+    console.log('adjusted');
+    console.log(series);
+    return series;
+}
 
 function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
@@ -1860,6 +1883,11 @@ function addAnnualPeaks(chartDiv,usgsID){
                         }
                     },
                     data:[],
+                    events: {
+                        legendItemClick: function () {
+                            this.chart.redraw();
+                        }
+                    },
                     visible: true,
                     lineWidth: 0,
                     type: 'scatter',
@@ -1887,7 +1915,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat: 'Peak Annual Flow<br>',
                         pointFormatter: function (){
-                            return '<b>' +this.peakDate+': '+numberWithCommas(this.y) + ' cfs</b>';
+                            return '<b>' +this.date+': '+numberWithCommas(this.y) + ' cfs</b>';
                         },
                     },
                     states: {
@@ -1931,7 +1959,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat: 'Peak Annual Timing<br>',
                         pointFormatter: function (){
-                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.peakFlow) + ' cfs</b>';
+                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.flow) + ' cfs</b>';
                         },
                     },
                     states: {
@@ -1949,11 +1977,6 @@ function addAnnualPeaks(chartDiv,usgsID){
                     padding:0,
                     zIndex:15,
                     color: 'black',
-                    marker: {
-                        lineColor: 'white',
-                        symbol: 'circle',
-                        lineWidth:1
-                    },
                     showInLegend:true
                 }];
 
@@ -1978,9 +2001,6 @@ function addAnnualPeaks(chartDiv,usgsID){
                 if(this[4] == null) {
                     return true;
                 }
-                var ptRadius = this[4]/max * 10;
-                var ptzIndex = Math.round(1/ptRadius * 10);
-                if (ptRadius < 2) ptRadius = 2;
                 peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
                 peaks.push(this[4]);
                 d.add(3,'months');
@@ -1988,24 +2008,22 @@ function addAnnualPeaks(chartDiv,usgsID){
                 d= Date.UTC(year,newD[1]-1,newD[2],12+n);
                 point = {x:d,
                          y:this[4],
-                         peakDate:this[2],
+                         date:this[2],
+                         flow:this[4],
                          year:newD[0]
                          }
                 point2 = {x:parseInt(moment(str).format('x')),
                           y:parseInt(moment(str).format('DDD')),
-                          marker:{
-                            radius:ptRadius,
-                          },
-                          zIndex: ptzIndex,
                           monthDay: moment(str).format('MMM D'),
                           year: moment(str).format('YYYY'),
-                          peakDate:this[2],
-                          peakFlow:this[4]
+                          date:this[2],
+                          flow:this[4]
                           }
                 peakSeries[1].data.push(point);
                 peakSeries[2].data.push(point2);
               });
             chart.addSeries(peakSeries[0]);
+            peakSeries[2] = adjustRadius(peakSeries[2])
             chart.addSeries(peakSeries[1]);
             peakSeries[0].dataLabels.enabled = false;
             while($('#annualPeakGraph').highcharts().series.length > 0)
@@ -2013,7 +2031,6 @@ function addAnnualPeaks(chartDiv,usgsID){
 
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[0]);
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[2]);
-            console.log('annualpeaks',peakSeries[2]);
             checkTrends('annualPeakGraph',begin,end);
 
 
@@ -2026,12 +2043,14 @@ function addAnnualPeaks(chartDiv,usgsID){
 
 
 function checkTrends(chart,beginYear,endYear){
+    $('#trendTitle').html("");
     $('#spearmanResults').html("");
     $('#MannKendallResults').html("");
 
     var annualChart = $('#'+chart).highcharts();
     if(typeof(annualChart.series[0]) == 'undefined') return;
     series = annualChart.series[0];
+    $('#trendTitle').html(series.name+" Trends");
     var annualData = [];
     var years = [];
 
@@ -3028,7 +3047,7 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
                         doy:parseInt(moment(maxDate).format("DDD")),
                         flow:max,
                         y:max,
-                        pointDate:maxDate
+                        date:maxDate
                     };
                     data.push(point);
                 }
@@ -3039,7 +3058,7 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
                         flow:min,
                         y:min,
                         doy:parseInt(moment(minDate).format("DDD")),
-                        pointDate:maxDate
+                        date:maxDate
                     };
                     data.push(point);
                 }
@@ -3867,7 +3886,7 @@ $('#newAnnualTrend').click(function(){
         tooltip: {
             headerFormat: 'Flow<br>',
             pointFormatter: function (){
-                return '<b> CY:' +this.peakDate+': '+numberWithCommas(this.y) + ' cfs</b>';
+                return '<b> CY:' +this.date+': '+numberWithCommas(this.y) + ' cfs</b>';
             },
         },
         states: {
@@ -3895,7 +3914,7 @@ $('#newAnnualTrend').click(function(){
         tooltip: {
             headerFormat: 'Flow<br>',
             pointFormatter: function (){
-                return '<b>' +this.pointDate+': '+numberWithCommas(this.flow) + ' cfs</b>';
+                return '<b>' +this.date+': '+numberWithCommas(this.flow) + ' cfs</b>';
             },
         },
         states: {
@@ -3930,7 +3949,7 @@ $('#newAnnualTrend').click(function(){
         this.y = this.doy;
     });
     timingSeries.data = timeData;
-    console.log(timeData);
+    timingSeries = adjustRadius(timingSeries)
     chart.addSeries(timingSeries);
     checkTrends('annualPeakGraph',1800,2100);
 });
@@ -4077,7 +4096,7 @@ function loadPage(site){
                 console.log(siteInfo.station_nm);
                 Highcharts.setOptions({
                     title: {
-                        text:siteInfo.station_nm 
+                        text:siteInfo.station_nm
                     }
                 });
             },
@@ -4385,9 +4404,18 @@ function setupGraphAnnualPeaks(usgs){
             },
             opposite: true,
             gridLineWidth:0,
+            floor:1,
+            ceiling:365,
             labels: {
                 style: {
                     color: 'black'
+                },
+                formatter: function () {
+                    if(this.value == 0) this.value = 1;
+                    if(this.value > 365) {
+                        return "";
+                    }
+                    return moment(this.value,"DDD").format("MMM D");
                 }
             }
         }],
