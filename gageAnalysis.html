@@ -4404,8 +4404,10 @@ function setupGraphAnnualPeaks(usgs){
             },
             opposite: true,
             gridLineWidth:0,
-            floor:1,
-            ceiling:365,
+            alignTicks:false,
+            min:1,
+            max:365,
+            //tickPositions:[1,60,121,182,244,305,365],
             labels: {
                 style: {
                     color: 'black'
