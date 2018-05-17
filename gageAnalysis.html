@@ -82,7 +82,7 @@
             </td>
             <td align="center">
                 <div id='usgsSiteInfo'></div>
-                <p>Annual Peak Flows or <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
+                <p>Select <select id="maxMinAverage"><option value='Avg'>Avg</option><option value='Max'>Max</option><option value='Min'>Min</option><option value='Peaks'>Annual Peaks</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
                 <div id="annualPeakGraph" style="width: 500px; height: 300px; margin: 0 auto;"></div>
                 <div id="trendTitle"></div>
                 <div id="MannKendallResults"></div>
@@ -1844,6 +1844,9 @@ function adjustRadius(series){
 
 function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
+    while(chart.series.length > 0)
+        chart.series[0].remove(true);
+
 
 
     if(usgsID == null){
@@ -3855,13 +3858,21 @@ $('#shefEncodeObserved').click(function(){
 
 $('#newAnnualTrend').click(function(){
     var chart = $('#annualPeakGraph').highcharts();
+    var usgsID = chart.options.usgsID;
     var dailyFunc = $('#maxMinAverage').val();
+    if (dailyFunc == 'Peaks'){
+        addAnnualPeaks('annualPeakGraph',usgsID);
+        return;
+    }
+
+    //else a max,min or average selected
+
     $('#spearmanResults').html("");
     $('#MannKendallResults').html("");
     while(chart.series.length > 0)
         chart.series[0].remove(true);
 
-    var usgsID = chart.options.usgsID;
+
     var startDay = $('#aveStart').val();
     var endDay = $('#aveEnd').val();
     var dailyJson = {};
@@ -4389,6 +4400,7 @@ function setupGraphAnnualPeaks(usgs){
                     color: 'orange'
                 }
             },
+            showEmpty:false,
             labels: {
                 style: {
                     color: 'orange'
@@ -4405,9 +4417,7 @@ function setupGraphAnnualPeaks(usgs){
             opposite: true,
             gridLineWidth:0,
             alignTicks:false,
-            min:1,
-            max:365,
-            //tickPositions:[1,60,121,182,244,305,365],
+            showEmpty:false,
             labels: {
                 style: {
                     color: 'black'
