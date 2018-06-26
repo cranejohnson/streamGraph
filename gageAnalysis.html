@@ -387,7 +387,7 @@ function addReach2Map(map,reach){
 function showUSGSinfo(jsonData){
     var html = "<table class = \"box-table-a\"><thead><tr><th colspan = \"2\">USGS Site Information</th></tr>";
     html = html + "<tr><td>USGS Site Name</td><td>"+jsonData.station_nm+"</td></tr>";
-    html = html + "<tr><td>USGS Site Number</td><td><a href='https://waterdata.usgs.gov/ak/nwis/inventory/?site_no="+jsonData.site_no+"'>"+jsonData.site_no+"</a></td></tr>";
+    html = html + "<tr><td>USGS Site Number</td><td><a href='https://waterdata.usgs.gov/ak/nwis/inventory/?site_no="+jsonData.site_no+"' target='_blank'>"+jsonData.site_no+"</a></td></tr>";
     html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.</td></tr>";
     html = html + "<tr><td>USGS Gage Datum</td><td>"+jsonData.alt_va+" ft ("+jsonData.alt_datum_cd+")</br>"+USGS_alt_meth_cd[jsonData.alt_meth_cd]+" (+- "+jsonData.alt_acy_va+" ft)</td></tr>";
     $('#usgsSiteInfo').html(html);
@@ -1471,7 +1471,6 @@ function addAHPS(chartDiv,type){
 
     //Load AHPS data if it is not already loaded
     if(getAhps(nwsLid,AHPSjson) == true){
-        console.log(AHPSjson)
         issued =  Highcharts.dateFormat('%l %P %b %e',(new Date(AHPSjson[nwsLid].forecast._issued).getTime())+tzoffset);
         if(chartAdd.title.textStr == 'Chart') chartAdd.setTitle({ text: AHPSjson[nwsLid]._name+"  ("+nwsLid.toUpperCase()+")"});
      }
@@ -1584,11 +1583,7 @@ function addAHPS(chartDiv,type){
 
     $.each(newSeries, function(){
         if(this.param == type){
-            console.log(type);
-            console.log(chartAdd.series);
-            console.log(this);
             chartAdd.addSeries(this);
-            console.log(chartAdd.series);
         }
     });
     console.log(chartAdd);
@@ -1845,8 +1840,9 @@ function adjustRadius(series){
 
 function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
-    while(chart.series.length > 0)
-        chart.series[0].remove(true);
+    //NEED TO FIGURE OUT WHAT THIS WAS FOR
+    //while(chart.series.length > 0)
+    //    chart.series[0].remove(true);
 
 
 
@@ -4134,6 +4130,7 @@ function loadPage(site){
     if(siteId.nws != ''){
         console.log('add discharge');
         addAHPS('dischargegraph','discharge');
+        console.log('add stage');
         addAHPS('stagegraph','stage');
         if($('#showFloodStages').is(':checked')){
             addNWSBands('stagegraph',AHPSjson,true,'band',true);
