@@ -2965,7 +2965,7 @@ function processUSGSDaily(usgsObj,TSvalue){
       }
       var doy = d.format("DDD");
       var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
-      if(val < 1) val  = 1;
+      if(val < 1) val  = null;
       data.push([parseInt(doy),parseInt(newYear),val])
       annualSum = annualSum + val;
       numInYear = numInYear + 1;
