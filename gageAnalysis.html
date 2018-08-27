@@ -101,7 +101,8 @@
                 <input type="checkbox" id="addFFlinesWeighted" style="padding-left:20px"  >Weighted<br>
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
-                <input type="radio" name="Qfunction" value = "shift">Shift Data<br>
+                <input type="radio" name="Qfunction" value = "shift">Shift Data
+                <input type="radio" name="Qfunction" value = "exportXML">Export XML<br>
                 USGS Data:  <input type="checkbox" id ="getDv" checked> Daily
                 <input type="checkbox" id="getIv" checked> Instantaneous<br>
                 Start Date:<input type="text" id="dischargeStart" length=10>
@@ -654,6 +655,14 @@ function handleBaseFlow(chart,series,xMin,xMax){
         .add();
 }
 
+
+/////////////////////////////////////
+//  Export series as XML data
+/////////////////////////////////////
+
+function exportXML(flowData,xMin,xMax){
+
+}
 
 /////////////////////////////////////
 //  Add older xml forecasts
@@ -4523,6 +4532,21 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                                         shiftData.push([date,chart.series[shiftIndex].yData[i]]);
                                     }
                                chart.series[shiftIndex].setData(shiftData);
+                               }
+                           }
+                           else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
+                                if(first_line){
+                                    shift = this.x;
+                                    first_line = false;
+                                    shiftIndex = this.series.index;
+
+                                }
+                                else{
+                                    first_line = true;
+                                    chart.xAxis[0].removePlotLine('vert_1');
+                                    xMax = this.x;
+                                    series = this.series;
+                                    exportXML(series,xMin,xMax);
                                }
                            }
                         },
