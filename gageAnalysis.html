@@ -388,8 +388,12 @@ function addReach2Map(map,reach){
 function showUSGSinfo(jsonData){
     var html = "<table class = \"box-table-a\"><thead><tr><th colspan = \"2\">USGS Site Information</th></tr>";
     html = html + "<tr><td>USGS Site Name</td><td>"+jsonData.station_nm+"</td></tr>";
-    html = html + "<tr><td>USGS Site Number</td><td><a href='https://waterdata.usgs.gov/ak/nwis/inventory/?site_no="+jsonData.site_no+"' target='_blank'>"+jsonData.site_no+"</a></td></tr>";
-    html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.</td></tr>";
+    html = html + "<tr><td>USGS Site Number</td><td><a href='https://waterdata.usgs.gov/nwis/inventory/?site_no="+jsonData.site_no+"' target='_blank'>"+jsonData.site_no+"</a></td></tr>";
+    html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.";
+    if(jsonData.contrib_drain_area_va > 0) {
+       html = html + " Contrib:"+jsonData.contrib_drain_area_va+" sq. mi.";
+    }
+    html = html + "</td></tr>";
     html = html + "<tr><td>USGS Gage Datum</td><td>"+jsonData.alt_va+" ft ("+jsonData.alt_datum_cd+")</br>"+USGS_alt_meth_cd[jsonData.alt_meth_cd]+" (+- "+jsonData.alt_acy_va+" ft)</td></tr>";
     $('#usgsSiteInfo').html(html);
 }
@@ -4105,6 +4109,11 @@ function loadPage(site){
                 }
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
+                console.log(siteInfo);
+                if(siteInfo.contrib_drain_area_va  > 0) {
+                    Area = siteInfo.contrib_drain_area_va;
+                }    
+                    
                 Highcharts.setOptions({
                     title: {
                         text:siteInfo.station_nm
