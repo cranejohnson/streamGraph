@@ -3049,7 +3049,8 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
                         year:year+addYear,
                         x:parseInt(d.format("x")),
                         y:parseInt(periodSum/numInYear),
-                        flow:parseInt(periodSum/numInYear)
+                        flow:parseInt(periodSum/numInYear),
+                        date:year+addYear
                     };
                     data.push(point);
                 }
@@ -3906,7 +3907,7 @@ $('#newAnnualTrend').click(function(){
         tooltip: {
             headerFormat: 'Flow<br>',
             pointFormatter: function (){
-                return '<b> CY:' +this.date+': '+numberWithCommas(this.y) + ' cfs</b>';
+                return '<b>' +this.date+': '+numberWithCommas(this.y) + ' cfs</b>';
             },
         },
         states: {
@@ -4112,8 +4113,8 @@ function loadPage(site){
                 console.log(siteInfo);
                 if(siteInfo.contrib_drain_area_va  > 0) {
                     Area = siteInfo.contrib_drain_area_va;
-                }    
-                    
+                }
+
                 Highcharts.setOptions({
                     title: {
                         text:siteInfo.station_nm
@@ -4482,6 +4483,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
             series:{
                 stickyTracking : false,
                 turboThreshold: 0,
+                showCheckBox: true,
                 marker:{
                     enabled: false
                 },
@@ -4691,7 +4693,8 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
         },
         series : [{data:[null,null],
                     visible:false,
-                    showInLegend:false}]
+                    showInLegend:false
+                }]
     }
 
     new Highcharts.Chart(dischargechartobj);
