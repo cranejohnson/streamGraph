@@ -4383,6 +4383,14 @@ function setupGraphAnnualPeaks(usgs){
                 }
             },
         },
+        exporting: {
+            buttons: {
+                contextButton: {
+                    align: 'left',
+                    verticalAlign: 'bottom'
+                }
+            }
+        },       
         tooltip: {
             positioner: function () {
                     return { x: 0, y: 0 };
@@ -4714,12 +4722,18 @@ function setupGraphRating(container,usgs,nws){
         QMeasDisplay : 'age',
 
         chart: {
-          renderTo: container,
-          zoomType: 'xy',
-          marginTop: 50,
-          marginBottom:100,
-          marginLeft:80,
-          custom:'regular',
+            renderTo: container,
+            zoomType: 'xy',
+            marginTop: 50,
+            marginBottom:100,
+            marginLeft:80,
+            custom:'regular',
+            resetZoomButton: {
+                position: {
+                    x: 0,
+                    y: 430
+                }
+            },         
         },
         title: {
             text: 'Stage vs. Discharge'
