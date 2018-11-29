@@ -150,6 +150,7 @@
             <td></td>
             <td>
                 <input type="checkbox" id="volumeLog" style="padding-left:20px" checked >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                Highlight a Year: <select id="volumeYearHighlight"><option></option></select> Color: <button id="setColorAnnual" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="annualChartInches" value="Plot in Inches of Water"><input type="text" id="watershedArea" length=8 size = 8></input>
                 <div id="annualVolume" style="width: 800px; height: 650px; margin: 0 auto"></div></div>
             </td>
         </tr>
@@ -160,6 +161,35 @@
 <script type="text/javascript">
 
 
+
+Highcharts.setOptions({
+    title: {
+            text:'Chart'
+    },
+    global: {
+        //useUTC: false,
+        timezoneOffset: (new Date().getTimezoneOffset()/60) * 60
+
+    },
+    lang: {
+        thousandsSep: ','
+     },
+     tooltip: {
+        backgroundColor : 'rgba(255, 255, 255, 1)',
+     },
+     chart:{
+         resetZoomButton: {
+            position: {
+                // align: 'right', // by default
+                // verticalAlign: 'top', // by default
+                x: -50,
+                y: 0
+            },
+            relativeTo: 'chart'
+        }
+    }
+
+});
 
 ///////////////////////////////////
 //  Set up Thumbnail Map for USGS gage location and NWM Reach
@@ -390,6 +420,7 @@ function showUSGSinfo(jsonData){
     html = html + "<tr><td>USGS Site Name</td><td>"+jsonData.station_nm+"</td></tr>";
     html = html + "<tr><td>USGS Site Number</td><td><a href='https://waterdata.usgs.gov/nwis/inventory/?site_no="+jsonData.site_no+"' target='_blank'>"+jsonData.site_no+"</a></td></tr>";
     html = html + "<tr><td>Drainage Area</td><td>"+jsonData.drain_area_va+" sq. mi.";
+    $('#watershedArea').val(jsonData.drain_area_va);
     if(jsonData.contrib_drain_area_va > 0) {
        html = html + " Contrib:"+jsonData.contrib_drain_area_va+" sq. mi.";
     }
@@ -2890,6 +2921,7 @@ function USGSDailytoAnnualVolume(usgsObj,TSvalue){
             if(oldYear != 1800){
                     var volSeries = {name: oldYear +"  ("+ daysEstimated + " days estimated)" ,
                                     showInLegend: false,
+                                    waterYear:oldYear,
                                     color: 'LightGray',
                                     zIndex:1,
                                     lineWidth: 2,
@@ -2897,7 +2929,11 @@ function USGSDailytoAnnualVolume(usgsObj,TSvalue){
                                         enabled: false
                                     },
                                     data: volYear};
-                    if(daysEstimated < 60) volData.push(volSeries);
+                    if(daysEstimated < 400) {
+                        volData.push(volSeries);
+                        $('#volumeYearHighlight').append('<option value="'+oldYear+'" >'+oldYear+'</option>');
+                    }
+
                     volYear = [];
                     curVol = 0;
                     daysEstimated = 0;
@@ -2909,6 +2945,7 @@ function USGSDailytoAnnualVolume(usgsObj,TSvalue){
             curVol = parseInt(curVol + oldVal*3600*24/1000000);
             daysEstimated = daysEstimated + 1;
             volYear.push(curVol);
+            console.log("estimated:",newYear);
         }
         oldDoy = doy;
         var val = parseFloat(usgsObj.value.timeSeries[QRarr].values[0].value[i].value);
@@ -4378,9 +4415,12 @@ function setupGraphAnnualPeaks(usgs){
             alignTicks:true,
             resetZoomButton: {
                 position: {
-                    x: 0,
-                    y: 220
-                }
+                    align: "right",
+                    verticalAlign: "bottom",
+                    x: -30,
+                    y: -70
+                },
+                relativeTo: "chart"
             },
         },
         tooltip: {
@@ -4816,6 +4856,43 @@ $('#ratingLog').change(function() {
   }
 });
 
+$('#volumeYearHighlight').change(function(){
+    var chart = $('#annualVolume').highcharts();
+    var seriesLength = chart.series.length;
+    for(var i = seriesLength -1; i > -1; i--) {
+        if(chart.series[i].userOptions.waterYear == $('#volumeYearHighlight').val()) {
+            chart.series[i].update({
+                color: $('#setColorAnnual').css('backgroundColor'),
+                showInLegend: true
+            });
+            chart.series[i].update({
+                zIndex : 99
+            });
+        }
+    }
+});
+
+$('#annualChartInches').click(function(){
+    var chart = $('#annualVolume').highcharts();
+    var seriesLength = chart.series.length;
+    var divisor = parseFloat($('#watershedArea').val())*5280*5280;
+    console.log(divisor);
+    for(var i = 0;i < seriesLength; i++) {
+        var data = chart.series[i].yData;
+        for(var y = 0 ; y<data.length;y++){
+            data[y] = data[y]*1000000/divisor*12;
+        }
+        chart.series[i].setData(data);
+
+    }
+    chart.yAxis[0].axisTitle.attr({
+        text: 'Volume (in)'
+    });
+
+});
+
+
+
 
 function setupGraphHeatQ(){
     var ratingchart = $('#ratinggraph').highcharts();
@@ -5182,30 +5259,12 @@ function unselectByClick() {
 
 $(function () {
 
-    var d = new Date()
-    var n = d.getTimezoneOffset()/60;
 
     $( "#map" ).resizable({
         aspectRatio: true
     });
 
-    Highcharts.setOptions({
-        title: {
-                text:'Chart'
-        },
-        global: {
-            //useUTC: false,
-            timezoneOffset: n * 60
 
-        },
-        lang: {
-            thousandsSep: ','
-         },
-         tooltip: {
-            backgroundColor : 'rgba(255, 255, 255, 1)',
-         }
-
-    });
 
     $('#dischargeStart').val(Highcharts.dateFormat('%Y-%m-%d',new Date().getTime()-3600000*24*30));
     $('#dischargeEnd').val(Highcharts.dateFormat('%Y-%m-%d',new Date().getTime()+3600000*24*4));
@@ -5285,10 +5344,6 @@ $(function () {
         step: 1,
         values: [0,11],
         rangeDrag: true, // Enable range dragging.
-//         slide: function( event, ui ) {
-//             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
-//             showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
-//         },
         stop: function( event, ui ) {
             $( "#months2show" ).val( moment(new Date(2012, ui.values[0], 01)).format("MMM")+ " - " + moment(new Date(2012, ui.values[1], 01)).format("MMM") );
             showQmeas((ui.values[0]+1),(ui.values[1]+1),$("#qmeas-years" ).dragslider( "values", 0 ),$("#qmeas-years" ).dragslider( "values", 1 ));
