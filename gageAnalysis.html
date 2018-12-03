@@ -150,7 +150,7 @@
             <td></td>
             <td>
                 <input type="checkbox" id="volumeLog" style="padding-left:20px" checked >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                Highlight a Year: <select id="volumeYearHighlight"><option></option></select> Color: <button id="setColorAnnual" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="annualChartInches" value="Plot in Inches of Water"><input type="text" id="watershedArea" length=8 size = 8></input>
+                Highlight a Year: <select id="volumeYearHighlight"><option></option></select> Color: <button id="setColorAnnual" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="annualChartInches" value="Plot in Inches of Water"> Basin area: <input type="text" id="watershedArea" length=8 size = 8 style="text-align:right;"/></input> square miles
                 <div id="annualVolume" style="width: 800px; height: 650px; margin: 0 auto"></div></div>
             </td>
         </tr>
@@ -176,17 +176,24 @@ Highcharts.setOptions({
      },
      tooltip: {
         backgroundColor : 'rgba(255, 255, 255, 1)',
-     },
-     chart:{
-         resetZoomButton: {
-            position: {
-                // align: 'right', // by default
-                // verticalAlign: 'top', // by default
-                x: -50,
-                y: 0
-            },
-            relativeTo: 'chart'
+    },
+    navigation: {
+        buttonOptions: {
+            align: 'left',
+            verticalAlign:'bottom'
+
         }
+    },
+    chart:{
+        resetZoomButton: {
+            position: {
+                align: "right",
+                verticalAlign: "bottom",
+                x: -30,
+                y: -70
+            },
+            relativeTo: "chart"
+        },
     }
 
 });
@@ -4413,15 +4420,7 @@ function setupGraphAnnualPeaks(usgs){
             marginTop: 5,
             marginLeft:70,
             alignTicks:true,
-            resetZoomButton: {
-                position: {
-                    align: "right",
-                    verticalAlign: "bottom",
-                    x: -30,
-                    y: -70
-                },
-                relativeTo: "chart"
-            },
+
         },
         tooltip: {
             positioner: function () {
@@ -4874,13 +4873,36 @@ $('#volumeYearHighlight').change(function(){
 
 $('#annualChartInches').click(function(){
     var chart = $('#annualVolume').highcharts();
+    var mult = 1;
+    if( $('#annualChartInches').prop('value')  == 'Plot in Inches of Water'){
+        mult = 1000000*12/($('#watershedArea').val()*5280*5280);
+        $('#annualChartInches').prop('value', 'Plot in volume'); //versions newer than 1.6
+        chart.update({
+            tooltip: {
+                formatter: function (){
+                    return this.series.name+'<br><b>' + moment("2017 1 1", "YYYY MM DD").add(this.point.x-92,"days").format("MMM Do") + ' - '+this.point.y.toFixed(1) + '  inches of water</b>';
+                }
+            }
+        });
+
+    }
+    else{
+        mult = parseFloat($('#watershedArea').val())*5280*5280/(12*1000000);
+        $('#annualChartInches').prop('value', 'Plot in Inches of Water'); //versions newer than 1.6
+        chart.update({
+            tooltip: {
+                formatter: function (){
+                    return this.series.name+'<br><b>' + moment("2017 1 1", "YYYY MM DD").add(this.point.x-92,"days").format("MMM Do") + ' - '+numberWithCommas(this.point.y.toFixed(0)) + '  million cuft</b>';
+                }
+            }
+        });
+    }
+
     var seriesLength = chart.series.length;
-    var divisor = parseFloat($('#watershedArea').val())*5280*5280;
-    console.log(divisor);
     for(var i = 0;i < seriesLength; i++) {
         var data = chart.series[i].yData;
         for(var y = 0 ; y<data.length;y++){
-            data[y] = data[y]*1000000/divisor*12;
+            data[y] = data[y]*mult;
         }
         chart.series[i].setData(data);
 
@@ -4888,7 +4910,6 @@ $('#annualChartInches').click(function(){
     chart.yAxis[0].axisTitle.attr({
         text: 'Volume (in)'
     });
-
 });
 
 
