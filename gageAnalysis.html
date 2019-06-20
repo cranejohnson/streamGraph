@@ -4146,7 +4146,7 @@ function loadPage(site){
                 siteInfo = getRDBSiteInfo(data);
                 setupMap(siteInfo);
                 //Skip NWM if the site is in Alaska, Hawaii or Puerto Rico
-                if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72" && siteInfo.state_cd != "15"){
+                if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72" && siteInfo.state_cd != "9999"){
                     var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
                     console.log('ReachID:'+reachID);
                     addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
