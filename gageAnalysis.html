@@ -4530,7 +4530,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
             series:{
                 stickyTracking : false,
                 turboThreshold: 0,
-                showCheckBox: true,
+                showCheckbox: true,
                 marker:{
                     enabled: false
                 },
@@ -5330,6 +5330,7 @@ $(function () {
 
         var hours = 24;
         var shift = false;
+		var qShift = 100;
         if(e.keyCode == 40 && e.shiftKey){
             addNWMPlots("#dischargegraph","down")
         }
@@ -5357,6 +5358,7 @@ $(function () {
             for (var z = 0; z < length; z++){
                 if(chart.series[z].options.timeShift != true) continue;
                 if(chart.series[z].visible != true) continue;
+				if(chart.series[z].selected != true) continue;
                 series = chart.series[z];
                 series.options.dateShift = series.options.dateShift-(hours*3600*1000)
                 var xData = series.xData;
