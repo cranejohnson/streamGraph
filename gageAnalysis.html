@@ -1295,12 +1295,12 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     USGSid:usgsID,
                     originalDates:origDate,
                     tooltip: {
-                        headerFormat:'<b>{point.x:%Y-%m-%d}</b><br>',
+                        headerFormat:'<b>{point.x:%Y-%m-%d %H:%M}</b><br>',
                         pointFormatter: function (){
                             if(this.series.options.dateShift == 0){
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b>';
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> ('+numberWithCommas(this.series.options.qShift)+')';
                             }else{
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b><br>(Orig. Date: '+moment(this.series.options.originalDates[this.index]).format("YYYY-MM-DD H:mm")+')' ;
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> ('+numberWithCommas(this.series.options.qShift)+')<br>(Orig. Date: '+moment(this.series.options.originalDates[this.index]).format("YYYY-MM-DD H:mm")+')' ;
                             }
                         },
                     },
@@ -1609,6 +1609,7 @@ function addAHPS(chartDiv,type){
             pedts: AHPSjson[nwsLid].observed.datum[0].pedts,
             draggableY: true,
             dateShift:0,
+            qShift:0,
             source: 'NWS',
             NWSid: nwsLid,
             id: 'nwsStageObserved',
@@ -1623,6 +1624,7 @@ function addAHPS(chartDiv,type){
                 qual: 'Observed',
                 param: 'discharge',
                 dateShift: 0,
+                qShift:0,
                 calcVol: true,
                 id: 'nwsDischargeObserved',
                 source: 'NWS',
@@ -5328,17 +5330,32 @@ $(function () {
     }
     $(document).keydown(function(e) {
 
-        var hours = 24;
+        var hours = 0;
         var shift = false;
-		var qShift = 100;
-        if(e.keyCode == 40 && e.shiftKey){
+		var qShift = 0;
+        if(e.keyCode == 40 && e.altKey){
             addNWMPlots("#dischargegraph","down")
         }
-        if(e.keyCode == 38 && e.shiftKey){
+        if(e.keyCode == 38 && e.altKey){
             addNWMPlots("#dischargegraph","up")
 
         }
 
+        if(e.keyCode == 38 && e.shiftKey){
+            e.preventDefault();
+            qShift = 100
+            if(e.ctrlKey) qShift = 10
+            shift = true;
+        }
+
+        if(e.keyCode == 40 && e.shiftKey){
+            e.preventDefault();
+            qShift = -100
+            if(e.ctrlKey) qShift = -10
+            shift = true;
+        }
+        
+        
         if(e.keyCode == 39 && e.shiftKey){
             e.preventDefault();
             hours = 24
@@ -5360,17 +5377,20 @@ $(function () {
                 if(chart.series[z].visible != true) continue;
 				if(chart.series[z].selected != true) continue;
                 series = chart.series[z];
+                console.log(series);
                 series.options.dateShift = series.options.dateShift-(hours*3600*1000)
+                series.options.qShift = series.options.qShift+qShift
                 var xData = series.xData;
                 var yData = series.yData;
                 var shiftData = [];
                 for(i=0;i<xData.length;i++){
                     if(typeof xData[i] == 'undefined') continue;
                     date = moment(xData[i]).add(hours, 'hours');
-                    shiftData.push([date.valueOf(),yData[i]]);
+                    shiftData.push([date.valueOf(),yData[i]+qShift]);
                 }
                 series.setData(shiftData);
             }
+            console.log(series);
         }
     });
 
