@@ -100,10 +100,10 @@
                 Flood Frequency:<input type="checkbox" id="addFFlinesStation" style="padding-left:20px" checked>Station
                 <input type="checkbox" id="addFFlinesWeighted" style="padding-left:20px"  >Weighted<br>
                 Graph Functions:
-                <input type="radio" name="Qfunction" value = "base" checked>Base Flow Calc
-                <input type="radio" name="Qfunction" value = "shift">Shift Data
-                <input type="radio" name="Qfunction" value = "exportXML">Export XML<br>
-                USGS Data:  <input type="checkbox" id ="getDv" checked> Daily
+                <input type="radio" name="Qfunction" value = "base" >Base Flow Calc
+                <input type="radio" name="Qfunction" value = "shift" checked>Shift Data</br>
+                
+                USGS Data:  <input type="checkbox" id ="getDv"> Daily
                 <input type="checkbox" id="getIv" checked> Instantaneous<br>
                 Start Date:<input type="text" id="dischargeStart" length=10>
                 End Date:<input type="text" id="dischargeEnd" length=10>
@@ -111,7 +111,8 @@
                 Comparison Site:<input type="text" id="comparisonSite" length=20 size = 10>Year:<input type="text" id="comparisonYear" length=4 size=4>
                 <input type="button" id="loadComparison" value="Load Comparison Data"></br>
                 <internal>Archive NWS Forecasts:<input type="text" id="archiveForecast" length=20><input type="button" id="loadArchiveForecast" value="Load Forecasts - Blank to load most recent"></br></internal>
-
+                <input type="button" id="removeSeries" value="Remove Selected Series">
+                <input type="button" id="exportXML" value="Export Selected Series XML">
                 <input type="button" id="zoomToStage" value="Quick Zoom">
                 <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
@@ -1290,17 +1291,20 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     source: 'USGS',
                     timeShift: true,
                     id: seriesId+'_'+workingYear,
-                    zIndex:3,
+                    zIndex:9000,
                     calcVol: true,
                     USGSid:usgsID,
+                    qShift:0,
+                    dateShift:0,
                     originalDates:origDate,
+                    hourShift:0,
                     tooltip: {
                         headerFormat:'<b>{point.x:%Y-%m-%d %H:%M}</b><br>',
                         pointFormatter: function (){
                             if(this.series.options.dateShift == 0){
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> ('+numberWithCommas(this.series.options.qShift)+')';
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> (Shifted '+numberWithCommas(this.series.options.qShift)+' cfs)';
                             }else{
-                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> ('+numberWithCommas(this.series.options.qShift)+')<br>(Orig. Date: '+moment(this.series.options.originalDates[this.index]).format("YYYY-MM-DD H:mm")+')' ;
+                                return '<b>'+numberWithCommas(this.y) + ' cfs</b> (Shifted '+numberWithCommas(this.series.options.qShift)+' cfs)<br>(Orig. Date: '+moment(this.series.options.originalDates[this.index]).format("YYYY-MM-DD H:mm")+')<br>Shifted '+(this.series.options.dateShift/(-3600*1000*24)).toFixed(2)+' days' ;
                             }
                         },
                     },
@@ -1355,13 +1359,13 @@ function addUSGS(chartDiv,type,dv_iv,site){
 
     usgsUrl = "https://nwis.waterservices.usgs.gov/nwis/iv/?format=json&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     var durLabel = 'USGS Inst.';
-    var lineColor = 'royalblue';
-    var lineIndex = 2;
+    var lineColor = 'blue';
+    var lineIndex = 9000;
     if(dv_iv == 'dv'){
         durLabel = 'USGS Daily';
-        //lineColor = 'darkgreen';
+        lineColor = 'darkgreen';
         seriesId = 'USGSdv'+usgsID;
-        lineIndex = 3;
+        lineIndex = 9000;
         usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&statCd=00003&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     }
     if(style == 'dashed')lineColor = '';
@@ -1376,6 +1380,7 @@ function addUSGS(chartDiv,type,dv_iv,site){
                     name: nwsID.toUpperCase()+' '+durLabel,
                     zIndex:lineIndex,
                     dashStyle:style,
+                    lineColor:lineColor,
                     qual: 'Observed',
                     id: seriesId,
                     param: 'stage',
@@ -1608,8 +1613,6 @@ function addAHPS(chartDiv,type){
             param: 'stage',
             pedts: AHPSjson[nwsLid].observed.datum[0].pedts,
             draggableY: true,
-            dateShift:0,
-            qShift:0,
             source: 'NWS',
             NWSid: nwsLid,
             id: 'nwsStageObserved',
@@ -1623,8 +1626,6 @@ function addAHPS(chartDiv,type){
                 color: 'green',
                 qual: 'Observed',
                 param: 'discharge',
-                dateShift: 0,
-                qShift:0,
                 calcVol: true,
                 id: 'nwsDischargeObserved',
                 source: 'NWS',
@@ -3886,7 +3887,15 @@ $('#getGDLhydro').click(function(){
 
 
 
-
+$('#removeSeries').click(function(){
+    var chart = $('#dischargegraph').highcharts();
+    var length=chart.series.length
+    for (var z = 0; z < length; z++){
+		if(chart.series[z].selected == true){
+            chart.series[z].remove();
+        }
+    }
+});    
 
 
 $('#zoomToStage').click(function(){
@@ -4539,6 +4548,9 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                 point: {
                     events: {
                         click: function(e) {
+                            this.series.update({
+                                zIndex: 9500
+                            });
                             if (e.shiftKey) {
                                 this.series.update({
                                     color: $('#setColor').css('backgroundColor')
@@ -4574,26 +4586,8 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                                 }
 
                             }
-                            else if($("input[name=Qfunction]:checked").val() == 'shift'){
-                                if(first_line){
-                                    shift = this.x;
-                                    first_line = false;
-                                    shiftIndex = this.series.index;
 
-                                }
-                                else{
-                                    first_line = true;
-                                    var shiftData = [];
-                                    shift = this.x - shift;
-                                    chart.series[shiftIndex].options.dateShift = chart.series[shiftIndex].options.dateShift+shift
-                                    for(i=0;i<chart.series[shiftIndex].xData.length;i++){
-                                        if(typeof chart.series[shiftIndex].xData[i] == 'undefined') continue;
-                                        date = chart.series[shiftIndex].xData[i]+shift;
-                                        shiftData.push([date,chart.series[shiftIndex].yData[i]]);
-                                    }
-                               chart.series[shiftIndex].setData(shiftData);
-                               }
-                           }
+                            
                            else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
                                 if(first_line){
                                     shift = this.x;
