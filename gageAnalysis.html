@@ -4221,8 +4221,6 @@ function loadPage(site){
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
 
-
-
 }
 
 function setupMap(siteInfo){
@@ -5322,6 +5320,20 @@ $(function () {
     if(site != null){
         loadPage(site);
     }
+    
+    var string = getParameterByName('loadQ');
+    
+    var loadQ = string.split(',');
+    
+    jQuery.each(loadQ, function(index, item) {
+        parts = item.split('_');
+        addAnnualData('dischargegraph',parts[2],parts[1],parts[0]){
+        
+        // do something with `item` (or `this` is also `item` if you like)
+    });
+    
+    
+    
     $(document).keydown(function(e) {
 
         var hours = 0;
