@@ -102,7 +102,7 @@
                 Graph Functions:
                 <input type="radio" name="Qfunction" value = "base" >Base Flow Calc
                 <input type="radio" name="Qfunction" value = "shift" checked>Shift Data</br>
-                
+
                 USGS Data:  <input type="checkbox" id ="getDv"> Daily
                 <input type="checkbox" id="getIv" checked> Instantaneous<br>
                 Start Date:<input type="text" id="dischargeStart" length=10>
@@ -1214,10 +1214,13 @@ function addNWM2Stage(dischargeGraph,stageGraph){
 
 
 
-function addAnnualData(chartDiv,dv_iv,year,site){
+function addAnnualData(chartDiv,dv_iv,year,site,timeShift = 0, qShift = 0){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID;
     var nwsID;
+    console.log('here');
+    console.log(chartDiv+','+dv_iv+','+year+','+site+','+timeShift+','+qShift);
+    qShift = parseInt(qShift);
 
     if (year === undefined) {
         xMin = 'all';
@@ -1233,12 +1236,17 @@ function addAnnualData(chartDiv,dv_iv,year,site){
 
 
 
-    if(usgsID === undefined) return;
+    if(usgsID === undefined){
+        console.log('no site');
+        console.log(chartAdd);
+        return;
+    }
 
+    console.log(usgsID);
     var ext = chartAdd.xAxis[0].getExtremes();
     var graphYear = moment((ext.max+ext.min)/2).format("YYYY");
     var cD = '00060';
-    var seriesId = 'USGSiv'+usgsID;
+    var seriesId = nwsID+'_iv_';
     var start = '1900-01-01';
     var end = '2020-01-01';
     if(year != 'all'){
@@ -1253,11 +1261,12 @@ function addAnnualData(chartDiv,dv_iv,year,site){
     if(dv_iv == 'dv'){
         durLabel = 'Daily';
         lineColor = 'darkgreen';
-        seriesId = 'USGSdv'+usgsID;
+        seriesId = nwsID+'_dv_';
         lineIndex = 3;
         usgsUrl = "https://waterservices.usgs.gov/nwis/dv/?format=json&statCd=00003&sites="+usgsID+"&parameterCd="+cD+"&startDT="+start+"&endDT="+end;
     };
 
+    console.log(usgsUrl);
     $.ajax({
         url: usgsUrl,
         dataType: 'json',
@@ -1274,11 +1283,16 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                 var origDate = [];
                 var olddate = 0;
                 var years = graphYear - workingYear;
+                console.log(timeShift+','+qShift);
                 for(var i=0;i<allData.length;i++){
                     var date = moment.utc(allData[i][0]).year(graphYear);
                     origDate.push(allData[i][0]);
                     if(date.valueOf() > olddate){
-                        yearData.push([date.valueOf(),allData[i][1]]);
+                        //console.log(date.valueOf());
+                        //console.log(date.valueOf(),date.add(timeShift, 'hours').valueOf());
+                        //console.log(allData[i][1]+qShift);
+                        yearData.push([date.add(timeShift, 'hours').valueOf(),(allData[i][1]+qShift)]);
+                        //yearData.push([date.valueOf(),allData[i][1]]);
                         olddate = date.valueOf();
                     }
 
@@ -1294,10 +1308,9 @@ function addAnnualData(chartDiv,dv_iv,year,site){
                     zIndex:9000,
                     calcVol: true,
                     USGSid:usgsID,
-                    qShift:0,
-                    dateShift:0,
+                    qShift:qShift,
+                    dateShift:timeShift*3600*1000,
                     originalDates:origDate,
-                    hourShift:0,
                     tooltip: {
                         headerFormat:'<b>{point.x:%Y-%m-%d %H:%M}</b><br>',
                         pointFormatter: function (){
@@ -1311,6 +1324,7 @@ function addAnnualData(chartDiv,dv_iv,year,site){
 
                 };
                 chartAdd.addSeries(newSeries);
+                console.log('added series'+newSeries.id)
                 }
             }
 
@@ -1568,7 +1582,6 @@ function addAHPS(chartDiv,type){
             });
 
             if(dischargeArray.length>0){
-                console.log('working on discharge forecast');
                 newSeries.push({
                     data : dischargeArray,
                     name : 'NWS Forecast( Issued: '+issued+' )',
@@ -3895,7 +3908,7 @@ $('#removeSeries').click(function(){
             chart.series[z].remove();
         }
     }
-});    
+});
 
 
 $('#zoomToStage').click(function(){
@@ -4202,9 +4215,7 @@ function loadPage(site){
 
     //Setup Stage and Discharge Graphs with AHPS data
     if(siteId.nws != ''){
-        console.log('add discharge');
         addAHPS('dischargegraph','discharge');
-        console.log('add stage');
         addAHPS('stagegraph','stage');
         if($('#showFloodStages').is(':checked')){
             addNWSBands('stagegraph',AHPSjson,true,'band',true);
@@ -4220,6 +4231,18 @@ function loadPage(site){
     });
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
+    var string = getParameterByName('loadQ');
+    if(string){
+        var loadQ = string.split(',');
+        console.log(loadQ);
+        jQuery.each(loadQ, function(index, item) {
+            parts = item.split('_');
+            console.log(parts);
+            //chartDiv,dv_iv,year,site,timeshift,q_shift
+            var site = getBothIds(parts[0]);
+            addAnnualData('dischargegraph',parts[1],parts[2],site,parts[3],parts[4])
+        });
+    }
 
 }
 
@@ -4438,7 +4461,7 @@ function setupGraphAnnualPeaks(usgs){
                     verticalAlign: 'bottom'
                 }
             }
-        },       
+        },
         tooltip: {
             positioner: function () {
                     return { x: 0, y: 0 };
@@ -4585,7 +4608,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
 
                             }
 
-                            
+
                            else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
                                 if(first_line){
                                     shift = this.x;
@@ -4766,7 +4789,7 @@ function setupGraphRating(container,usgs,nws){
                     x: 0,
                     y: 430
                 }
-            },         
+            },
         },
         title: {
             text: 'Stage vs. Discharge'
@@ -5320,20 +5343,10 @@ $(function () {
     if(site != null){
         loadPage(site);
     }
-    
-    var string = getParameterByName('loadQ');
-    
-    var loadQ = string.split(',');
-    
-    jQuery.each(loadQ, function(index, item) {
-        parts = item.split('_');
-        addAnnualData('dischargegraph',parts[2],parts[1],parts[0]){
-        
-        // do something with `item` (or `this` is also `item` if you like)
-    });
-    
-    
-    
+
+
+
+
     $(document).keydown(function(e) {
 
         var hours = 0;
@@ -5360,8 +5373,8 @@ $(function () {
             if(e.ctrlKey) qShift = -10
             shift = true;
         }
-        
-        
+
+
         if(e.keyCode == 39 && e.shiftKey){
             e.preventDefault();
             hours = 24
