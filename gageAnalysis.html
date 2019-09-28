@@ -2282,15 +2282,24 @@ function addStats(chartDiv){
         var statsSeries = [
             {
                 name: 'Daily Statistics',
+                color: 'white',
+                showInLegend:true,
+                id: 'dailyStats',
+                data: [],
+            },
+            {
+                name: 'P 90% - 100%',
                 data: [],
                 visible : true,
-                id: 'dailyStats',
                 type: 'arearange',
                 lineWidth: 0,
                 color: '#0000FF',
                 calcVol: false,
                 zIndex: 0,
-//                showInLegend:true,
+                legend: {
+                    symbolHeight: 0
+                }, 
+                
                 linkedTo: ':previous',
                 fillOpacity: 0.2,
                 point:{
@@ -2426,8 +2435,8 @@ function addStats(chartDiv){
              },
             {
                 data:[]
-             }
-             ];
+            }
+            ];
 
 
 
@@ -2508,7 +2517,7 @@ function addStats(chartDiv){
                     maxYear:dat['maxYear'],
                     count:dat['count']};
 
-                statsSeries[0].data.push(mData);
+                statsSeries[1].data.push(mData);
             }
           //Push max and min data into series
             var dat = annualSeries[1].data[doy];
@@ -2522,7 +2531,7 @@ function addStats(chartDiv){
                     minYear:dat['minYear'],
                     count:dat['count']};
 
-                statsSeries[1].data.push(mData);
+                statsSeries[2].data.push(mData);
             }
 
             for(var j=2;j<=5;j++){
@@ -2530,22 +2539,16 @@ function addStats(chartDiv){
                 if(typeof dat !== 'undefined'){
 
                     if(dat.length ==2){
-                        statsSeries[j].data.push([parseInt(sdate.format("x")),dat[0],dat[1]]);
+                        statsSeries[j+1].data.push([parseInt(sdate.format("x")),dat[0],dat[1]]);
                      }else{
-                        statsSeries[j].data.push([parseInt(sdate.format("x")),dat[0]]);
+                        statsSeries[j+1].data.push([parseInt(sdate.format("x")),dat[0]]);
                      }
                 }
             }
         sdate.add(1, 'days');
         }
 
-       dummyStats = {
-                name: 'Daily Statistics',
-                color: 'white',
-                showInLegend:true,
-                data: [],
-            }
-       statsSeries.unshift(dummyStats);
+
        $.each(statsSeries,function(){
             this.marker = { enabled:false};
             if(1){
@@ -3914,6 +3917,7 @@ $('#removeSeries').click(function(){
 
 $('#zoomToStage').click(function(){
     var dischargeChart = $('#dischargegraph').highcharts();
+    if(dischargeChart.get('dailyStatsLegend')) dischargeChart.get('dailyStatsLegend').hide();
     if(dischargeChart.get('dailyStats')) dischargeChart.get('dailyStats').hide();
     if(dischargeChart.get('annualPeakYear')) dischargeChart.get('annualPeakYear').hide();
     dischargeChart.xAxis[0].setExtremes(new Date().getTime()-3600000*24*7, new Date().getTime()+3600000*24*4,true,false);
