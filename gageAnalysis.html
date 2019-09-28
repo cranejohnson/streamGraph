@@ -1664,7 +1664,7 @@ function addQNotes(chartDiv){
     var yLoc = 280;
     if(chart.yAxis[0].isLog){
         xLoc = 85;
-        yLoc = 210;
+        yLoc = 250;
     }
 
     var htmlText = '<span style="color:red">Most Recent Measurement</span><br><span style="color:orange">Measurements in the Last Year</span><br><span style="color:rgba(0,0,205,0.8)">Newer -</span><span style="color:rgba(0,0,205,0.3)"> Older Measurements</span>';
@@ -1689,7 +1689,8 @@ function addQNotes(chartDiv){
             fontSize: '13px'
         }).add();
     box = text.getBBox();
-    chart.renderer.rect(box.x - 5, box.y - 5, box.width + 10, box.height + 10, 5)
+    console.log(box);
+    chart.renderer.rect(xLoc - 5, yLoc - 15, box.width + 10, box.height + 10, 5)
         .attr({
             fill: 'white',
             stroke: 'gray',
