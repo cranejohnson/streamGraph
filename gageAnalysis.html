@@ -148,7 +148,9 @@
             </td>
         </tr>
         <tr>
-            <td></td>
+            <td>
+                <div id="graphstability" style="width: 800px; height: 550px; margin: 0 auto"></div> 
+            </td>
             <td>
                 <input type="checkbox" id="volumeLog" style="padding-left:20px" checked >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                 Highlight a Year: <select id="volumeYearHighlight"><option></option></select> Color: <button id="setColorAnnual" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>&nbsp;&nbsp;&nbsp;&nbsp;<input type="button" id="annualChartInches" value="Plot in Inches of Water"> Basin area: <input type="text" id="watershedArea" length=8 size = 8 style="text-align:right;"/></input> square miles
@@ -4143,6 +4145,7 @@ function loadPage(site){
 
     //Set up empty graphs
     setupGraphRating('ratinggraph',siteId.usgs,siteId.nws);
+    setupGraphStability('stabilitygraph',siteId.usgs,siteId.nws);
     setupGraphStage('stagegraph',new Date().getTime()-3600000*24*7,new Date().getTime()+3600000*24*4,siteId.usgs,siteId.nws);
     setupGraphDischarge('dischargegraph',Date.parse($('#dischargeStart').val()),Date.parse($('#dischargeEnd').val()),siteId.usgs,siteId.nws);
     setupGraphHeatQ();
@@ -5158,6 +5161,73 @@ function setupAnnualVolumeGraph(seriesData,usgs){
     volchart = new Highcharts.Chart(volchartobj);
 }
 
+function setupGraphStability(container,usgs,nws){
+
+    stabilityChartObj= {
+        chart: {
+            renderTo: 'graphstability',
+            type: 'line',
+            zoomType: 'xy',
+            marginRight: 20,
+            marginTop:40,
+            marginBottom:100,
+            marginLeft:80
+
+        },
+        usgsID: usgs,
+        credits: {
+            enabled: false
+        },
+        plotOptions:{
+            series:{
+                stickyTracking : false,
+                turboThreshold: 0,
+                marker:{
+                    enabled: false
+                },
+            }
+        },
+        title: {
+            text: 'Channel Stability'
+        },
+
+       xAxis: {
+            labels: {
+                align: 'left',
+                x: 5,
+                y: 14,
+                formatter: function (){
+                    return moment(this.value).format("YYYY");
+                 }
+            },
+            showLastLabel: true,
+            tickLength: 10
+        },
+
+        yAxis: {
+            title: {
+                text: 'Stage Residual (ft)'
+            },
+            minPadding: 0,
+            maxPadding: 0,
+        },
+
+        tooltip: {
+            headerFormat: 'Cumulative Volume<br>',
+            positioner: function () {
+                    return { x: 100, y: 30 };
+             },
+            formatter: function (){
+                return this.series.name+'<br><b>' + moment("2017 1 1", "YYYY MM DD").add(this.point.x-92,"days").format("MMM Do") + ' - '+numberWithCommas(this.point.y) + '  million cuft</b>';
+            },
+
+        },
+        series : [{data:[null,null],
+                    visible:false,
+                    showInLegend:false}]
+    }
+    stabilityChart = new Highcharts.Chart(stabilityChartObj);
+}
 
 
 
