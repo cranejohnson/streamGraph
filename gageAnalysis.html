@@ -143,8 +143,7 @@
                 <div id='shefText'></div>
             </td>
             <td>
-                <input type="checkbox" id="showClear" checked>Show Only Clear Control<br>
-                <div id="graphstability" style="width: 800px; height: 550px; margin: 0 auto"></div> 
+                <div id="graphstability" style="width: 800px; height: 550px; margin: 0 auto"></div>
             </td>
         </tr>
         <tr>
@@ -1163,38 +1162,64 @@ function plotRatingStability(ratingGraph,stabilityGraph,type){
     var stabcht = $('#'+stabilityGraph).highcharts();
     var rating = ratingcht.get('curve');
     var data = ratingcht.get('qMeasured').data;
- 
-    var series = {
+
+
+    var series = [{
            data: [],
            tooltip: {
                 headerFormat: 'USGS Measured Discharge<br>',
-                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}'
+                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Residual:{point.y:.2f} ft<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}<br>Party: {point.party_nm}'
             },
-            name: 'USGS Measured',
+            name: 'Clear or No Control',
             type: 'scatter',
             id:'qMeasured',
-            color: 'black',
+            color: 'darkblue',
+            visible: true,
             marker : {
                 enabled : true,
                 symbol : 'diamond'
             },
             lineWidth : 0,
- 
-        }
- 
+        },
+        {
+           data: [],
+           tooltip: {
+                headerFormat: 'USGS Measured Discharge<br>',
+                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Residual:{point.y:.2f} ft<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}<br>Party: {point.party_nm}'
+            },
+            name: 'Other Measurements',
+            type: 'scatter',
+            id:'qMeasured',
+            color: 'lightblue',
+            visible: false,
+            marker : {
+                enabled : true,
+                symbol : 'diamond'
+            },
+            lineWidth : 0,
+        }]
+
+
+    var clearData = [];
+    var otherData = [];
+    var minDate = data[0].date;
+    var maxDate = data[0].date;
+    var minY = -2;
+    var maxY = 2;
+
+
      $.each(data, function(index, item){
         var stage = 0;
-        if(item.control_type_cd != null){
-            if(item.control_type_cd.toUpperCase().indexOf("CLEAR") >= 0) return true;
-        }    
         stage = curveLookup(ratingcht.get('curve').data,parseInt(item.x),'discharge');
-        qColor = 'gray';
-        if(item.measured_rating_diff.toUpperCase() == 'EXCELLENT') qColor = 'Green';
-        if(item.measured_rating_diff.toUpperCase() == 'GOOD') qColor = '#2ED017';
-        if(item.measured_rating_diff.toUpperCase() == 'FAIR') qColor = '#E7F317';
-        if(item.measured_rating_diff.toUpperCase() == 'POOR') qColor = '#FFA200';
+
+        if(item.date > maxDate) maxDate = item.date;
+        if(item.date < minDate) minDate = item.date;
+
 
         var residual = item.y - stage;
+        if(residual > maxY) maxY = residual;
+        if(residual < minY) minY = residual;
+
         point = {x:item.date,
                  y:residual,
                  date:item.date,
@@ -1207,15 +1232,29 @@ function plotRatingStability(ratingGraph,stabilityGraph,type){
                  measured_rating_diff: item.measured_rating_diff,
                  party_nm: item.party_nm,
                  control_type_cd: item.control_type_cd,
-                 marker:{
-                    fillColor: qColor
-                    }
                  }
 
-        series.data.push(point);
-    }); 
-    stabcht.addSeries(series);
-}    
+       if(item.control_type_cd != null){
+            if(item.control_type_cd.toUpperCase().indexOf("CLEAR") >= 0){
+                clearData.push(point);
+            }
+            else{
+               otherData.push(point);
+            }
+        }
+        else{
+            clearData.push(point);
+        }
+    });
+    series[0].data = clearData;
+    series[1].data = otherData;
+
+    stabcht.addSeries(series[0]);
+    stabcht.addSeries(series[1]);
+    stabcht.xAxis[0].setExtremes(minDate,maxDate);
+    stabcht.yAxis[0].setExtremes(minY,maxY);
+
+}
 
 
 function addNWM2Stage(dischargeGraph,stageGraph){
@@ -2360,8 +2399,8 @@ function addStats(chartDiv){
                 zIndex: 0,
                 legend: {
                     symbolHeight: 0
-                }, 
-                
+                },
+
                 linkedTo: ':previous',
                 fillOpacity: 0.2,
                 point:{
@@ -3730,38 +3769,6 @@ $('#showFloodStages').change(function() {
     }
 });
 
-$('#showClear').on('change', function(){
-    var chart = $('#graphstability').highcharts();
-    var series = chart.get('qMeasured');
-
-    if($('#showFloodStages').is(':checked')){
-        $.each(series.data, function(i, point) {
-            console.log(point.control_type_cd);
-            if(typeof(point.graphic) == 'undefined') return true;
-            if(point.control_type_cd == null) return true;
-            if(point.graphic == null) return true;
-            if(point.control_type_cd.toUpperCase().indexOf("CLEAR") >= 0){
-                point.graphic.attr({
-                    opacity: 0
-                });
-            }    
-        });
-    }
-    else{
-        $.each(series.data, function(i, point) {
-            console.log(point);
-            if(typeof(point.graphic) == 'undefined') return true;
-            if(point.graphic == null) return true;
-            point.graphic.attr({
-                opacity: 1
-            });
-        });
-    }
-});    
-    
-    
-    
-    
 
 $(":input[name= 'markerHighlights']").on('change', function(){
     var mType = $("input[name='markerHighlights']:checked").val();
@@ -5280,8 +5287,13 @@ function setupGraphStability(container,usgs,nws){
             }
         },
         title: {
-            text: 'Channel Stability'
+            text: 'Measurement Stage - Current Rating Stage'
         },
+        tooltip: {
+            positioner: function () {
+                    return { x: 100, y: 30 };
+             }
+       },
 
        xAxis: {
             labels: {
@@ -5309,7 +5321,7 @@ function setupGraphStability(container,usgs,nws){
                 width: 2,
                 }]
         },
- 
+
         series : [{data:[null,null],
                     visible:false,
                     showInLegend:false}]
