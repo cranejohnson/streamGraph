@@ -142,14 +142,15 @@
                 <button class="btn" data-clipboard-target="#shefText">Copy shef to Clipboard</button>
                 <div id='shefText'></div>
             </td>
-            <td style="vertical-align: top;">
-                <div id="heatMapQ" style="width: 600px; height: 550px; margin: 0 auto;"></div>
-                <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
+            <td>
+                <input type="checkbox" id="showClear" checked>Show Only Clear Control<br>
+                <div id="graphstability" style="width: 800px; height: 550px; margin: 0 auto"></div> 
             </td>
         </tr>
         <tr>
-            <td>
-                <div id="graphstability" style="width: 800px; height: 550px; margin: 0 auto"></div> 
+            <td style="vertical-align: top;">
+                <div id="heatMapQ" style="width: 600px; height: 550px; margin: 0 auto;"></div>
+                <div id="annualMapQ" style="width: 75px; height: 550px; margin: 0 auto;"></div>
             </td>
             <td>
                 <input type="checkbox" id="volumeLog" style="padding-left:20px" checked >Log Scale&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
@@ -1156,6 +1157,67 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
 
 }
 
+function plotRatingStability(ratingGraph,stabilityGraph,type){
+
+    var ratingcht = $('#'+ratingGraph).highcharts();
+    var stabcht = $('#'+stabilityGraph).highcharts();
+    var rating = ratingcht.get('curve');
+    var data = ratingcht.get('qMeasured').data;
+ 
+    var series = {
+           data: [],
+           tooltip: {
+                headerFormat: 'USGS Measured Discharge<br>',
+                pointFormat: '{point.name} <br>Gage Height:{point.gage_height_va} ft<br>Discharge:{point.discharge_va} cfs<br>Quality:{point.measured_rating_diff}<br>Control: {point.control_type_cd}'
+            },
+            name: 'USGS Measured',
+            type: 'scatter',
+            id:'qMeasured',
+            color: 'black',
+            marker : {
+                enabled : true,
+                symbol : 'diamond'
+            },
+            lineWidth : 0,
+ 
+        }
+ 
+     $.each(data, function(index, item){
+        var stage = 0;
+        if(item.control_type_cd != null){
+            if(item.control_type_cd.toUpperCase().indexOf("CLEAR") >= 0) return true;
+        }    
+        stage = curveLookup(ratingcht.get('curve').data,parseInt(item.x),'discharge');
+        qColor = 'gray';
+        if(item.measured_rating_diff.toUpperCase() == 'EXCELLENT') qColor = 'Green';
+        if(item.measured_rating_diff.toUpperCase() == 'GOOD') qColor = '#2ED017';
+        if(item.measured_rating_diff.toUpperCase() == 'FAIR') qColor = '#E7F317';
+        if(item.measured_rating_diff.toUpperCase() == 'POOR') qColor = '#FFA200';
+
+        var residual = item.y - stage;
+        point = {x:item.date,
+                 y:residual,
+                 date:item.date,
+                 flow:item.x,
+                 discharge_va:item.x,
+                 gage_height_va:item.y,
+                 age:item.age,
+                 stage:item.y,
+                 name: item.name,
+                 measured_rating_diff: item.measured_rating_diff,
+                 party_nm: item.party_nm,
+                 control_type_cd: item.control_type_cd,
+                 marker:{
+                    fillColor: qColor
+                    }
+                 }
+
+        series.data.push(point);
+    }); 
+    stabcht.addSeries(series);
+}    
+
+
 function addNWM2Stage(dischargeGraph,stageGraph){
     var NWMseries = ['NWMshort','NWMmedium','NWMlong'];
     var stagePlt = $(stageGraph).highcharts();
@@ -1751,10 +1813,6 @@ function addMeasureQ_Rating(chartDiv,usgsID,type,marker){
                         rangeDrag: true, // Enable range dragging.
                         step: 1,
                         values: [parseInt(minYear),parseInt(maxYear)],
-//                        slide: function( event, ui ) {
-//                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
-//                             showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
-//                         },
                         stop: function( event, ui ) {
                             $( "#years2show" ).val(ui.values[0]+ " - " +ui.values[1]);
                             showQmeas($("#qmeas-range").dragslider("values",0),$("#qmeas-range").dragslider("values",1),ui.values[0],ui.values[1]);
@@ -1944,7 +2002,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat:'<b>Peak Annual Flow<br>{point.x:%b %e %Y}</b><br>',
                         pointFormatter: function (){
-                            return '<b>' +numberWithCommas(this.y) + ' cfs</b>';
+                            return '<b>' +numberWithCommas(this.y) + ' cfs</b><br>'+this.stage+' ft</b>';
                         },
                     },
                     states: {
@@ -1985,7 +2043,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat: 'Peak Annual Flow<br>',
                         pointFormatter: function (){
-                            return '<b>' +this.date+': '+numberWithCommas(this.y) + ' cfs</b>';
+                            return '<b>' +this.date+': '+numberWithCommas(this.y) + ' cfs<br><b>Peak Stage:'+this.stage+' ft</b>';
                         },
                     },
                     states: {
@@ -2029,7 +2087,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat: 'Peak Annual Timing<br>',
                         pointFormatter: function (){
-                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.flow) + ' cfs</b>';
+                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.flow) + ' cfs<br>'+this.stage+' ft</b>';
                         },
                     },
                     states: {
@@ -2080,14 +2138,16 @@ function addAnnualPeaks(chartDiv,usgsID){
                          y:this[4],
                          date:this[2],
                          flow:this[4],
-                         year:newD[0]
+                         year:newD[0],
+                         stage:this[6]
                          }
                 point2 = {x:parseInt(moment(str).format('x')),
                           y:parseInt(moment(str).format('DDD')),
                           monthDay: moment(str).format('MMM D'),
                           year: moment(str).format('YYYY'),
                           date:this[2],
-                          flow:this[4]
+                          flow:this[4],
+                          stage:this[6]
                           }
                 peakSeries[1].data.push(point);
                 peakSeries[2].data.push(point2);
@@ -3670,7 +3730,38 @@ $('#showFloodStages').change(function() {
     }
 });
 
+$('#showClear').on('change', function(){
+    var chart = $('#graphstability').highcharts();
+    var series = chart.get('qMeasured');
 
+    if($('#showFloodStages').is(':checked')){
+        $.each(series.data, function(i, point) {
+            console.log(point.control_type_cd);
+            if(typeof(point.graphic) == 'undefined') return true;
+            if(point.control_type_cd == null) return true;
+            if(point.graphic == null) return true;
+            if(point.control_type_cd.toUpperCase().indexOf("CLEAR") >= 0){
+                point.graphic.attr({
+                    opacity: 0
+                });
+            }    
+        });
+    }
+    else{
+        $.each(series.data, function(i, point) {
+            console.log(point);
+            if(typeof(point.graphic) == 'undefined') return true;
+            if(point.graphic == null) return true;
+            point.graphic.attr({
+                opacity: 1
+            });
+        });
+    }
+});    
+    
+    
+    
+    
 
 $(":input[name= 'markerHighlights']").on('change', function(){
     var mType = $("input[name='markerHighlights']:checked").val();
@@ -4236,6 +4327,7 @@ function loadPage(site){
     $(document).ajaxStop(function () {
         addNWM2Stage('#dischargegraph','#stagegraph');
         addFloodStageRating('ratinggraph',AHPSjson);
+        plotRatingStability('ratinggraph','graphstability');
     });
 
     if(siteId.usgs != '') plotHeatQ(siteId.usgs);
@@ -5206,22 +5298,18 @@ function setupGraphStability(container,usgs,nws){
 
         yAxis: {
             title: {
-                text: 'Stage Residual (ft)'
+                text: 'Q Measurement Stage Residual From Current Rating (ft)'
             },
             minPadding: 0,
             maxPadding: 0,
+            plotLines: [{
+                value: 0,
+                color: 'red',
+                dashStyle: 'shortdash',
+                width: 2,
+                }]
         },
-
-        tooltip: {
-            headerFormat: 'Cumulative Volume<br>',
-            positioner: function () {
-                    return { x: 100, y: 30 };
-             },
-            formatter: function (){
-                return this.series.name+'<br><b>' + moment("2017 1 1", "YYYY MM DD").add(this.point.x-92,"days").format("MMM Do") + ' - '+numberWithCommas(this.point.y) + '  million cuft</b>';
-            },
-
-        },
+ 
         series : [{data:[null,null],
                     visible:false,
                     showInLegend:false}]
