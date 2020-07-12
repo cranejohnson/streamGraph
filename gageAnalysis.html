@@ -112,7 +112,7 @@
                 <input type="button" id="loadComparison" value="Load Comparison Data"></br>
                 <internal>Archive NWS Forecasts:<input type="text" id="archiveForecast" length=20><input type="button" id="loadArchiveForecast" value="Load Forecasts - Blank to load most recent"></br></internal>
                 <input type="button" id="removeSeries" value="Remove Selected Series">
-                <input type="button" id="exportXML" value="Export Selected Series XML">
+                <input type="button" id="exportXML" value="Export Selected Series XML" onclick="exportXML('dischargegraph')">
                 <input type="button" id="zoomToStage" value="Quick Zoom">
                 <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
@@ -705,7 +705,20 @@ function handleBaseFlow(chart,series,xMin,xMax){
 //  Export series as XML data
 /////////////////////////////////////
 
-function exportXML(flowData,xMin,xMax){
+function exportXML(chartDiv){
+
+    var chart = $('#'+chartDiv).highcharts();
+    var length=chart.series.length
+    var extremes = chart.xAxis[0].getExtremes();
+    console.log(extremes);
+    for (var z = 0; z < length; z++){
+		if(chart.series[z].selected == true){
+            data = chart.series[z].data;
+            console.log(chart.series[z]);
+
+        }
+    }
+    
 
 }
 
@@ -1162,7 +1175,11 @@ function plotRatingStability(ratingGraph,stabilityGraph,type){
     var stabcht = $('#'+stabilityGraph).highcharts();
     var rating = ratingcht.get('curve');
     var data = ratingcht.get('qMeasured').data;
-
+    if (stabcht.options.stabilityPlotted == true) {
+        return;
+    }
+    
+    stabcht.options.stabilityPlotted = true;
 
     var series = [{
            data: [],
@@ -1321,7 +1338,7 @@ function addAnnualData(chartDiv,dv_iv,year,site,timeShift = 0, qShift = 0){
     var chartAdd = $('#'+chartDiv).highcharts();
     var usgsID;
     var nwsID;
-    console.log('here');
+
     console.log(chartDiv+','+dv_iv+','+year+','+site+','+timeShift+','+qShift);
     qShift = parseInt(qShift);
 
@@ -1391,11 +1408,7 @@ function addAnnualData(chartDiv,dv_iv,year,site,timeShift = 0, qShift = 0){
                     var date = moment.utc(allData[i][0]).year(graphYear);
                     origDate.push(allData[i][0]);
                     if(date.valueOf() > olddate){
-                        //console.log(date.valueOf());
-                        //console.log(date.valueOf(),date.add(timeShift, 'hours').valueOf());
-                        //console.log(allData[i][1]+qShift);
                         yearData.push([date.add(timeShift, 'hours').valueOf(),(allData[i][1]+qShift)]);
-                        //yearData.push([date.valueOf(),allData[i][1]]);
                         olddate = date.valueOf();
                     }
 
@@ -3268,6 +3281,17 @@ function getPeriodAverage(dailyFunc,usgsObj,TSvalue,begin,end){
 function addFloodStageRating(graphId,AHPSjson){
     var chart = $('#'+graphId).highcharts();
     var nwsLid = chart.options.nwsLid;
+    console.log(chart.options.floodStagesPlotted);
+    if (chart.options.floodStagesPlotted == true) {
+       console.log('flood stages plotted');
+       return;
+    }   
+    chart.options.floodStagesPlotted = true;
+
+    console.log('look here');
+    console.log(chart.options.floodStagesPlotted);
+    console.log(chart);    
+            
     if(typeof AHPSjson[nwsLid] == 'undefined') return;
     if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
 
@@ -3991,7 +4015,7 @@ $('#addFFlinesWeighted').change(function() {
 
 
 
-
+  
 
 $('#getGDLhydro').click(function(){
 
@@ -4716,21 +4740,21 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                             }
 
 
-                           else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
-                                if(first_line){
-                                    shift = this.x;
-                                    first_line = false;
-                                    shiftIndex = this.series.index;
-
-                                }
-                                else{
-                                    first_line = true;
-                                    chart.xAxis[0].removePlotLine('vert_1');
-                                    xMax = this.x;
-                                    series = this.series;
-                                    exportXML(series,xMin,xMax);
-                               }
-                           }
+//                            else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
+//                                if(first_line){
+//                                    shift = this.x;
+//                                    first_line = false;
+//                                    shiftIndex = this.series.index;
+//
+//                                }
+//                                else{
+//                                    first_line = true;
+//                                    chart.xAxis[0].removePlotLine('vert_1');
+//                                    xMax = this.x;
+//                                    series = this.series;
+//                                    exportXML(series,xMin,xMax);
+//                               }
+//                           } -->
                         },
                         mouseOver: function() {
                             var rCurve;
@@ -4877,12 +4901,13 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
 function setupGraphRating(container,usgs,nws){
     ////////////////////////////////////Rating Graph////////////////////////////////
     ratingchartobj= {
-      credits: {
+        credits: {
           enabled: false
         },
         usgsID: usgs,
         nwsLid:nws,
         QMeasDisplay : 'age',
+        floodStagesPlotted: false,
 
         chart: {
             renderTo: container,
@@ -5274,6 +5299,8 @@ function setupGraphStability(container,usgs,nws){
 
         },
         usgsID: usgs,
+        stabilityPlotted: false,
+        
         credits: {
             enabled: false
         },
