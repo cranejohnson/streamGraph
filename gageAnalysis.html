@@ -116,7 +116,7 @@
                 <input type="button" id="exportXML" value="Export Selected Series XML" onclick="exportXML('dischargegraph')">
                 <input type="button" id="zoomToStage" value="Quick Zoom">
                 <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"><br/>Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
-                <button class="btn" id="xmlCopyButton" data-clipboard-target="#xmlExportArea" style="display: none">Copy XML to Clipboard</button></br>
+                <button class="btn" id="xmlCopyButton" data-clipboard-target="#xmlExportArea" style="display: none;background-color:#4CAF50;border:none;color:white" >Copy XML to Clipboard</button></br>
                 <textarea id="xmlExportArea" rows="10" cols="100" style="display: none"></textarea>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
@@ -716,10 +716,10 @@ function exportXML(chartDiv){
 
     var chart = $('#'+chartDiv).highcharts();
     var eventNode = doc.createElement("historicalEvent");
-    eventNode.setAttribute("Name","***Edit Name***");
     console.log(chart.options.nwsLid);
-    eventNode.setAttribute("locationId",chart.options.nwsLid);
-    eventNode.setAttribute("parameterId",'Qin');
+    eventNode.setAttribute("locationId",chart.options.nwsLid.toUpperCase());
+    eventNode.setAttribute("parameterId",'QIN');
+    eventNode.setAttribute("name","***Edit Name***");
     var length=chart.series.length
     var extremes = chart.xAxis[0].getExtremes();
     console.log(extremes);
@@ -734,7 +734,9 @@ function exportXML(chartDiv){
                 var y = chart.series[z].points[q].y;
                 if ((x > extremes.min) && (x < extremes.max)){
                     var data = doc.createElement("data");
-                    data.setAttribute("dateTime", x);
+                    var xDate = moment(x);
+                    xDate.utc();
+                    data.setAttribute("dateTime", xDate.format("YYYY-MM-DDTHH:mm:ss"));
                     data.setAttribute("value", y);
                     dataNode.appendChild(data);
                     exportSeries.push([x,y]);
