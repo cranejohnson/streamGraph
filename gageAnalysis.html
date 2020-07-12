@@ -25,6 +25,8 @@
     <script src="https://cdn.jsdelivr.net/jstat/latest/jstat.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.0.4/jscolor.js"></script>
     <script src="https://www.weather.gov/source/aprfc/js/spearson.js"></script>
+    <script src="http://www.eslinstructor.net/vkbeautify/vkbeautify.js"></script>
+
 
 
     <script>
@@ -32,7 +34,6 @@
         (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
         m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
         })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-        //console.log(window.location.hostname);
         if(window.location.hostname == 'www.weather.gov'){
 
             ga('create', 'UA-83585603-1', 'auto');
@@ -114,7 +115,9 @@
                 <input type="button" id="removeSeries" value="Remove Selected Series">
                 <input type="button" id="exportXML" value="Export Selected Series XML" onclick="exportXML('dischargegraph')">
                 <input type="button" id="zoomToStage" value="Quick Zoom">
-                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"> Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
+                <input type="button" id="getGDLhydro" value="Plot Peak Flow Hydrograph"><br/>Shift+Click Line to set color to: <button id="setColor" class="jscolor {valueElement:null,value:'0000FF'}" style="width:30px; height:10px;"></button>
+                <button class="btn" id="xmlCopyButton" data-clipboard-target="#xmlExportArea" style="display: none">Copy XML to Clipboard</button></br>
+                <textarea id="xmlExportArea" rows="10" cols="100" style="display: none"></textarea>
                 <div id="dischargegraph" style="width: 800px; height: 500px; padding-left:20px"></div>
             </td>
             <td>
@@ -277,7 +280,7 @@ map.addControl(mousePosition);
 
 var AHPSjson = {};    //GLOBAL AHPS JSON DATA BY SITE  AHPSjson[nwslid];
 var USGSjson = {};    //GLOBAL USGS JSON DATA BY SITE
-new Clipboard('.btn');
+var clipboard = new Clipboard('.btn');
 var CROSSWALKTABLE;
 var AJAXLOOKUPTABLE = [
                 {
@@ -705,20 +708,51 @@ function handleBaseFlow(chart,series,xMin,xMax){
 //  Export series as XML data
 /////////////////////////////////////
 
+
+
 function exportXML(chartDiv){
+    var doc = document.implementation.createDocument(null, "PiXMLData", null);
+
 
     var chart = $('#'+chartDiv).highcharts();
+    var eventNode = doc.createElement("historicalEvent");
+    eventNode.setAttribute("Name","***Edit Name***");
+    console.log(chart.options.nwsLid);
+    eventNode.setAttribute("locationId",chart.options.nwsLid);
+    eventNode.setAttribute("parameterId",'Qin');
     var length=chart.series.length
     var extremes = chart.xAxis[0].getExtremes();
     console.log(extremes);
+    var exportSeries = [];
+    var dataNode =  doc.createElement("eventData");
     for (var z = 0; z < length; z++){
-		if(chart.series[z].selected == true){
+        if(chart.series[z].selected == true){
             data = chart.series[z].data;
             console.log(chart.series[z]);
+            for(var q = 0; q <chart.series[z].points.length; q++){
+                var x = chart.series[z].points[q].x;
+                var y = chart.series[z].points[q].y;
+                if ((x > extremes.min) && (x < extremes.max)){
+                    var data = doc.createElement("data");
+                    data.setAttribute("dateTime", x);
+                    data.setAttribute("value", y);
+                    dataNode.appendChild(data);
+                    exportSeries.push([x,y]);
+                }
+            }
+
 
         }
     }
-    
+
+    doc.documentElement.appendChild(eventNode);
+    eventNode.appendChild(dataNode);
+    var serializer = new XMLSerializer();
+    var xmlString = serializer.serializeToString(doc.getElementsByTagName("historicalEvent")[0]);
+    xmlString = vkbeautify.xml(xmlString);
+    $('#xmlExportArea').val(xmlString);
+    $('#xmlExportArea').show();
+    $('#xmlCopyButton').show();
 
 }
 
@@ -780,7 +814,6 @@ function addXmlAhpsForecasts(chartDiv,forecastDate){
                         newSeries.color = colors[num % 5]
                         if(newSeries.data.length > 0){
                             chart.addSeries(newSeries);
-                            //console.log(newSeries);
                             data = [];
                             num = num + 1;
                        }
@@ -935,7 +968,6 @@ function getPeakHydroGraph(chart,curve,baseflow,interval){
             peakTime = workingTime.clone();
             peakTime.add(-(period/2),'hours');
         }
-        //console.log(y,oldsma,newsma,peakTime.format());
         var val = parseInt(y);
         if(val < 0) val =0;
         newData.push([parseInt(workingTime.format('x')),parseInt(y)]);
@@ -1178,7 +1210,7 @@ function plotRatingStability(ratingGraph,stabilityGraph,type){
     if (stabcht.options.stabilityPlotted == true) {
         return;
     }
-    
+
     stabcht.options.stabilityPlotted = true;
 
     var series = [{
@@ -3283,15 +3315,11 @@ function addFloodStageRating(graphId,AHPSjson){
     var nwsLid = chart.options.nwsLid;
     console.log(chart.options.floodStagesPlotted);
     if (chart.options.floodStagesPlotted == true) {
-       console.log('flood stages plotted');
        return;
-    }   
+    }
     chart.options.floodStagesPlotted = true;
 
-    console.log('look here');
-    console.log(chart.options.floodStagesPlotted);
-    console.log(chart);    
-            
+
     if(typeof AHPSjson[nwsLid] == 'undefined') return;
     if(typeof AHPSjson[nwsLid].sigstages == 'undefined') return;
 
@@ -3965,7 +3993,10 @@ $('#nwmDown').click(function() {
 
 });
 
-
+clipboard.on('success', function(e) {
+    $('#xmlExportArea').hide();
+    $('#xmlCopyButton').hide();
+});
 
 
 
@@ -4015,7 +4046,7 @@ $('#addFFlinesWeighted').change(function() {
 
 
 
-  
+
 
 $('#getGDLhydro').click(function(){
 
@@ -4351,10 +4382,7 @@ function loadPage(site){
             addNWSBands('stagegraph',AHPSjson,true,'band',true);
         }
         addAHPSrating('ratinggraph',siteId.nws);
-
-
     }
-
     $(document).ajaxStop(function () {
         addNWM2Stage('#dischargegraph','#stagegraph');
         addFloodStageRating('ratinggraph',AHPSjson);
@@ -4369,7 +4397,6 @@ function loadPage(site){
         jQuery.each(loadQ, function(index, item) {
             parts = item.split('_');
             console.log(parts);
-            //chartDiv,dv_iv,year,site,timeshift,q_shift
             var site = getBothIds(parts[0]);
             addAnnualData('dischargegraph',parts[1],parts[2],site,parts[3],parts[4])
         });
@@ -4738,23 +4765,6 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                                 }
 
                             }
-
-
-//                            else if($("input[name=Qfunction]:checked").val() == 'exportXML'){
-//                                if(first_line){
-//                                    shift = this.x;
-//                                    first_line = false;
-//                                    shiftIndex = this.series.index;
-//
-//                                }
-//                                else{
-//                                    first_line = true;
-//                                    chart.xAxis[0].removePlotLine('vert_1');
-//                                    xMax = this.x;
-//                                    series = this.series;
-//                                    exportXML(series,xMin,xMax);
-//                               }
-//                           } -->
                         },
                         mouseOver: function() {
                             var rCurve;
@@ -5300,7 +5310,7 @@ function setupGraphStability(container,usgs,nws){
         },
         usgsID: usgs,
         stabilityPlotted: false,
-        
+
         credits: {
             enabled: false
         },
@@ -5598,7 +5608,6 @@ $(function () {
                 if(chart.series[z].visible != true) continue;
 				if(chart.series[z].selected != true) continue;
                 series = chart.series[z];
-                console.log(series);
                 series.options.dateShift = series.options.dateShift-(hours*3600*1000)
                 series.options.qShift = series.options.qShift+qShift
                 var xData = series.xData;
@@ -5611,7 +5620,6 @@ $(function () {
                 }
                 series.setData(shiftData);
             }
-            console.log(series);
         }
     });
 
