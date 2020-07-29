@@ -83,7 +83,7 @@
             </td>
             <td align="center">
                 <div id='usgsSiteInfo'></div>
-                <p>Select <select id="maxMinAverage"><option value='Peaks'>Annual Peaks</option><option value='Max'>Max</option><option value='Min'>Min</option><option value='Avg'>Avg</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
+                <p>Select <select id="maxMinAverage"><option value='Peaks'>Annual Peak Q</option><option value='peakStage'>Annual Peak Stg</option><option value='Max'>Max</option><option value='Min'>Min</option><option value='Avg'>Avg</option></select> flow between <input type="text" id="aveStart" size=5 value="10-1"> and  <input type="text" id="aveEnd" size=5 value="9-30"><input type="button" id="newAnnualTrend" value="Load"></p>
                 <div id="annualPeakGraph" style="width: 500px; height: 300px; margin: 0 auto;"></div>
                 <div id="trendTitle"></div>
                 <div id="MannKendallResults"></div>
@@ -2079,17 +2079,22 @@ function addAnnualPeaks(chartDiv,usgsID){
 
         success: function(data){
             $( "#aPeaksLog"+chartDiv).html( '<span style="color:green">Success</span> USGS Annual Peaks: <a href="https://nwis.waterdata.usgs.gov/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
-
+            console.log(data);
             var chart = $('#'+chartDiv).highcharts();
             var year = new Date().getFullYear();
             var peakSeries = [
                 {
                     name: 'Annual Peaks',
                     tooltip: {
-                        headerFormat:'<b>Peak Annual Flow<br>{point.x:%b %e %Y}</b><br>',
-                        pointFormatter: function (){
-                            return '<b>' +numberWithCommas(this.y) + ' cfs</b><br>'+this.stage+' ft</b>';
-                        },
+                        headerFormat:'<b>Peak Annual Flow<br>',
+                        pointFormatter: function(){
+                           if(this.peakStage !== null){
+                             return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft<br>Peak Stage: '+this.peakStage+'<br>Peak Stage Date:'+this.peakStageDate+'</b>';
+                           }else{
+                             return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft</b>';
+                           }
+
+                        }
                     },
                     states: {
                         hover: {
@@ -2127,10 +2132,15 @@ function addAnnualPeaks(chartDiv,usgsID){
                 {
                     name: 'Annual Peaks',
                     tooltip: {
-                        headerFormat: 'Peak Annual Flow<br>',
-                        pointFormatter: function (){
-                            return '<b>' +this.date+': '+numberWithCommas(this.y) + ' cfs<br><b>Peak Stage:'+this.stage+' ft</b>';
-                        },
+                        headerFormat:'<b>Peak Annual Flow<br>',
+                        pointFormatter: function(){
+                           if(this.peakStage !== null){
+                             return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft<br>Peak Stage: '+this.peakStage+'<br>Peak Stage Date:'+this.peakStageDate+'</b>';
+                           }else{
+                             return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft</b>';
+                           }
+
+                        }
                     },
                     states: {
                         hover: {
@@ -2173,7 +2183,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                     tooltip: {
                         headerFormat: 'Peak Annual Timing<br>',
                         pointFormatter: function (){
-                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.flow) + ' cfs<br>'+this.stage+' ft</b>';
+                            return '<b>'+this.year+"<br>" +this.monthDay+': '+numberWithCommas(this.flow) + ' cfs<br>'+this.qStage+' ft</b>';
                         },
                     },
                     states: {
@@ -2215,27 +2225,54 @@ function addAnnualPeaks(chartDiv,usgsID){
                 if(this[4] == null) {
                     return true;
                 }
-                peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
+                //peakSeries[0].data.push([parseInt(d.format('x')),this[4]]);
+                var pointColor = 'orange';
+                var stage = this[6];
+                if(this[11] !== null ){
+                  pointColor = 'brown';
+                  stage = this[11];
+                }
+                //Points below are for peaks
+                point = {x:parseInt(d.format('x')),
+                         y:this[4],
+                         color: pointColor,
+                         xDate : parseInt(d.format('x')),
+                         date:this[2],
+                         flow:this[4],
+                         flowCD:this[5],
+                         year:newD[0],
+                         monthDay: moment(str).format('MMM D'),
+                         qStage:this[6],
+                         stageCD:this[7],
+                         peakStage:this[11],
+                         peakStageDate:this[9],
+                         peakStageCD:this[12]
+                         }
+
+                peakSeries[0].data.push(point);
                 peaks.push(this[4]);
+
                 d.add(3,'months');
                 years.push(moment(d).format('YYYY'));
                 d= Date.UTC(year,newD[1]-1,newD[2],12+n);
-                point = {x:d,
-                         y:this[4],
-                         date:this[2],
-                         flow:this[4],
-                         year:newD[0],
-                         stage:this[6]
-                         }
-                point2 = {x:parseInt(moment(str).format('x')),
-                          y:parseInt(moment(str).format('DDD')),
-                          monthDay: moment(str).format('MMM D'),
-                          year: moment(str).format('YYYY'),
-                          date:this[2],
-                          flow:this[4],
-                          stage:this[6]
-                          }
-                peakSeries[1].data.push(point);
+
+                //Substitute x value for the same calendar date this year, plot on same year
+                point1 = {};
+                Object.assign(point1,point);
+                point1.color= 'black';
+                if(this[11] !== null ){
+                  point1.color = 'brown';
+                }
+                point1.x=d;
+
+                peakSeries[1].data.push(point1);
+
+                //Points below are for peak flow timing plots x is date, y is day of year
+                point2 = {};
+                Object.assign(point2,point);
+                point2.color = 'black';
+                point2.y = parseInt(moment(str).format('DDD'));
+
                 peakSeries[2].data.push(point2);
               });
             chart.addSeries(peakSeries[0]);
@@ -2246,6 +2283,7 @@ function addAnnualPeaks(chartDiv,usgsID){
                 $('#annualPeakGraph').highcharts().series[0].remove(true);
 
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[0]);
+
             $('#annualPeakGraph').highcharts().addSeries(peakSeries[2]);
             checkTrends('annualPeakGraph',begin,end);
 
@@ -5326,7 +5364,10 @@ function setupGraphStability(container,usgs,nws){
             }
         },
         title: {
-            text: 'Measurement Stage - Current Rating Stage'
+            text: 'Measurement Stage - Current Rating Stage',
+        },
+        subtitle: {
+            text: 'This graph can be useful for examining channel stability.'
         },
         tooltip: {
             positioner: function () {
