@@ -1812,7 +1812,8 @@ function addQNotes(chartDiv){
 
     var xLoc = 580;
     var yLoc = 280;
-    if(chart.yAxis[0].isLog){
+
+    if(chart.yAxis[0].options.type == "logarithmic"){
         xLoc = 85;
         yLoc = 250;
     }
@@ -4755,6 +4756,7 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
             marginTop: 40,
             //marginBottom:100,
             marginLeft:90,
+            ignoreHiddenSeries:false,
         },
         plotOptions:{
             series:{
@@ -4771,7 +4773,9 @@ function setupGraphDischarge(container,minDate,maxDate,usgs,nws){
                                 zIndex: 9500
                             });
                             if (e.shiftKey) {
+                                console.log($('#setColor').css('backgroundColor'))
                                 this.series.update({
+                                    lineColor: $('#setColor').css('backgroundColor'),
                                     color: $('#setColor').css('backgroundColor')
                                 });
                                 return;
