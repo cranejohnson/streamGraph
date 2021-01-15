@@ -1110,10 +1110,10 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                         var stream = data.results[0];
 
                         $.each( data.results, function( key, value ) {
-                            if(value.attributes.streamorder > stream.attributes.streamorder){
+                            if(value.attributes.stream_order > stream.attributes.stream_order){
                                 stream = value;
                             }
-                            if(value.attributes.streamorder == stream.attributes.streamorder){
+                            if(value.attributes.stream_order == stream.attributes.stream_order){
                                 if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
                                     stream = value;
                                 }
@@ -1208,6 +1208,8 @@ function plotRatingStability(ratingGraph,stabilityGraph,type){
     var ratingcht = $('#'+ratingGraph).highcharts();
     var stabcht = $('#'+stabilityGraph).highcharts();
     var rating = ratingcht.get('curve');
+    if(ratingcht.get('qMeasured') === undefined) return;
+    console.log(ratingcht.get('qMeasured'));
     var data = ratingcht.get('qMeasured').data;
     if (stabcht.options.stabilityPlotted == true) {
         return;
@@ -2358,9 +2360,9 @@ function addVolumeStats(chartDiv){
     var usgsID = chartAdd.options.usgsID;
 
     if(usgsID === undefined) return;
+    
 
     $.get('https://waterservices.usgs.gov/nwis/stat/?format=rdb,1.0&indent=on&sites='+usgsID+'&statReportType=daily&statTypeCd=p25,p50,p75&parameterCd=00060', function( data ) {
-
         var lines = data.split('\n');
         var bandSeries =
             {
@@ -2374,6 +2376,7 @@ function addVolumeStats(chartDiv){
                 fillOpacity: 0.2,
                 zIndex: 3,
             };
+            
         var medianSeries =
             {
                 name: 'Cumulative of Daily Median',
@@ -2426,22 +2429,27 @@ function addVolumeStats(chartDiv){
         var cumulativeMedian = 0;
         var cumulative25 = 0;
         var cumulative75 = 0;
+        
+
 
         for(var i=275;i<=doy;i++){
             cumulativeMedian = cumulativeMedian + parseInt(annualSeries[0].data[i]*24*3600/1000000);
             medianSeries.data.push(cumulativeMedian);
-            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
-            cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
-            bandSeries.data.push([cumulative25,cumulative75]);
+            if(annualSeries[1].data[i] != null){
+	            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
+    	        cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
+        	    bandSeries.data.push([cumulative25,cumulative75]);
+        	}    
         }
-
 
         for(var i=1;i<275;i++){
             cumulativeMedian = cumulativeMedian + parseInt(annualSeries[0].data[i]*24*3600/1000000);
             medianSeries.data.push(cumulativeMedian);
-            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
-            cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
-            bandSeries.data.push([cumulative25,cumulative75]);
+            if(annualSeries[1].data[i] != null){
+	            cumulative25 = cumulative25 + parseInt(annualSeries[1].data[i][0]*24*3600/1000000);
+	            cumulative75 = cumulative75 + parseInt(annualSeries[1].data[i][1]*24*3600/1000000);
+ 	           bandSeries.data.push([cumulative25,cumulative75]);
+ 	       }    
         }
 
 
