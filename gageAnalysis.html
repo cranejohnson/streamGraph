@@ -67,7 +67,7 @@
     <title>NWS Gage Analysis</title>
 
 
-    <h3>NWS Gage Analysis</h3> 
+    <h3>NWS Gage Analysis <span id = "ahpsLink"></span></h3> 
     <i>Edit url to change sites:  site=&ltusgs or nwslid&gt<i> 
     <table>
         <tr>
@@ -77,8 +77,10 @@
                 <a href="https://docs.google.com/a/noaa.gov/presentation/d/1DP9-b2yGdKfDR3zK7oM7rnX6M8_rQ45wZV6epbiE30Y/edit?usp=sharing">Chart Reference Sheet</a>
             </td>
             <td>
-                <span>Gage location (circle) and NWM reach shown (blue highlight)
+                <span>Gage location (circle) and NWM reach shown (blue highlight)</span>
+                <strong><div id="nwmAutoReachId"></div></strong></br>
                 <div id="map" class="map" class="ui-widget-content"></div>
+                
                 <input type="button" id="nwmUp" class = "hasNWM" value="NWM Upstream Results">
                 <input type="button" id="nwmDown" class = "hasNWM" value="NWM Downstream Results">
             </td>
@@ -93,7 +95,6 @@
         </tr>
     </table>
 <hr>
-
     <table>
         <tr>
             <td>
@@ -1125,6 +1126,8 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                         });
                         reachID = stream.attributes.station_id;
                         if(forecastType == 'short_range'){
+                            var url = "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver/find?searchText="+reachID+"&contains=true&searchFields=feature_id&sr=&layers=6&layerDefs=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&dynamicLayers=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnUnformattedValues=false&returnFieldName=false&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&clipping=&spatialFilter=&f=json";
+                            $('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span>");
                             addReach2Map(map,stream.geometry.paths[0]);
                         };
                         plotNWM(chartDiv,reachID,forecastType,stream);
@@ -4300,6 +4303,7 @@ function getBothIds(site){
          });
     }
     if (typeof usgsID == 'undefined') usgsID = '';
+    
     return {
         nws:nwsLid,
         usgs:usgsID
@@ -4343,6 +4347,9 @@ function loadPage(site){
     $('#dischargeEnd').val(year+'-12-31');
     //initializeNWS();
     var siteId = getBothIds(site);
+    if(siteId.nws.length > 0){
+        $('#ahpsLink').html(" | <a href='https://water.weather.gov/ahps2/hydrograph.php?gage="+siteId.nws+"' target='_blank''>AHPS Link</a>");
+    }
     var siteInfo = {'dec_long_va': 0,
                      'dec_lat_va':0};
 
