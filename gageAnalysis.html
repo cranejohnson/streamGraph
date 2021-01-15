@@ -67,7 +67,8 @@
     <title>NWS Gage Analysis</title>
 
 
-    <h1>NWS Gage Analysis</h1>
+    <h3>NWS Gage Analysis</h3> 
+    <i>Edit url to change sites:  site=&ltusgs or nwslid&gt<i> 
     <table>
         <tr>
             <td>
@@ -1404,7 +1405,7 @@ function addAnnualData(chartDiv,dv_iv,year,site,timeShift = 0, qShift = 0){
     var cD = '00060';
     var seriesId = nwsID+'_iv_';
     var start = '1900-01-01';
-    var end = '2020-01-01';
+    var end = '2021-01-01';
     if(year != 'all'){
         start = year+'-01-01';
         end = year+'-12-31';
@@ -5222,7 +5223,7 @@ function setupGraphHeatQ(){
             },
             minPadding: 0,
             maxPadding: 0,
-            max:2020
+            max:2021
         },
 
         colorAxis: {
@@ -5471,7 +5472,7 @@ function setupAnnualHeatQ(){
         yAxis: {
             minPadding: 0,
             maxPadding: 0,
-            max:2020,
+            max:2021,
             labels:{
                 enabled: false
             }
