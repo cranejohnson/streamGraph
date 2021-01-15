@@ -1128,7 +1128,7 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
 							reachID = stream.attributes.station_id;
 							if(forecastType == 'short_range'){
 								var url = "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver/find?searchText="+reachID+"&contains=true&searchFields=feature_id&sr=&layers=6&layerDefs=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&dynamicLayers=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnUnformattedValues=false&returnFieldName=false&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&clipping=&spatialFilter=&f=json";
-								$('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span>");
+								$('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span> - "+stream.attributes.gnis_name);
 								addReach2Map(map,stream.geometry.paths[0]);
 							};
 							plotNWM(chartDiv,reachID,forecastType,stream);
