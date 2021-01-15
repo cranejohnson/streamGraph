@@ -1103,37 +1103,43 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
                     contentType: "application/json; charset=utf-8",
                     headers : {'Content-Type' : 'application/x-www-form-urlencoded; charset=UTF-8'},
                     dataType: "json",
-                    success: function (data) {
-                        if (data.results.length == 0) {
-                            $( '<span style="color:orange">No NWM reach found('+lat+','+lon+')<br></span>' ).prependTo( "#log" );
-                            return false;
-                        }
-                        foundOne = true;
-                        var stream = data.results[0];
+                    success: function (data) { 321
+                        if(typeof(data.results) != 'undefined'){
+							if (data.results.length == 0) {
+								$( '<span style="color:orange">No NWM reach found('+lat+','+lon+')<br></span>' ).prependTo( "#log" );
+								return false;
+							}
+							foundOne = true;
+							var stream = data.results[0];
 
-                        $.each( data.results, function( key, value ) {
-                            if(value.attributes.stream_order > stream.attributes.stream_order){
-                                stream = value;
-                            }
-                            if(value.attributes.stream_order == stream.attributes.stream_order){
-                                if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
-                                    stream = value;
-                                }
-                                if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
-                                    stream = value;
-                                }
-                            }
-                        });
-                        reachID = stream.attributes.station_id;
-                        if(forecastType == 'short_range'){
-                            var url = "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver/find?searchText="+reachID+"&contains=true&searchFields=feature_id&sr=&layers=6&layerDefs=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&dynamicLayers=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnUnformattedValues=false&returnFieldName=false&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&clipping=&spatialFilter=&f=json";
-                            $('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span>");
-                            addReach2Map(map,stream.geometry.paths[0]);
-                        };
-                        plotNWM(chartDiv,reachID,forecastType,stream);
+							$.each( data.results, function( key, value ) {
+								if(value.attributes.stream_order > stream.attributes.stream_order){
+									stream = value;
+								}
+								if(value.attributes.stream_order == stream.attributes.stream_order){
+									if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
+										stream = value;
+									}
+									if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
+										stream = value;
+									}
+								}
+							});
+							reachID = stream.attributes.station_id;
+							if(forecastType == 'short_range'){
+								var url = "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver/find?searchText="+reachID+"&contains=true&searchFields=feature_id&sr=&layers=6&layerDefs=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&dynamicLayers=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnUnformattedValues=false&returnFieldName=false&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&clipping=&spatialFilter=&f=json";
+								$('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span>");
+								addReach2Map(map,stream.geometry.paths[0]);
+							};
+							plotNWM(chartDiv,reachID,forecastType,stream);
+						}	
+						else{
+							$('<span style="color:red">Failed </span><a href="https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver" target="_blank">NWM Mapserver</a><br>').prependTo( "#log" );
+							i = 30;
+						}
                     },
                     error: function (request, status, errorThrown) {
-                        console.log('Error getting NWM Reach ID');
+						$('<span style="color:red">Failed </span><a href="https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver" target="_blank">NWM Mapserver</a><br>').prependTo( "#log" );
                         console.log(status);
                     }
             });
