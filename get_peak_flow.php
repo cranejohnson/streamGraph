@@ -18,7 +18,7 @@ $dom = new domDocument;
 $dom->preserveWhiteSpace = false;
 $tables = $dom->getElementsByTagName('table');
 
-print_r($tables);
+
 
 $rows = $tables->item(2)->getElementsByTagName('tr');
 
