@@ -1347,6 +1347,9 @@ function addNWM2Stage(dischargeGraph,stageGraph){
     stagePlt.addSeries({data:null,name:'NWM Output (3)',color:'white',marker:{fillColor: 'white'},id:'NWMoutput'});
     $.each( NWMseries, function( index, item ) {
 
+        //If the NWM doesn't exist go to the next NWM series
+		if (typeof(dischargePlt.get(item)) == 'undefined') return true;
+		
         var oldSeries = dischargePlt.get(item);
 
 
@@ -4020,9 +4023,19 @@ function addNWMPlots(graphID,direction){
         x = nwmReach.geometry.paths[0][0][0];
         y = nwmReach.geometry.paths[0][0][1];
     }
-    chart.get('NWMshort').remove();
-    chart.get('NWMmedium').remove();
-    chart.get('NWMlong').remove();
+    if (typeof(chart.get('NWMshort')) != "undefined") {
+	    chart.get('NWMshort').remove();
+    
+    }
+    if (typeof(chart.get('NWMmedium')) != "undefined") {
+	    chart.get('NWMmedium').remove();
+    
+    }
+    if (typeof(chart.get('NWMlong')) != "undefined") {
+	    chart.get('NWMlong').remove();
+    
+    }    
+
     addNWM('dischargegraph',y,x,'short_range',direction);
     addNWM('dischargegraph',y,x,'medium_range',direction);
     addNWM('dischargegraph',y,x,'long_range',direction);
