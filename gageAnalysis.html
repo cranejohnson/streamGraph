@@ -2068,6 +2068,87 @@ function adjustRadius(series){
     return series;
 }
 
+function addAnnualPeaksRating(rdbData){
+	var chart = $('#ratinggraph').highcharts();
+    var d = new Date()
+	var n = d.getTimezoneOffset()/60;
+	var pointColor = 'black';
+
+	var peakSeries = [
+		{
+			name: 'Annual Peaks',
+			tooltip: {
+				headerFormat:'<b>Peak Annual Flow<br>',
+				pointFormatter: function(){
+				   if(this.peakStage !== null){
+					 return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft<br>Peak Stage: '+this.peakStage+'<br>Peak Stage Date:'+this.peakStageDate+'</b>';
+				   }else{
+					 return '<b>Date '+this.date+'<br><b>Peak ' +numberWithCommas(this.flow) + ' cfs</b><br>  at stage:'+this.qStage+' ft</b>';
+				   }
+
+				}
+			},
+			states: {
+				hover: {
+					enabled: false
+				}
+			},
+			data:[],
+			visible: false,
+			lineWidth: 0,
+			type: 'scatter',
+			id:'annualPeaks',
+			color: pointColor,
+			marker : {
+				enabled : true,
+				radius : 3,
+				symbol: 'circle'
+			},
+			showInLegend:true
+		}];
+
+		if(typeof rdbData.records == 'undefined') return false;
+
+		$.each(rdbData.records,function(){
+			var newD = this[2].split('-');
+			var str = this[2].replace('-00','-01');
+			var d = moment(str);
+			pointColor = 'black';
+			d.add(12+n,'hours');
+			if(this[4] == null) {
+				return true;
+			}
+			var stage = this[6];
+			if(this[11] !== null ){
+			  pointColor = 'brown';
+			  //stage = this[11];
+			}
+			var point = [this[4],stage];
+			//Points below are for peaks
+			point = {x:this[4],
+					 y:stage,
+					 color: pointColor,
+					 xDate : parseInt(d.format('x')),
+					 date:this[2],
+					 flow:this[4],
+					 flowCD:this[5],
+					 year:newD[0],
+					 monthDay: moment(str).format('MMM D'),
+					 qStage:this[6],
+					 stageCD:this[7],
+					 peakStage:this[11],
+					 peakStageDate:this[9],
+					 peakStageCD:this[12]
+					 }
+
+			peakSeries[0].data.push(point);
+		  });
+	chart.addSeries(peakSeries[0]);
+
+
+}
+
+
 function addAnnualPeaks(chartDiv,usgsID){
     var chart = $('#'+chartDiv).highcharts();
     //NEED TO FIGURE OUT WHAT THIS WAS FOR
@@ -2094,6 +2175,8 @@ function addAnnualPeaks(chartDiv,usgsID){
        },
 
         success: function(data){
+            addAnnualPeaksRating(data);
+            console.log('added peaks to rating chart');
             $( "#aPeaksLog"+chartDiv).html( '<span style="color:green">Success</span> USGS Annual Peaks: <a href="https://nwis.waterdata.usgs.gov/nwis/peak/?site_no='+usgsID+'&agency_cd=USGS" target="_blank">Source Data</a></span>');
             console.log(data);
             var chart = $('#'+chartDiv).highcharts();
