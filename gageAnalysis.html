@@ -2104,7 +2104,16 @@ function addAnnualPeaksRating(rdbData){
 				radius : 3,
 				symbol: 'circle'
 			},
-			showInLegend:true
+			showInLegend:true,
+			dataLabels: {
+				enabled: true,
+				format: '{point.year}',
+				y: -3,
+				style:{
+					 "fontSize": "9px",
+				},
+			},
+
 		}];
 
 		if(typeof rdbData.records == 'undefined') return false;
