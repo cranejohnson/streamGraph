@@ -1109,23 +1109,33 @@ function addNWM(chartDiv,lat,lon,forecastType,dir,reachID){
 								$( '<span style="color:orange">No NWM reach found('+lat+','+lon+')<br></span>' ).prependTo( "#log" );
 								return false;
 							}
-							foundOne = true;
 							var stream = data.results[0];
-
+							foundOne = true;
+							console.log(stream.attributes.station_id);
 							$.each( data.results, function( key, value ) {
-								if(value.attributes.stream_order > stream.attributes.stream_order){
+								if(dir == 'search'){
+									if(parseInt(value.attributes.stream_order) > parseInt(stream.attributes.stream_order)){
+											stream = value;
+											foundOne = true;
+									}						
+								}				
+								if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
 									stream = value;
+									foundOne = true;
 								}
-								if(value.attributes.stream_order == stream.attributes.stream_order){
-									if(value.attributes.linkdim > stream.attributes.linkdim && dir == 'down'){
+								if(parseInt(value.attributes.linkdim) < parseInt(stream.attributes.linkdim) && dir == 'up'){
+									if(parseInt(value.attributes.stream_order) >= parseInt(stream.attributes.stream_order)){
+										console.log(value.attributes.stream_order);
+										console.log(stream.attributes.stream_order);
+										
 										stream = value;
-									}
-									if(value.attributes.linkdim < stream.attributes.linkdim && dir == 'up'){
-										stream = value;
-									}
+										console.log(stream.attributes.station_id);
+										foundOne = true;
+									}						
 								}
 							});
 							reachID = stream.attributes.station_id;
+							console.log(reachID);
 							if(forecastType == 'short_range'){
 								var url = "https://mapservice.nohrsc.noaa.gov/arcgis/rest/services/national_water_model/NWM_Stream_Analysis/Mapserver/find?searchText="+reachID+"&contains=true&searchFields=feature_id&sr=&layers=6&layerDefs=&returnGeometry=true&maxAllowableOffset=&geometryPrecision=&dynamicLayers=&returnZ=false&returnM=false&gdbVersion=&historicMoment=&returnUnformattedValues=false&returnFieldName=false&datumTransformations=&layerParameterValues=&mapRangeValues=&layerRangeValues=&clipping=&spatialFilter=&f=json";
 								$('#nwmAutoReachId').html("Auto Detected NWM Reach Id: <span style='color: blue'><a href='"+url+"' target='_blank''>"+reachID+"</a></span> - "+stream.attributes.gnis_name);
@@ -4500,10 +4510,10 @@ function loadPage(site){
                 setupMap(siteInfo);
                 //Skip NWM if the site is in Alaska, Hawaii or Puerto Rico
                 if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72" && siteInfo.state_cd != "9999"){
-                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
+                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','search');
                     console.log('ReachID:'+reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','search',reachID);
                 }
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
@@ -4534,9 +4544,9 @@ function loadPage(site){
                     myArray = myRe.exec(xml);
                     siteInfo['dec_lat_va'] = parseFloat(myArray[1]);
                     setupMap(siteInfo);
-                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','down');
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','down',reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','down',reachID);
+                    var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','search');
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','search',reachID);
 
                 }
         });
