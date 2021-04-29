@@ -321,11 +321,11 @@ var AJAXLOOKUPTABLE = [
                 name: "NWM Short Range"
                 },
                 {
-                match:'forecasts\/medium_range',
+                match:'forecasts\/medium_range_ensemble_mean',
                 name: "NWM Medium Range"
                 },
                 {
-                match:'forecasts\/long_range',
+                match:'forecasts\/long_range_ensemble_mean',
                 name: "NWM Long Range"
                 }]
 
@@ -1175,11 +1175,11 @@ function plotNWM(chartDiv,reachID,forecastType,stream){
         seriesColor = "red";
         zVal = 5;
         break;
-    case 'medium_range':
+    case 'medium_range_ensemble_mean':
         seriesColor = "blue";
         zVal = 4;
         break;
-    case 'long_range':
+    case 'long_range_ensemble_mean':
         seriesColor = "orange";
         zVal = 3;
         break;
@@ -4138,8 +4138,8 @@ function addNWMPlots(graphID,direction){
     }    
 	console.log(x,y);
     addNWM('dischargegraph',y,x,'short_range',direction);
-    addNWM('dischargegraph',y,x,'medium_range',direction);
-    addNWM('dischargegraph',y,x,'long_range',direction);
+    addNWM('dischargegraph',y,x,'medium_range_ensemble_mean',direction);
+    addNWM('dischargegraph',y,x,'long_range_ensemble_mean',direction);
 }
 
 
@@ -4511,8 +4511,8 @@ function loadPage(site){
                 if(siteInfo.state_cd != "02" && siteInfo.state_cd != "72" && siteInfo.state_cd != "9999"){
                     var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','search');
                     console.log('ReachID:'+reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','search',reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range_ensemble_mean','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range_ensemble_mean','search',reachID);
                 }
                 showUSGSinfo(siteInfo);
                 Area = siteInfo.drain_area_va;
@@ -4544,8 +4544,8 @@ function loadPage(site){
                     siteInfo['dec_lat_va'] = parseFloat(myArray[1]);
                     setupMap(siteInfo);
                     var reachID = addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'short_range','search');
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range','search',reachID);
-                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'medium_range_ensemble_mean','search',reachID);
+                    addNWM('dischargegraph',siteInfo['dec_lat_va'],siteInfo['dec_long_va'],'long_range_ensemble_mean','search',reachID);
 
                 }
         });
